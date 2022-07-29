@@ -1,4 +1,4 @@
-#include "loader.h"
+#include "elf.h"
 // #include "ide.h"
 #include "types.h"
 #include "x86.h"
@@ -50,10 +50,10 @@ read_sect(uint8_t *dst, uint32_t offset)
 
 int c_entry()
 {
-    char *loader_img = 0x7e00;
-    read_sect(loader_img, SECTSIZE);
-    struct Elf32_Ehdr *elf_hdr = 0x7e00;
-    if ((uint32_t)elf_hdr->e_ident == ELF_MAGIC) {
+    char *loader_img = 0x10000;
+    read_sect(loader_img, 1);
+    struct Elf32_Ehdr *elf_hdr = 0x10000;
+    if (*(uint32_t *)(elf_hdr->e_ident) != ELF_MAGIC) {
         return -1;
     }
     struct Elf32_Phdr *prog_hdrs = loader_img + sizeof(struct Elf32_Ehdr);
