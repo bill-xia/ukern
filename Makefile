@@ -1,15 +1,14 @@
 AS := /usr/bin/nasm
 CC := /usr/bin/gcc
-CFLAGS := -I include -m32
+CFLAGS := -I include
 
 all: image
 
 pre-qemu: image
 
-image: boot/boot_asm boot/boot_c kernel/main.o
+image: boot/boot_asm boot/boot_c kernel/main
 	ld -T boot/boot.ld --oformat=binary boot/boot_asm boot/boot_c -o image
 	# cp image image.mid
-	ld -T kernel/kernel.ld -N kernel/main.o -o kernel/main
 	dd oflag=append conv=notrunc if=kernel/main of=image
 
 boot/boot_asm: boot/boot_asm.S
@@ -17,7 +16,13 @@ boot/boot_asm: boot/boot_asm.S
 	# objdump -b binary -D $@ -m i8086 > boot/boot.asm
 
 boot/boot_c: boot/boot_c.c
-	$(CC) $(CFLAGS) -O1 $< -c -o $@
+	$(CC) $(CFLAGS) -m32 -O1 $< -c -o $@
+
+kernel/main: kernel/main.o kernel/entry.o
+	ld -T kernel/kernel.ld $^ -o kernel/main
+
+kernel/entry.o: kernel/entry.S
+	$(AS) $< -f elf64 -o $@
 
 kernel/main.o: kernel/main.c
 	$(CC) $(CFLAGS) $^ -c -o $@
