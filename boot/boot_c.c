@@ -1,23 +1,8 @@
 #include "elf.h"
-// #include "ide.h"
 #include "types.h"
 #include "x86.h"
 
 #define SECTSIZE 512
-
-// struct phys_region_desc g_ide_prd;
-
-void read_seg(uint8_t *p_addr, int length, uint32_t offset)
-{
-    offset = offset / SECTSIZE + 1;
-    uint8_t *p_addr_end = p_addr + length;
-    p_addr = (uint32_t)p_addr & ~(SECTSIZE - 1);
-    while (p_addr < p_addr_end) {
-        read_sect(p_addr, offset);
-        p_addr = p_addr + SECTSIZE;
-        offset++;
-    }
-}
 
 void
 wait_disk(void)
@@ -47,12 +32,23 @@ read_sect(uint8_t *dst, uint32_t offset)
 	insl(0x1F0, dst, SECTSIZE/4);
 }
 
+void read_seg(uint8_t *p_addr, int length, uint32_t offset)
+{
+    offset = offset / SECTSIZE + 1;
+    uint8_t *p_addr_end = p_addr + length;
+    p_addr = (uint32_t)p_addr & ~(SECTSIZE - 1);
+    while (p_addr < p_addr_end) {
+        read_sect(p_addr, offset);
+        p_addr = p_addr + SECTSIZE;
+        offset++;
+    }
+}
 
 int c_entry()
 {
-    char *loader_img = 0x10000;
+    char *loader_img = 0x100000;
     read_sect(loader_img, 1);
-    struct Elf32_Ehdr *elf_hdr = 0x10000;
+    struct Elf32_Ehdr *elf_hdr = 0x100000;
     if (*(uint32_t *)(elf_hdr->e_ident) != ELF_MAGIC) {
         return -1;
     }

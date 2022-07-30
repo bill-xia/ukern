@@ -1,11 +1,15 @@
+OUTPUT_FORMAT("elf32-i386", "elf32-i386", "elf32-i386")
+OUTPUT_ARCH(i386)
 SECTIONS
 {
-    . = 0x10000 + SIZEOF_HEADERS;
+    . = 0x100000 + SIZEOF_HEADERS;
     .text : AT (512 + SIZEOF_HEADERS)
-        { *(.text) }
+        { *(.text .text.* ) *(.got.plt)}
     .data : AT (LOADADDR(.text) + SIZEOF(.text))
         { *(.data) }
     .bss :  AT (LOADADDR(.data) + SIZEOF(.data))
         { *(.bss) }
-    /DISCARD/ : { *(.comment) *(.eh_frame) *(.note.gnu.property) }
+    .rodata : AT (LOADADDR(.bss) + SIZEOF(.bss))
+        { *(.rodata) }
+    /DISCARD/ : { *(.comment) *(.eh_frame) *(.note) *(.group)}
 }
