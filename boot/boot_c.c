@@ -46,16 +46,16 @@ void read_seg(uint8_t *p_addr, int length, uint32_t offset)
 
 int c_entry()
 {
-    char *loader_img = 0x100000;
-    read_sect(loader_img, 1);
-    struct Elf32_Ehdr *elf_hdr = 0x100000;
+    char *loader_img = 0x8000;
+    read_seg(loader_img, 8 * SECTSIZE, 0);
+    struct Elf32_Ehdr *elf_hdr = 0x8000;
     if (*(uint32_t *)(elf_hdr->e_ident) != ELF_MAGIC) {
         return -1;
     }
     struct Elf32_Phdr *prog_hdrs = loader_img + sizeof(struct Elf32_Ehdr);
     for (int i = 0; i < elf_hdr->e_phnum; ++i) {
         // if (prog_hdrs[i].p_type == PT_LOAD) {
-            read_seg(prog_hdrs[i].p_paddr, prog_hdrs[i].p_filesz, prog_hdrs[i].p_vaddr);
+            read_seg(prog_hdrs[i].p_paddr, prog_hdrs[i].p_memsz, prog_hdrs[i].p_offset);
             int j = 0;
             for (j = prog_hdrs[i].p_filesz; j < prog_hdrs[i].p_memsz; ++j) {
                 *(char *)(prog_hdrs[i].p_vaddr + j) = 0;

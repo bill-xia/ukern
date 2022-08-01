@@ -11,3 +11,31 @@ void print(char *s)
         ++s;
     }
 }
+
+void printint(int n)
+{
+    char buf[16];
+    int ind = 0;
+    if (n == 0) {
+        buf[ind++] = '0';
+        buf[ind] = 0;
+        print(buf);
+        return;
+    }
+    while (n) {
+        buf[ind++] = n % 10 + '0';
+        n /= 10;
+    }
+    for (int i = 0; i < ind - 1 - i; ++i) {
+        char tmp = buf[i];
+        buf[i] = buf[ind - 1 - i];
+        buf[ind - 1 - i] = tmp;
+    }
+    buf[ind] = 0;
+    print(buf);
+}
+
+void newline()
+{
+    while (crt_ind % 80) crt_ind++;
+}

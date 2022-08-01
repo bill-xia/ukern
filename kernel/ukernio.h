@@ -7,5 +7,7 @@
 #define COLOR_BACK_BLACK 0x0000
 
 void print(char *);
+void printint(int n);
+void newline();
 
 #endif

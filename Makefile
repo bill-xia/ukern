@@ -2,6 +2,8 @@ AS := /usr/bin/nasm
 CC := /usr/bin/gcc
 CFLAGS := -I include
 
+KERNEL_OBJS := kernel/main.o kernel/mem.o kernel/ukernio.o
+
 all: image
 
 pre-qemu: image
@@ -18,16 +20,13 @@ boot/boot_asm: boot/boot_asm.S
 boot/boot_c: boot/boot_c.c
 	$(CC) $(CFLAGS) -m32 -O1 $< -c -o $@
 
-kernel/main: kernel/main.o kernel/entry.o
+kernel/main: $(KERNEL_OBJS) kernel/entry
 	ld -T kernel/kernel.ld $^ -o kernel/main
 
-kernel/entry.o: kernel/entry.S
+kernel/entry: kernel/entry.S
 	$(AS) $< -f elf64 -o $@
 
-kernel/main.o: kernel/main.c
-	$(CC) $(CFLAGS) $^ -c -o $@
-
-kernel/ukernio.o: kernel/ukernio.c
+kernel/%.o: kernel/%.c
 	$(CC) $(CFLAGS) $^ -c -o $@
 
 qemu: pre-qemu
@@ -43,4 +42,4 @@ kill:
 	sudo killall -9 qemu-system-x86*
 
 clean:
-	rm -f boot/boot_asm boot/boot_c image kernel/*.o kernel/main
+	rm -f boot/boot_asm boot/boot_c image kernel/*.o kernel/main kernel/entry
