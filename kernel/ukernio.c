@@ -12,9 +12,9 @@ void print(char *s)
     }
 }
 
-void printint(int n)
+void printint(uint64_t n)
 {
-    char buf[16];
+    char buf[32];
     int ind = 0;
     if (n == 0) {
         buf[ind++] = '0';
@@ -38,4 +38,11 @@ void printint(int n)
 void newline()
 {
     while (crt_ind % 80) crt_ind++;
+}
+
+void clean()
+{
+    for (int i = 0; i < 80 * 25; ++i) {
+        crt_buf[i] = 0;
+    }
 }

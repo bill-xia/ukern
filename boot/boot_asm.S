@@ -36,18 +36,36 @@ start:
     mov es, ax
     mov fs, ax
 
-; clear screen
-    mov ax, 0600h
-    mov cx, 0000h
-    mov dx, 184fh
-    int 10h
+; ; clear screen
+;     mov ax, 0600h
+;     mov cx, 0000h
+;     mov dx, 184fh
+;     int 10h
+
+; get memory info
+    mov bx, 0
+    mov di, bx
+    mov bx, 0x900
+    mov es, bx ; ES:DI - 0x9000
+    mov ebx, 0
+    mov edx, 0x534D4150
+beg_get_meminfo:
+    mov eax, 0xe820 ; Query System Address Map
+    mov ecx, 24
+    int 15h
+    add di, 24
+    cmp ebx, 0
+    jne beg_get_meminfo
+
+    add di, 16
+    mov dword [es:di], 0
+
 
     in al, 92h
     or al, 2h
     out 92h, al
     
     cli
-
 ; getting into protected mode
     db 0x66
     lgdt [gdt_desc]

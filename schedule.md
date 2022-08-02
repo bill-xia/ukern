@@ -30,3 +30,5 @@
 2. 细粒度配置的GDT, LDT, IDT
 3. printk函数
 4. 设计内存空间，细粒度配置页表
+
+https://stackoverflow.com/questions/6917503/is-it-possible-to-use-32-bits-registers-instructions-in-real-mode

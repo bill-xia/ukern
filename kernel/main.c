@@ -3,6 +3,7 @@
 
 int main()
 {
+    clean();
     print("\"hello, world!\" from ukern!");
     newline();
     init_mem();

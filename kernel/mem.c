@@ -7,57 +7,37 @@
 #include "ukernio.h"
 #include "x86.h"
 
-// Codes from here are from 6.828 jos
-
-// These variables are set by i386_detect_memory()
-size_t npages;			// Amount of physical memory (in pages)
-static size_t npages_basemem;	// Amount of base memory (in pages)
+struct MemInfo *g_mem_info;
+struct PageInfo *g_page_info = 0x160000;
 
 // --------------------------------------------------------------
 // Detect machine's physical memory setup.
 // --------------------------------------------------------------
 
-unsigned
-mc146818_read(unsigned reg)
-{
-	outb(IO_RTC, reg);
-	return inb(IO_RTC+1);
-}
-
-static int
-nvram_read(int r)
-{
-	return mc146818_read(r) | (mc146818_read(r + 1) << 8);
-}
-
-static void
+void
 i386_detect_memory(void)
 {
-	size_t basemem, extmem, ext16mem, totalmem;
-
-	// Use CMOS calls to measure available base & extended memory.
-	// (CMOS calls return results in kilobytes.)
-	basemem = nvram_read(NVRAM_BASELO);
-	extmem = nvram_read(NVRAM_EXTLO);
-	ext16mem = nvram_read(NVRAM_EXT16LO) * 64;
-
-	// Calculate the number of physical pages available in both base
-	// and extended memory.
-	if (ext16mem)
-		totalmem = 16 * 1024 + ext16mem;
-	else if (extmem)
-		totalmem = 1 * 1024 + extmem;
-	else
-		totalmem = basemem;
-
-	npages = totalmem / (PGSIZE / 1024);
-	npages_basemem = basemem / (PGSIZE / 1024);
-
-	// cprintf("Physical memory: %uK available, base = %uK, extended = %uK\n",
-	// 	totalmem, basemem, totalmem - basemem);
+    g_mem_info = 0x9000;
+	int ind = 0;
+    while (g_mem_info[ind].type != 0) {
+        if (g_mem_info[ind].type != 1) {
+            ++ind;
+            continue;
+        }
+        print("begin at ");
+        printint(g_mem_info[ind].paddr);
+        print(", length ");
+        printint(g_mem_info[ind].length);
+        newline();
+        uint64_t beg_addr = CEIL(g_mem_info[ind].paddr, PGSIZE), end_addr = FLOOR(g_mem_info[ind].paddr + g_mem_info[ind].length, PGSIZE);
+        while (beg_addr < end_addr) {
+            g_page_info[beg_addr / PGSIZE].paddr = beg_addr;
+            g_page_info[beg_addr / PGSIZE].ref = 0;
+            beg_addr += PGSIZE;
+        }
+        ++ind;
+    }
 }
-
-// Codes until here are from 6.828 jos
 
 // Allocate a physical memory page. Should only used in this file.
 // Parameters: none
