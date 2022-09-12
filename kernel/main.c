@@ -3,9 +3,7 @@
 
 int main()
 {
-    clean();
-    print("\"hello, world!\" from ukern!");
-    newline();
+    printf("\"hello, world!\" from ukern!\n");
     init_mem();
     while (1);
 }

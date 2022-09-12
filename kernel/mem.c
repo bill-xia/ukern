@@ -7,33 +7,37 @@
 #include "ukernio.h"
 #include "x86.h"
 
-struct MemInfo *g_mem_info;
-struct PageInfo *g_page_info = 0x160000;
+struct MemInfo *k_mem_info;
+struct PageInfo *k_page_info = 0x160000;
+uint64_t *k_pml4, *k_pdpt, *k_pd, *k_pt;
+
+static uint64_t n_pages;
+static uint64_t max_addr;
 
 // --------------------------------------------------------------
 // Detect machine's physical memory setup.
 // --------------------------------------------------------------
 
+
+uint64_t max(uint64_t a, uint64_t b) {
+    return a > b ? a : b;
+}
+
 void
 i386_detect_memory(void)
 {
-    g_mem_info = 0x9000;
+    k_mem_info = 0x9000;
 	int ind = 0;
-    while (g_mem_info[ind].type != 0) {
-        if (g_mem_info[ind].type != 1) {
+    max_addr = 0;
+    while (k_mem_info[ind].type != 0) {
+        if (k_mem_info[ind].type != 1) {
             ++ind;
             continue;
         }
-        print("begin at ");
-        printint(g_mem_info[ind].paddr);
-        print(", length ");
-        printint(g_mem_info[ind].length);
-        newline();
-        uint64_t beg_addr = CEIL(g_mem_info[ind].paddr, PGSIZE), end_addr = FLOOR(g_mem_info[ind].paddr + g_mem_info[ind].length, PGSIZE);
-        while (beg_addr < end_addr) {
-            g_page_info[beg_addr / PGSIZE].paddr = beg_addr;
-            g_page_info[beg_addr / PGSIZE].ref = 0;
-            beg_addr += PGSIZE;
+        uint64_t beg_addr = ROUNDDOWN(k_mem_info[ind].paddr, PGSIZE), end_addr = ROUNDUP(k_mem_info[ind].paddr + k_mem_info[ind].length, PGSIZE);
+        max_addr = max(max_addr, end_addr);
+        if (beg_addr < end_addr) {
+            n_pages += (end_addr - beg_addr) / PGSIZE;
         }
         ++ind;
     }
@@ -150,7 +154,57 @@ fail:
 
 // Initiating page table and PageInfo array.
 
+uint64_t div_roundup(uint64_t a, uint64_t b) {
+    return (a - 1) / b + 1;
+}
+
+#define NENTRY(addr, offset) div_roundup(addr, 1ull << offset)
+#define NPAGES(addr, offset) div_roundup((div_roundup(addr, 1ull << offset)) * 8, PGSIZE)
+
+void reg_kpgtbl(uint64_t addr)
+{
+    addr = ROUNDDOWN(addr, PGSIZE);
+    int pml4i = PML4_INDEX(addr);
+    int pdpti = PDPT_INDEX(addr);
+    int pdi = PD_INDEX(addr);
+    int pti = PT_INDEX(addr);
+    k_pml4[pml4i] = (uint64_t)(&k_pdpt[pdpti]) | PML4E_P | PML4E_W;
+    k_pdpt[pdpti] = (uint64_t)(&k_pd[pdi]) | PDPTE_P | PDPTE_W;
+    k_pd[pdi] = (uint64_t)(&k_pt[pti]) | PDE_P | PDE_W;
+    k_pt[pti] = addr | PTE_P | PTE_W;
+}
+
 void init_mem()
 {
     i386_detect_memory();
+    // now we need max_addr / 2^12 + max_addr / 2^21
+    // + max_addr / 2^30 + max_addr / 2^39 entries
+    // take max_addr / 2^12 as an example.
+    // each page have an entry in the page table,
+    // which is 8 bytes, takes max_addr / 2^21 * 8
+    // bytes in total, so takes
+    // max_addr / 2^21 * 8 / 4096 pages
+    // in which divide means ceil.
+    extern char end[];
+    k_pml4 = ROUNDUP((uint64_t)end, PGSIZE);
+    int n_pml4 = NENTRY(max_addr, PML4_OFFSET);
+    k_pdpt = ROUNDUP((uint64_t)(k_pml4 + n_pml4), PGSIZE);
+    int n_pdpt = NENTRY(max_addr, PDPT_OFFSET);
+    k_pd = ROUNDUP((uint64_t)(k_pdpt + n_pdpt), PGSIZE);
+    int n_pd = NENTRY(max_addr, PD_OFFSET);
+    k_pt = ROUNDUP((uint64_t)(k_pd + n_pd), PGSIZE);
+    int n_pt = NENTRY(max_addr, PT_OFFSET);
+    k_page_info = ROUNDUP((uint64_t)(k_pt + n_pt), PGSIZE);
+    int n_pages_kpgtbl = n_pml4 * 8 / PGSIZE + n_pdpt * 8 / PGSIZE + n_pd * 8 / PGSIZE + n_pt * 8 / PGSIZE;
+    int n_pages_kmeminfo = div_roundup(n_pages * sizeof(struct PageInfo), PGSIZE);
+    // uint64_t max_mapped_addr = 0x200000;
+
+    for (uint64_t i = 0; i < ROUNDUP((uint64_t)(k_page_info + n_pages), PGSIZE); i += PGSIZE) {
+        reg_kpgtbl(i);
+    }
+    // enable_paging();
+    printf("k_pml4: %p, n_pml4: %d\n", k_pml4, n_pml4);
+    printf("k_pdpt: %p, n_pdpt: %d\n", k_pdpt, n_pdpt);
+    printf("k_pd: %p, n_pd: %d\n", k_pd, n_pd);
+    printf("k_pt: %p, n_pt: %d\n", k_pt, n_pt);
 }

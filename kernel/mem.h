@@ -41,13 +41,13 @@ typedef uint64_t pte_t;
 #define PD_OFFSET 21
 #define PT_OFFSET 12
 
-#define PML4_INDEX(x) ((x >> PML4_OFFSET) & 512)
-#define PDPT_INDEX(x) ((x >> PDPT_OFFSET) & 512)
-#define PD_INDEX(x) ((x >> PD_OFFSET) & 512)
-#define PT_INDEX(x) ((x >> PT_OFFSET) & 512)
+#define PML4_INDEX(x) ((x >> PML4_OFFSET) & 511)
+#define PDPT_INDEX(x) ((x >> PDPT_OFFSET) & 511)
+#define PD_INDEX(x) ((x >> PD_OFFSET) & 511)
+#define PT_INDEX(x) ((x >> PT_OFFSET) & 511)
 
-#define FLOOR(x, blk_size) (((x) / (blk_size)) * (blk_size))
-#define CEIL(x, blk_size) ((((x) + (blk_size) - 1) / (blk_size)) * (blk_size))
+#define ROUNDDOWN(x, blk_size) (((x) / (blk_size)) * (blk_size))
+#define ROUNDUP(x, blk_size) ((((x) + (blk_size) - 1) / (blk_size)) * (blk_size))
 
 struct PageInfo {
     uint64_t paddr;

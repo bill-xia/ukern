@@ -12,5 +12,6 @@ SECTIONS
         { *(.bss) }
     .rodata : /* AT (LOADADDR(.bss) + SIZEOF(.bss)) */
         { *(.rodata) }
+    PROVIDE(end = .);
     /DISCARD/ : { *(.comment) *(.eh_frame) *(.note) *(.group)}
 }
