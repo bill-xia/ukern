@@ -31,15 +31,12 @@ typedef uint64_t pte_t;
 #define PTE_P 0x1
 #define PTE_W 0x2
 
-#define PML4_ADDR_MASK (~(0xFFFul))
-#define PDPT_ADDR_MASK (~(0xFFFul))
-#define PD_ADDR_MASK (~(0xFFFul))
-#define PT_ADDR_MASK (~(0xFFFul))
-
 #define PML4_OFFSET 39
 #define PDPT_OFFSET 30
 #define PD_OFFSET 21
 #define PT_OFFSET 12
+
+#define ADDR_MASK ~511
 
 #define PML4_INDEX(x) ((x >> PML4_OFFSET) & 511)
 #define PDPT_INDEX(x) ((x >> PDPT_OFFSET) & 511)

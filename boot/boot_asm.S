@@ -36,11 +36,11 @@ start:
     mov es, ax
     mov fs, ax
 
-; ; clear screen
-;     mov ax, 0600h
-;     mov cx, 0000h
-;     mov dx, 184fh
-;     int 10h
+; clear screen
+    mov ax, 0600h
+    mov cx, 0000h
+    mov dx, 184fh
+    int 10h
 
 ; get memory info
     mov bx, 0
@@ -87,7 +87,7 @@ prot_start:
     jmp $
 
 section .data
-boot_message: db "hello from ukern"
+; boot_message: db "hello from ukern"
 
 gdt_protect:
 dq 0 ; first null segment

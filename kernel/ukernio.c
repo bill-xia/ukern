@@ -61,7 +61,7 @@ int get_precision(uint64_t n, int base, int sign) {
     return len;
 }
 
-void printf(char *fmt, ...)
+void printk(char *fmt, ...)
 {
     va_list ap;
 	va_start(ap, fmt);

@@ -3,8 +3,9 @@
 
 int main()
 {
-    printf("\"hello, world!\" from ukern!\n");
+    printk("\"hello, world!\" from ukern!\n");
     init_mem();
+    printk("bye\n");
     while (1);
 }
 

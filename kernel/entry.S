@@ -36,11 +36,18 @@ prot_to_ia32e:
     mov dword [0x10000], 0x11000 | PML4E_P | PML4E_W
     mov dword [0x11000], 0x12000 | PDPTE_P | PDPTE_W
     mov dword [0x12000], 0x13000 | PDE_P | PDE_W
+    mov dword [0x12008], 0x14000 | PDE_P | PDE_W
+    mov dword [0x12010], 0x15000 | PDE_P | PDE_W
+    mov dword [0x12018], 0x16000 | PDE_P | PDE_W
+    mov dword [0x12020], 0x17000 | PDE_P | PDE_W
+    mov dword [0x12028], 0x18000 | PDE_P | PDE_W
+    mov dword [0x12030], 0x19000 | PDE_P | PDE_W
+    mov dword [0x12038], 0x1A000 | PDE_P | PDE_W
 
     mov eax, 0x13000
     mov ebx, PTE_P | PTE_W
 beg_ia32e_pgtbl:
-    cmp eax, 0x14000
+    cmp eax, 0x1A000 ; 0x8000 / 8 = 4096 pages, 0-16M mapped
     je end_ia32e_pgtbl
     mov dword [eax], ebx
     add eax, 8

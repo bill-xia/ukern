@@ -10,6 +10,7 @@ pre-qemu: image
 
 image: boot/boot_asm boot/boot_c kernel/main
 	ld -T boot/boot.ld --oformat=binary boot/boot_asm boot/boot_c -o image
+	objdump -D -b binary -mi386 image > boot_disasm.S
 	# cp image image.mid
 	dd oflag=append conv=notrunc if=kernel/main of=image
 

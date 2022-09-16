@@ -1,4 +1,4 @@
-#include "elf.h"
+#include "elf64_m32.h"
 #include "types.h"
 #include "x86.h"
 
@@ -48,20 +48,20 @@ int c_entry()
 {
     char *loader_img = 0x8000;
     read_seg(loader_img, 8 * SECTSIZE, 0);
-    struct Elf32_Ehdr *elf_hdr = 0x8000;
+    struct Elf64_Ehdr *elf_hdr = 0x8000;
     if (*(uint32_t *)(elf_hdr->e_ident) != ELF_MAGIC) {
         return -1;
     }
-    struct Elf32_Phdr *prog_hdrs = loader_img + sizeof(struct Elf32_Ehdr);
+    struct Elf64_Phdr *prog_hdrs = loader_img + sizeof(struct Elf64_Ehdr);
     for (int i = 0; i < elf_hdr->e_phnum; ++i) {
         // if (prog_hdrs[i].p_type == PT_LOAD) {
-            read_seg(prog_hdrs[i].p_paddr, prog_hdrs[i].p_memsz, prog_hdrs[i].p_offset);
+            read_seg(prog_hdrs[i].p_paddr.low, prog_hdrs[i].p_memsz.low, prog_hdrs[i].p_offset.low);
             int j = 0;
-            for (j = prog_hdrs[i].p_filesz; j < prog_hdrs[i].p_memsz; ++j) {
-                *(char *)(prog_hdrs[i].p_vaddr + j) = 0;
+            for (j = prog_hdrs[i].p_filesz.low; j < prog_hdrs[i].p_memsz.low; ++j) {
+                *(char *)(prog_hdrs[i].p_vaddr.low + j) = 0;
             }
         // }
     }
-    ((void (*)(void)) (elf_hdr->e_entry))();
+    ((void (*)(void)) (elf_hdr->e_entry.low))();
     return 0;
 }
