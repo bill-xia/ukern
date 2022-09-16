@@ -32,3 +32,7 @@
 4. 设计内存空间，细粒度配置页表
 
 https://stackoverflow.com/questions/6917503/is-it-possible-to-use-32-bits-registers-instructions-in-real-mode
+
+2022.9.16
+kpgtbl映射到所有物理页的工作完成了。下一步：将内核移到高地址区，分配地址空间。初始化pageinfo，实现allocpage，walk_pgtbl的在制定pgtbl中分配页面的功能等虚拟内存的内核准备。
+上面的虚拟内存相关准备做好之后，就可以准备进入用户态了。
