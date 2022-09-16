@@ -2,4 +2,11 @@ image
 *.o
 .vscode/
 *.pdf
-kernel/main
+
+boot/boot_asm
+boot/boot_c
+boot/boot
+boot/boot_disas.S
+
+kernel/entry
+kernel/kernel
