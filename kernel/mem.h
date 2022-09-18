@@ -86,6 +86,7 @@ BASE     ---------------------------------------- 0x000000000000
 
 void init_kpageinfo();
 void init_kpgtbl();
-uint64_t *walk_pgtbl();
+extern char end[];
+char *end_kmem; // end of used kernel memory, in absolute address
 
 #endif

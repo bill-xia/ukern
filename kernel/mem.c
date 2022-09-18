@@ -10,7 +10,6 @@
 struct MemInfo *k_meminfo; // read from NVRAM at boot time
 struct PageInfo *k_pageinfo;
 uint64_t *k_pml4, *k_pdpt, *kpgtbl_end;
-extern char end[];
 
 static uint64_t n_pages, n_pml4, n_pdpt;
 static uint64_t max_addr;
@@ -24,7 +23,7 @@ void
 init_kpageinfo(void)
 {
     k_meminfo = (struct MemInfo *)0x9000;
-    k_pageinfo = (struct PageInfo *)ROUNDUP((uint64_t)end, PGSIZE);
+    k_pageinfo = end_kmem;
 	int ind = 0;
     max_addr = 0;
     while (k_meminfo[ind].type != 0) {
@@ -42,6 +41,7 @@ init_kpageinfo(void)
         }
         ++ind;
     }
+    end_kmem = k_pageinfo + n_pages;
 }
 
 uint64_t div_roundup(uint64_t a, uint64_t b) {
@@ -64,7 +64,7 @@ reg_kpgtbl_1Gpage(uint64_t addr)
 void
 init_kpgtbl(void)
 {
-    k_pml4 = (uint64_t *)ROUNDUP((uint64_t)(k_pageinfo + n_pages), PGSIZE);
+    k_pml4 = (uint64_t *)ROUNDUP((uint64_t)(end_kmem), PGSIZE);
     n_pml4 = NENTRY(max_addr, PML4_OFFSET);
     k_pdpt = (uint64_t *)ROUNDUP((uint64_t)(k_pml4 + n_pml4), PGSIZE);
     n_pdpt = NENTRY(max_addr, PDPT_OFFSET);
@@ -76,4 +76,5 @@ init_kpgtbl(void)
         k_pml4[i + 256] = k_pml4[i];
     }
     lcr3(k2p(k_pml4));
+    end_kmem = k_pdpt + n_pdpt;
 }
