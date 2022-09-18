@@ -23,7 +23,7 @@ void
 init_kpageinfo(void)
 {
     k_meminfo = (struct MemInfo *)0x9000;
-    k_pageinfo = end_kmem;
+    k_pageinfo = (struct PageInfo *)end_kmem;
 	int ind = 0;
     max_addr = 0;
     while (k_meminfo[ind].type != 0) {
@@ -41,7 +41,7 @@ init_kpageinfo(void)
         }
         ++ind;
     }
-    end_kmem = k_pageinfo + n_pages;
+    end_kmem = (char *)(k_pageinfo + n_pages);
 }
 
 uint64_t div_roundup(uint64_t a, uint64_t b) {
@@ -76,5 +76,5 @@ init_kpgtbl(void)
         k_pml4[i + 256] = k_pml4[i];
     }
     lcr3(k2p(k_pml4));
-    end_kmem = k_pdpt + n_pdpt;
+    end_kmem = (char *)(k_pdpt + n_pdpt);
 }

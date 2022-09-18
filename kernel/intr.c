@@ -44,7 +44,7 @@ init_intr(void)
     // sti();
 }
 
-void divide_error_handler(struct Trapframe *tf) {
+void divide_error_handler(void) {
     printk("divide error :(\n");
     while (1);
 }

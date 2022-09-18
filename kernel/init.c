@@ -1,5 +1,6 @@
 #include "mem.h"
 #include "proc.h"
+#include "intr.h"
 
 void init()
 {

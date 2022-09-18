@@ -24,4 +24,6 @@ struct IDTDesc{
     uint64_t addr;
 } __attribute__ ((packed));
 
+void init_intr(void);
+
 #endif
