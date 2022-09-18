@@ -7,4 +7,5 @@ boot/boot.out
 boot/boot
 
 kernel/entry
+kernel/intr_entry
 kernel/kernel

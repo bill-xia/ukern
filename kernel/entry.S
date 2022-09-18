@@ -65,6 +65,7 @@ here:
 
 [BITS 64]
 
+extern main
 section .text64
 ia32e:
     mov rax, 0x10000
@@ -73,14 +74,14 @@ ia32e:
     mov ds, rax
     ; need to be canonical address, the high 4 bytes
     ; cannot be 0x0000, see "The Manual" vol.1 3.3.7.1
-    mov rax, 0xffff800000101000
+    mov rax, main
     call rax
 
 section .data
 
 gdt_64:
 dq 0
-SEG_DESC_64 0,0,0x08,0x20
+SEG_DESC_64 0,0,0x0C,0x20
 SEG_DESC_64 0,0,0x02,0
 
 gdt_64_desc:

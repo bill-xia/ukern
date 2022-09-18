@@ -34,6 +34,7 @@ typedef uint64_t pte_t;
 #define PT_OFFSET 12
 
 #define ADDR_MASK ~511
+#define MASK(x) ((1ul << x) - 1)
 
 #define PML4_INDEX(x) ((x >> PML4_OFFSET) & 511)
 #define PDPT_INDEX(x) ((x >> PDPT_OFFSET) & 511)
@@ -60,6 +61,8 @@ struct MemInfo {
 
 #define KERNBASE 0xFFFF800000000000
 #define k2p(x) ((uint64_t)x & ((1ul << 47) - 1))
+
+#define KERN_CODE_SEL 0x08
 /*
 
 ukern uses 4-level paging. The addresses above 0xFF0000000000 is saved for

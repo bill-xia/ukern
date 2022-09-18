@@ -1,10 +1,18 @@
-KERNEL_OBJS := kernel/main.o kernel/mem.o kernel/ukernio.o kernel/init.o
+KERNEL_OBJS := kernel/main.o \
+	kernel/mem.o \
+	kernel/ukernio.o \
+	kernel/init.o \
+	kernel/intr.o \
+	kernel/proc.o \
 
-kernel/kernel: $(KERNEL_OBJS) kernel/entry
+kernel/kernel: $(KERNEL_OBJS) kernel/entry kernel/intr_entry
 	ld -T kernel/kernel.ld $^ -o kernel/kernel
 
 kernel/entry: kernel/entry.S
 	$(AS) $< -f elf64 -o $@
+
+kernel/intr_entry: kernel/intr_entry.S
+	as $< -o $@
 
 kernel/%.o: kernel/%.c
 	$(CC) $(CFLAGS) $^ -c -o $@

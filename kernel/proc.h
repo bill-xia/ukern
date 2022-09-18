@@ -18,4 +18,6 @@ struct Proc {
     enum proc_state state;
 } *procs;
 
+void init_proc(void);
+
 #endif

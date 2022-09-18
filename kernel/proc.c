@@ -1,6 +1,8 @@
 #include "proc.h"
 #include "mem.h"
 
+// struct TSS g_tss;
+
 void
 init_proc(void)
 {

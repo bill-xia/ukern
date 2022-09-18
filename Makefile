@@ -23,4 +23,4 @@ gdb: pre-qemu
 	gdb -n -x .gdbinit
 
 clean:
-	rm -f boot/boot.out boot/boot image kernel/*.o kernel/kernel kernel/entry
+	rm -f boot/boot.out boot/boot image kernel/*.o kernel/kernel kernel/entry kernel/intr_entry
