@@ -1,4 +1,4 @@
-KERNEL_OBJS := kernel/main.o kernel/mem.o kernel/ukernio.o
+KERNEL_OBJS := kernel/main.o kernel/mem.o kernel/ukernio.o kernel/init.o
 
 kernel/kernel: $(KERNEL_OBJS) kernel/entry
 	ld -T kernel/kernel.ld $^ -o kernel/kernel

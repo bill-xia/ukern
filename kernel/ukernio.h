@@ -8,6 +8,6 @@
 #define COLOR_BACK_BLACK 0x0000
 
 void printk(char *fmt, ...);
-void putchar(char c);
+void putch(char c);
 
 #endif

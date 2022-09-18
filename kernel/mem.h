@@ -5,10 +5,6 @@
 #ifndef MEM_H
 #define MEM_H
 
-#define MEM_MIN 0x000000000000
-#define MEM_MAX 0xFFFFFFFFFFFF
-#define KERNBASE 0xFF0000000000
-
 #include "types.h"
 
 typedef uint64_t pml4e_t;
@@ -26,6 +22,7 @@ typedef uint64_t pte_t;
 #define PML4E_W 0x2
 #define PDPTE_P 0x1
 #define PDPTE_W 0x2
+#define PDPTE_PS 0x80
 #define PDE_P 0x1
 #define PDE_W 0x2
 #define PTE_P 0x1
@@ -48,7 +45,10 @@ typedef uint64_t pte_t;
 
 struct PageInfo {
     uint64_t paddr;
-    uint16_t ref;
+    union {
+        struct PageInfo *next;
+        uint64_t ref;
+    } m;
 };
 
 struct MemInfo {
@@ -84,7 +84,8 @@ EXT_1MB  ---------------------------------------- 0x000000100000
 BASE     ---------------------------------------- 0x000000000000
 */
 
-void mem_init();
+void init_kpageinfo();
+void init_kpgtbl();
 uint64_t *walk_pgtbl();
 
 #endif

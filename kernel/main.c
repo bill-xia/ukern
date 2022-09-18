@@ -1,10 +1,10 @@
-#include "mem.h"
+#include "init.h"
 #include "ukernio.h"
 
 int main()
 {
     printk("\"hello, world!\" from ukern!\n");
-    init_mem();
+    init();
     printk("bye\n");
     while (1);
 }

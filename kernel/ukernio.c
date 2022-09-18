@@ -7,8 +7,7 @@ static uint32_t crt_ind = 0;
 void printstr(char *s)
 {
     while ((*s) != '\0') {
-        crt_buf[crt_ind] = ((uint16_t)(*s) | (COLOR_FORE_WHITE | COLOR_BACK_BLACK));
-        ++crt_ind;
+        putch(*s);
         ++s;
     }
 }
@@ -35,14 +34,14 @@ void printint(uint64_t n, int base, int width, char padc)
     }
     buf[len] = 0;
     for (int i = 0; i < width - len; ++i) {
-        putchar(padc);
+        putch(padc);
     }
     for (int i = 0; i < len; ++i) {
-        putchar(buf[i]);
+        putch(buf[i]);
     }
 }
 
-void putchar(char c)
+void putch(char c)
 {
     crt_buf[crt_ind] = (c | (COLOR_FORE_WHITE | COLOR_BACK_BLACK));
     ++crt_ind;
@@ -79,7 +78,7 @@ void printk(char *fmt, ...)
                 num = va_arg(ap, int64_t);
                 if (width == -1) width = get_precision(num, 10, 1);
                 if (num < 0) {
-                    putchar('-');
+                    putch('-');
                     width--;
                 }
                 printint(num, 10, width, padc);
@@ -92,26 +91,26 @@ void printk(char *fmt, ...)
             case 'p': ;
                 num = va_arg(ap, uint64_t);
                 if (width == -1) width = get_precision(num, 16, 0);
-                putchar('0');
-                putchar('x');
+                putch('0');
+                putch('x');
                 width -= 2;
                 printint(num, 16, width, padc);
                 break;
             case '%':
-                putchar('%');
+                putch('%');
                 break;
             default:
-                putchar('%');
-                putchar(fmt[i - 1]);
+                putch('%');
+                putch(fmt[i - 1]);
                 break;
             }
         } else if (fmt[i] == '\n') {
             do {
-                putchar(' ');
+                putch(' ');
             } while (crt_ind % 80);
             ++i;
         } else {
-            putchar(fmt[i]);
+            putch(fmt[i]);
             ++i;
         }
     }

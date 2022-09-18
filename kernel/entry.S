@@ -9,14 +9,11 @@
 %define KERN_CODE 0x08
 %define KERN_DATA 0x10
 
-%define PDE_P 0x1
-%define PDE_W 0x2
-%define PTE_P 0x1
-%define PTE_W 0x2
 %define PML4E_P 0x1
 %define PML4E_W 0x2
 %define PDPTE_P 0x1
 %define PDPTE_W 0x2
+%define PDPTE_PS 0x80
 
 %macro SEG_DESC_64 4
 ; %1 base, %2 lim, %3 type, %4 L
@@ -35,26 +32,11 @@ prot_to_ia32e:
 ; preparing 4-level page tables
     mov dword [0x10000], 0x11000 | PML4E_P | PML4E_W
     mov dword [0x10800], 0x11000 | PML4E_P | PML4E_W ; map memory above KERNBASE
-    mov dword [0x11000], 0x12000 | PDPTE_P | PDPTE_W
-    mov dword [0x12000], 0x13000 | PDE_P | PDE_W
-    mov dword [0x12008], 0x14000 | PDE_P | PDE_W
-    mov dword [0x12010], 0x15000 | PDE_P | PDE_W
-    mov dword [0x12018], 0x16000 | PDE_P | PDE_W
-    mov dword [0x12020], 0x17000 | PDE_P | PDE_W
-    mov dword [0x12028], 0x18000 | PDE_P | PDE_W
-    mov dword [0x12030], 0x19000 | PDE_P | PDE_W
-    mov dword [0x12038], 0x1A000 | PDE_P | PDE_W
-
-    mov eax, 0x13000
-    mov ebx, PTE_P | PTE_W
-beg_ia32e_pgtbl:
-    cmp eax, 0x1A000 ; 0x8000 / 8 = 4096 pages, 0-16M mapped
-    je end_ia32e_pgtbl
-    mov dword [eax], ebx
-    add eax, 8
-    add ebx, 0x1000
-    jmp beg_ia32e_pgtbl
-end_ia32e_pgtbl:
+    mov dword [0x11000], 0x0 | PDPTE_P | PDPTE_W | PDPTE_PS
+    mov dword [0x11008], 0x40000000 | PDPTE_P | PDPTE_W | PDPTE_PS
+    mov dword [0x11010], 0x80000000 | PDPTE_P | PDPTE_W | PDPTE_PS
+    mov dword [0x11018], 0xC0000000 | PDPTE_P | PDPTE_W | PDPTE_PS
+    ; mov dword [0x11020], 0x100000000 | PDPTE_P | PDPTE_W | PDPTE_PS
 
     mov eax, cr0
     and eax, ~CR0_PG
