@@ -34,6 +34,7 @@ prot_to_ia32e:
 
 ; preparing 4-level page tables
     mov dword [0x10000], 0x11000 | PML4E_P | PML4E_W
+    mov dword [0x10800], 0x11000 | PML4E_P | PML4E_W ; map memory above KERNBASE
     mov dword [0x11000], 0x12000 | PDPTE_P | PDPTE_W
     mov dword [0x12000], 0x13000 | PDE_P | PDE_W
     mov dword [0x12008], 0x14000 | PDE_P | PDE_W
@@ -82,16 +83,22 @@ here:
 
 [BITS 64]
 
-extern main
-
+section .text64
 ia32e:
-    call main
+    mov rax, 0x10000
+    mov rsp, rax
+    mov rax, 0x10
+    mov ds, rax
+    ; need to be canonical address, the high 4 bytes
+    ; cannot be 0x0000, see "The Manual" vol.1 3.3.7.1
+    mov rax, 0xffff800000101000
+    call rax
 
 section .data
 
 gdt_64:
 dq 0
-SEG_DESC_64 0,0,0x0A,0x20
+SEG_DESC_64 0,0,0x08,0x20
 SEG_DESC_64 0,0,0x02,0
 
 gdt_64_desc:

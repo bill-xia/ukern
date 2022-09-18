@@ -58,6 +58,8 @@ struct MemInfo {
     uint32_t ext_attr; // we ignore it
 };
 
+#define KERNBASE 0xFFFF800000000000
+#define k2p(x) ((uint64_t)x & ((1ul << 47) - 1))
 /*
 
 ukern uses 4-level paging. The addresses above 0xFF0000000000 is saved for
@@ -67,7 +69,7 @@ kernel. Other addresses can be used freely by user process.
 
 MEM_MAX  ---------------------------------------- 0xFFFFFFFFFFFF
 
-KERNBASE ---------------------------------------- 0xFF0000000000  R/W, S
+KERNBASE ---------------------------------------- 0xFF8000000000  R/W, S
 
 MEM_MIN  ---------------------------------------- 0x000000000000  R/W, U
 

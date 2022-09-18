@@ -4,13 +4,18 @@ ENTRY(prot_to_ia32e)
 SECTIONS
 {
     . = 0x100000;
-    .text : AT (0x100000)
-        { *(.text .text.* ) *(.got.plt)}
-    .data : /* AT (LOADADDR(.text) + SIZEOF(.text)) */
-        { *(.data) }
-    .bss :  /* AT (LOADADDR(.data) + SIZEOF(.data)) */
+    .text_entry : AT (0x100000)
+        { kernel/entry(.text .text.* .text64 .got.plt)}
+    .data_entry :
+        { kernel/entry(.data) }
+    . = 0xFFFF800000101000;
+    .text : AT (0x101000)
+        { EXCLUDE_FILE (kernel/entry) *(.text .text.* ) *(.got.plt)}
+    .data :
+        { EXCLUDE_FILE (kernel/entry) *(.data) }
+    .bss :
         { *(.bss) }
-    .rodata : /* AT (LOADADDR(.bss) + SIZEOF(.bss)) */
+    .rodata :
         { *(.rodata) }
     PROVIDE(end = .);
     /DISCARD/ : { *(.comment) *(.eh_frame) *(.note) *(.group)}

@@ -8,5 +8,5 @@ SECTIONS
   .bss : { *(.bss) }
   /DISCARD/ : { *(.comment) *(.eh_frame) *(.note.gnu.property) }
   . = 0x7dfe;
-  .mbrsign : { boot/boot_asm(.mbrsign)}
+  .mbrsign : { boot/boot.out(.mbrsign)}
 }

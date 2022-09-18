@@ -3,10 +3,8 @@ image
 .vscode/
 *.pdf
 
-boot/boot_asm
-boot/boot_c
+boot/boot.out
 boot/boot
-boot/boot_disas.S
 
 kernel/entry
 kernel/kernel

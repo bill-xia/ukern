@@ -170,9 +170,9 @@ void reg_kpgtbl(uint64_t addr)
     int pdpti = addr >> PDPT_OFFSET;
     int pdi = addr >> PD_OFFSET;
     int pti = addr >> PT_OFFSET;
-    k_pml4[pml4i] = (uint64_t)(&k_pdpt[pdpti & (~0x1FF)]) | PML4E_P | PML4E_W;
-    k_pdpt[pdpti] = (uint64_t)(&k_pd[pdi & (~0x1FF)]) | PDPTE_P | PDPTE_W;
-    k_pd[pdi] = (uint64_t)(&k_pt[pti & (~0x1FF)]) | PDE_P | PDE_W;
+    k_pml4[pml4i] = k2p(&k_pdpt[pdpti & (~0x1FF)]) | PML4E_P | PML4E_W;
+    k_pdpt[pdpti] = k2p(&k_pd[pdi & (~0x1FF)]) | PDPTE_P | PDPTE_W;
+    k_pd[pdi] = k2p(&k_pt[pti & (~0x1FF)]) | PDE_P | PDE_W;
     k_pt[pti] = addr | PTE_P | PTE_W;
 }
 
@@ -201,7 +201,7 @@ void init_kpgtbl()
     // from 0x160000 to 0x1000000
     // 0xEA0000 bytes, may contain 1900000+ page entries, which is about 7.7 GB
     // enough for current stage
-    uint64_t *max_mapped_addr = 0x1000000;
+    uint64_t *max_mapped_addr = 0xFFFF800001000000;
     if (end_kpgtbl > max_mapped_addr) {
         // initially mapped addr not enough
         printk("init_kpgtbl(): initial memory mapping size not enough. OS is not available now.\n");
@@ -211,7 +211,8 @@ void init_kpgtbl()
     for (uint64_t i = 0; i < max_addr; i += PGSIZE) {
         reg_kpgtbl(i);
     }
-    lcr3((uint64_t)k_pml4);
+    k_pml4[256] = k_pml4[0]; // map space above KERNBASE
+    lcr3(k2p(k_pml4));
     printk("k_pml4: %p, n_pml4: %d\n", k_pml4, n_pml4);
     printk("k_pdpt: %p, n_pdpt: %d\n", k_pdpt, n_pdpt);
     printk("k_pd: %p, n_pd: %d\n", k_pd, n_pd);

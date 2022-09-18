@@ -1,8 +1,5 @@
-boot/boot: boot/boot_asm boot/boot_c
+boot/boot: boot/boot.out
 	ld -T boot/boot.ld --oformat=binary $^ -o boot/boot
 
-boot/boot_asm: boot/boot_asm.S
+boot/boot.out: boot/boot.S
 	$(AS) $< -f elf32 -o $@
-
-boot/boot_c: boot/boot_c.c
-	$(CC) $(CFLAGS) -m32 -O1 $< -c -o $@

@@ -37,13 +37,12 @@ struct Elf64_Ehdr {
 #define PT_HIPROC 0x7fffffff
 
 struct Elf64_Phdr {
-    Elf64_Word p_type;
-    Elf64_Word p_flags;
-    Elf64_Off  p_offset;
-    Elf64_Addr p_vaddr;
-    Elf64_Addr p_paddr;
-    Elf64_Lword p_filesz;
-    Elf64_Lword p_memsz;
-    Elf64_Word p_flags_2;
-    Elf64_Lword p_align;
+    Elf64_Word p_type; // 0-3
+    Elf64_Word p_flags; // 4-7
+    Elf64_Off  p_offset; // 8-15
+    Elf64_Addr p_vaddr; // 16-23
+    Elf64_Addr p_paddr; // 24-31
+    Elf64_Lword p_filesz; // 32-39
+    Elf64_Lword p_memsz; // 40-47
+    Elf64_Lword p_align; // 48-56
 };
