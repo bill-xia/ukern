@@ -205,7 +205,7 @@ call_trap_handler:
     push %rcx
     push %rax
 
-    leaq 128(%rsp), %rdi
+    mov %rsp, %rdi
     // vecnum
     mov 128(%rsp), %rsi
     // errno

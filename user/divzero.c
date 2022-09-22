@@ -1,6 +1,6 @@
 int umain()
 {
-    int i = 1 / 0;
+    int i = *(int *)0xFFFF800000101000;
     while (1);
     return 0;
 }
