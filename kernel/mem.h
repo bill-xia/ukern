@@ -20,13 +20,17 @@ typedef uint64_t pte_t;
 
 #define PML4E_P 0x1
 #define PML4E_W 0x2
+#define PML4E_U 0x4
 #define PDPTE_P 0x1
 #define PDPTE_W 0x2
+#define PDPTE_U 0x4
 #define PDPTE_PS 0x80
 #define PDE_P 0x1
 #define PDE_W 0x2
+#define PDE_U 0x4
 #define PTE_P 0x1
 #define PTE_W 0x2
+#define PTE_U 0x4
 
 #define PML4_OFFSET 39
 #define PDPT_OFFSET 30
@@ -34,12 +38,13 @@ typedef uint64_t pte_t;
 #define PT_OFFSET 12
 
 #define ADDR_MASK ~511
-#define MASK(x) ((1ul << x) - 1)
+#define MASK(x) ((1ul << (x)) - 1)
+#define PAGEADDR(x) ((x) & ~(PGSIZE - 1))
 
-#define PML4_INDEX(x) ((x >> PML4_OFFSET) & 511)
-#define PDPT_INDEX(x) ((x >> PDPT_OFFSET) & 511)
-#define PD_INDEX(x) ((x >> PD_OFFSET) & 511)
-#define PT_INDEX(x) ((x >> PT_OFFSET) & 511)
+#define PML4_INDEX(x) (((x) >> PML4_OFFSET) & 511)
+#define PDPT_INDEX(x) (((x) >> PDPT_OFFSET) & 511)
+#define PD_INDEX(x) (((x) >> PD_OFFSET) & 511)
+#define PT_INDEX(x) (((x) >> PT_OFFSET) & 511)
 
 #define ROUNDDOWN(x, blk_size) (((x) / (blk_size)) * (blk_size))
 #define ROUNDUP(x, blk_size) ((((x) + (blk_size) - 1) / (blk_size)) * (blk_size))
@@ -49,7 +54,7 @@ struct PageInfo {
     union {
         struct PageInfo *next;
         uint64_t ref;
-    } m;
+    } u;
 };
 
 struct MemInfo {
@@ -60,9 +65,17 @@ struct MemInfo {
 };
 
 #define KERNBASE 0xFFFF800000000000
-#define k2p(x) ((uint64_t)x & ((1ul << 47) - 1))
+#define USTACK   0x00007FFFFFFFF000
+#define KSTACK   0xFFFF800000010000
+#define k2p(x) ((uint64_t)(x) & ((1ul << 47) - 1))
 
 #define KERN_CODE_SEL 0x08
+#define KERN_DATA_SEL 0x10
+#define USER_CODE_SEL 0x18
+#define USER_DATA_SEL 0x20
+
+#define FLAG_ZERO 0x1
+
 /*
 
 ukern uses 4-level paging. The addresses above 0xFF0000000000 is saved for
@@ -89,7 +102,74 @@ BASE     ---------------------------------------- 0x000000000000
 
 void init_kpageinfo();
 void init_kpgtbl();
+void init_freepages();
+int walk_pgtbl(uint64_t *, uint64_t, uint64_t **, int);
+struct PageInfo * alloc_page(uint64_t);
+void memcpy(char *dst, char *src, uint64_t n_bytes);
+void init_gdt(void);
+
 extern char end[];
 char *end_kmem; // end of used kernel memory, in absolute address
+
+struct SegDesc {
+    uint16_t limit1;
+    uint16_t base1;
+    uint8_t base2;
+    uint8_t type    : 4,
+            s       : 1,
+            dpl     : 2,
+            p       : 1;
+    uint8_t limit2  : 4,
+            avl     : 1,
+            l       : 1,
+            d_b     : 1,
+            g       : 1;
+    uint8_t base3;
+} gdt[9];
+
+struct GdtDesc {
+    uint16_t limit;
+    uint64_t base;
+} __attribute__((packed)) gdt_desc;
+
+struct TSS {
+    uint32_t res0;
+
+    uint64_t rsp0;
+    uint64_t rsp1;
+    uint64_t rsp2;
+
+    uint64_t res1;
+
+    uint64_t ist1;
+    uint64_t ist2;
+    uint64_t ist3;
+    uint64_t ist4;
+    uint64_t ist5;
+    uint64_t ist6;
+    uint64_t ist7;
+
+    uint64_t res2;
+    uint16_t res3;
+    uint16_t io_base;
+} __attribute__((packed)) tss;
+
+struct TSSDesc {
+    uint16_t limit1;
+    uint16_t base1;
+    uint8_t base2;
+    uint8_t type    : 4,
+            s       : 1,
+            dpl     : 2,
+            p       : 1;
+    uint8_t limit2  : 4,
+            avl     : 1,
+            l       : 1,
+            d_b     : 1,
+            g       : 1;
+    uint8_t base3;
+    uint32_t base4;
+    uint32_t res;
+} __attribute__((packed));
 
 #endif

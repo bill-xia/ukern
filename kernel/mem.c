@@ -1,6 +1,6 @@
-/*
-    This file defines functions used for memory management.
-*/
+//
+//This file defines functions used for memory management.
+//
 
 #include "mem.h"
 #include "types.h"
@@ -8,7 +8,8 @@
 #include "x86.h"
 
 struct MemInfo *k_meminfo; // read from NVRAM at boot time
-struct PageInfo *k_pageinfo;
+struct PageInfo *k_pageinfo; // info for every available 4K-page
+struct PageInfo *freepages = NULL;
 uint64_t *k_pml4, *k_pdpt, *kpgtbl_end;
 
 static uint64_t n_pages, n_pml4, n_pdpt;
@@ -16,6 +17,68 @@ static uint64_t max_addr;
 
 uint64_t max(uint64_t a, uint64_t b) {
     return a > b ? a : b;
+}
+
+void
+init_gdt(void)
+{
+    {struct SegDesc tmp = { // KERNCODE
+        .type = 0x08,
+        .l = 1,
+        .dpl = 0,
+        .s = 1,
+        .p = 1
+    };
+    gdt[1] = tmp;}
+    {struct SegDesc tmp = { // KERNDATA
+        .type = 0x02,
+        .l = 0,
+        .dpl = 0,
+        .s = 1,
+        .p = 1
+    };
+    gdt[2] = tmp;}
+    {struct SegDesc tmp = { // USERCODE
+        .type = 0x08,
+        .l = 1,
+        .dpl = 3,
+        .s = 1,
+        .p = 1
+    };
+    gdt[3] = tmp;}
+    {struct SegDesc tmp = { // USERDATA
+        .type = 0x02,
+        .l = 0,
+        .dpl = 3,
+        .s = 1,
+        .p = 1
+    };
+    gdt[4] = tmp;}
+    {struct TSS tmp = {
+        .rsp0 = KSTACK,
+        .rsp1 = KSTACK,
+        .rsp2 = KSTACK,
+    }; tss = tmp;}
+    {struct TSSDesc tmp = {
+        .limit1 = 104,
+        .base1 = (uint64_t)&tss & 0xFFFF,
+        .base2 = ((uint64_t)&tss >> 16) & 0xFF,
+        .type = 9,
+        .s = 0,
+        .dpl = 3,
+        .p = 1,
+        .limit2 = 0,
+        .avl = 0,
+        .l = 0,
+        .d_b = 0,
+        .g = 0,
+        .base3 = ((uint64_t)&tss >> 24) & 0xFF,
+        .base4 = ((uint64_t)&tss >> 32) & 0xFFFFFFFF
+    }; *(struct TSSDesc *)(gdt + 6) = tmp;}
+    gdt_desc.limit = 8 * 8 - 1;
+    gdt_desc.base = (uint64_t)gdt;
+    lgdt(&gdt_desc);
+    ltr(0x33);
 }
 
 // initiating k_pageinfo array.
@@ -56,8 +119,8 @@ reg_kpgtbl_1Gpage(uint64_t addr)
 {
     uint64_t pml4i = addr >> PML4_OFFSET;
     uint64_t pdpti = addr >> PDPT_OFFSET;
-    k_pml4[pml4i] = k2p(&k_pdpt[pdpti & (~0x1FF)]) | PML4E_P | PML4E_W;
-    k_pdpt[pdpti] = addr | PDPTE_P | PDPTE_W | PDPTE_PS;
+    k_pml4[pml4i] = k2p(&k_pdpt[pdpti & (~0x1FF)]) | PML4E_P;
+    k_pdpt[pdpti] = addr | PDPTE_P | PDPTE_PS;
 }
 
 // initiating kernel page table.
@@ -77,4 +140,138 @@ init_kpgtbl(void)
     }
     lcr3(k2p(k_pml4));
     end_kmem = (char *)(k_pdpt + n_pdpt);
+}
+
+// initiating free page list:
+// the good old free allocing days are gone!
+void
+init_freepages()
+{
+    for (int i = 0; i < n_pages; ++i) {
+        if (k_pageinfo[i].paddr >= k2p((uint64_t)end_kmem)) {
+            k_pageinfo[i].u.next = freepages;
+            freepages = k_pageinfo + i;
+        } else {
+            k_pageinfo[i].u.ref++; // used by kernel
+        }
+    }
+}
+
+//
+// Alloc a physical page, which means: remove it from free pages
+// list, and set ref to 1. It doesn't play with page table.
+// A syscall should never call this function "in raw",
+// but call pgtbl_walk() instead.
+//
+// flags: only have one flag currently, namely FLAG_ZERO,
+//        means to clear the content of the page to zeroes.
+//
+// returns a struct PageInfo * pointing to the page alloced.
+// returns NULL on fail.
+//
+struct PageInfo *
+alloc_page(uint64_t flags)
+{
+    if (freepages == NULL) return NULL;
+    struct PageInfo *ret = freepages;
+    freepages = freepages->u.next;
+    char *mem = (char *)ret->paddr;
+    if (flags & FLAG_ZERO)
+        for (int i = 0; i < PGSIZE; mem[i] = 0, ++i) ;
+    ret->u.ref = 1;
+    return ret;
+}
+
+//
+// Free a physical page, which means: decrease ref by 1,
+// and add it to free pages list if ref is 0 after decreasing.
+// Panics if ref is 0.
+//
+void
+free_page(struct PageInfo *page)
+{
+    if (page->u.ref == 0) {
+        // TODO: should be panic() here, to be implemented
+        printk("free_page(): page with ref equals zero, paddr: %p\n", page->paddr);
+        while (1);
+    }
+    if (--page->u.ref == 0) {
+        page->u.next = freepages;
+        freepages = page;
+    }
+}
+
+//
+// Take a walk at pgtbl according to vaddr. If `create`
+// is non-zero, create new page in need. No permission is
+// given on the pte of the new created page. Otherwise,
+// returns NULL on failure. The kernel should make sure
+// that `pgtbl` should be an available physical address,
+// thus it is not checked.
+//
+// Pass out a pointer to the page table entry at *pte.
+// Returns 0 on success, or -E_NOMEM if memory not enough.
+//
+int
+walk_pgtbl(uint64_t *pgtbl, uint64_t vaddr, uint64_t **pte, int create)
+{
+    struct PageInfo *alloced[4] = {NULL,NULL,NULL,NULL};
+    vaddr = PAGEADDR(vaddr);
+
+    int pml4i = PML4_INDEX(vaddr);
+    if (!(pgtbl[pml4i] & PML4E_P)) {
+        if (!create) goto no_mem;
+        alloced[0] = alloc_page(FLAG_ZERO); // unused entries must be zero
+        if (alloced[0] == NULL) goto no_mem;
+        // give all permission here, let caller control access rights
+        // by modifying pte.
+        pgtbl[pml4i] = alloced[0]->paddr | PML4E_P | PML4E_W | PML4E_U;
+    }
+
+    uint64_t *pdpt = (uint64_t *)PAGEADDR(pgtbl[pml4i]);
+    int pdpti = PDPT_INDEX(vaddr);
+    if (!(pdpt[pdpti] & PDPTE_P)) {
+        if (!create) goto no_mem;
+        alloced[1] = alloc_page(FLAG_ZERO);
+        if (alloced[1] == NULL) {
+            goto no_mem;
+        }
+        pdpt[pdpti] = alloced[1]->paddr | PDPTE_P | PDPTE_W | PDPTE_U;
+    }
+
+    uint64_t *pd = (uint64_t *)PAGEADDR(pdpt[pdpti]);
+    int pdi = PD_INDEX(vaddr);
+    if (!(pd[pdi] & PDE_P)) {
+        if (!create) goto no_mem;
+        alloced[2] = alloc_page(FLAG_ZERO);
+        if (alloced[2] == NULL) {
+            goto no_mem;
+        }
+        pd[pdi] = alloced[2]->paddr | PDE_P | PDE_W | PDE_U;
+    }
+
+    uint64_t *pt = (uint64_t *)PAGEADDR(pd[pdi]);
+    int pti = PT_INDEX(vaddr);
+    if (!(pt[pti] & PTE_P)) {
+        if (!create) goto no_mem;
+        alloced[3] = alloc_page(FLAG_ZERO);
+        if (alloced[3] == NULL) {
+            goto no_mem;
+        }
+        // no permission given: let the caller do if needed
+        pt[pti] = alloced[3]->paddr | PTE_P;
+    }
+    *pte = pt + pti;
+    return 0;
+
+no_mem:
+    for (int i = 0; i < 4 && alloced[i] != NULL; ++i) free_page(alloced[i]);
+    return -E_NOMEM;
+}
+
+void memcpy(char *dst, char *src, uint64_t n_bytes) {
+    // TODO: this is currently buggy: src[0:n_bytes] and dst[0:n_bytes] may overlap!
+    for (int i = 0; i < n_bytes; ++i) {
+        dst[i] = src[i];
+    }
 }

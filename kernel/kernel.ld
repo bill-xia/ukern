@@ -12,7 +12,7 @@ SECTIONS
     .text : AT (0x101000)
         { EXCLUDE_FILE (kernel/entry) *(.text .text.* ) *(.got.plt)}
     .data :
-        { EXCLUDE_FILE (kernel/entry) *(.data) }
+        { EXCLUDE_FILE (kernel/entry) *(.data .data.*) }
     .bss :
         { *(.bss) }
     .rodata :

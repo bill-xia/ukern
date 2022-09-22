@@ -1,7 +1,7 @@
 #include "ukernio.h"
 #include "stdarg.h"
 
-static uint16_t *crt_buf = (uint16_t *)0xB8000;
+static uint16_t *crt_buf = (uint16_t *)0xFFFF8000000B8000;
 static uint32_t crt_ind = 0;
 
 void printstr(char *s)
@@ -43,6 +43,15 @@ void printint(uint64_t n, int base, int width, char padc)
 
 void putch(char c)
 {
+    if (crt_ind == 50 * 80) {
+        // screen full
+        for (int i = 0; i < 49 * 80; ++i) {
+            crt_buf[i] = crt_buf[i + 80];
+        }
+        for (int i = 49 * 80; i < 50 * 80; ++i) {
+            crt_buf[i] = ' ';
+        }
+    }
     crt_buf[crt_ind] = (c | (COLOR_FORE_WHITE | COLOR_BACK_BLACK));
     ++crt_ind;
 }
@@ -93,7 +102,6 @@ void printk(char *fmt, ...)
                 if (width == -1) width = get_precision(num, 16, 0);
                 putch('0');
                 putch('x');
-                width -= 2;
                 printint(num, 16, width, padc);
                 break;
             case '%':

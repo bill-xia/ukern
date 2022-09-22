@@ -15,10 +15,10 @@
 %define PDPTE_W 0x2
 %define PDPTE_PS 0x80
 
-%macro SEG_DESC_64 4
-; %1 base, %2 lim, %3 type, %4 L
+%macro SEG_DESC_64 5
+; %1 base, %2 lim, %3 type, %4 L, %5 dpl
     dw ((%2 >> 12) & 0xFFFF),(%1 & 0xFFFF)
-    db ((%1 >> 16) & (0xFF)),(0x90 | %3),(%4 | ((%2 >> 28) & 0xf)),(%1 >> 24)
+    db ((%1 >> 16) & (0xFF)),(0x90 | %3 | (%5 << 5)),(%4 | ((%2 >> 28) & 0xf)),(%1 >> 24)
 %endmacro
 
 section .text
@@ -36,7 +36,6 @@ prot_to_ia32e:
     mov dword [0x11008], 0x40000000 | PDPTE_P | PDPTE_W | PDPTE_PS
     mov dword [0x11010], 0x80000000 | PDPTE_P | PDPTE_W | PDPTE_PS
     mov dword [0x11018], 0xC0000000 | PDPTE_P | PDPTE_W | PDPTE_PS
-    ; mov dword [0x11020], 0x100000000 | PDPTE_P | PDPTE_W | PDPTE_PS
 
     mov eax, cr0
     and eax, ~CR0_PG
@@ -68,12 +67,10 @@ here:
 extern main
 section .text64
 ia32e:
-    mov rax, 0x10000
-    mov rsp, rax
-    mov rax, 0x10
-    mov ds, rax
     ; need to be canonical address, the high 4 bytes
     ; cannot be 0x0000, see "The Manual" vol.1 3.3.7.1
+    mov rax, 0xFFFF800000010000 ; kernel stack
+    mov rsp, rax
     mov rax, main
     call rax
 
@@ -81,9 +78,8 @@ section .data
 
 gdt_64:
 dq 0
-SEG_DESC_64 0,0,0x0C,0x20
-SEG_DESC_64 0,0,0x02,0
+SEG_DESC_64 0,0,0x08,0x20,0 ; KERN_CODE 0x08
 
 gdt_64_desc:
-dw 0x17
+dw 0x0F
 dq gdt_64

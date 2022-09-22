@@ -1,0 +1,7 @@
+USERINC := lib
+
+user/%: user/%.o
+	ld -T user/user.ld $^ -o $@
+
+user/%.o: user/%.c
+	$(CC) $(CFLAG) -I $(USERINC) $^ -c -o $@
