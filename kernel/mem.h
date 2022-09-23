@@ -108,10 +108,10 @@ int walk_pgtbl(uint64_t *, uint64_t, uint64_t **, int);
 struct PageInfo * alloc_page(uint64_t);
 void memcpy(char *dst, char *src, uint64_t n_bytes);
 void init_gdt(void);
+void copy_uvm(uint64_t *dst, uint64_t *src, uint64_t flags);
+void free_pgtbl(uint64_t *pgtbl);
 
 extern char end[];
-char *end_kmem; // end of used kernel memory, in absolute address
-uint64_t *k_pml4, nfreepages;
 
 struct SegDesc {
     uint16_t limit1;

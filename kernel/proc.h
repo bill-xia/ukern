@@ -17,6 +17,10 @@ struct ProcContext {
     uint64_t rdi, rsi, rbp, zero;
     uint64_t r8, r9, r10, r11;
     uint64_t r12, r13, r14, r15;
+    uint64_t vecnum, errno;
+    uint64_t rip, cs;
+    uint64_t rflags;
+    uint64_t rsp, ss;
 } __attribute__((aligned(16)));
 
 struct Proc {
@@ -24,15 +28,13 @@ struct Proc {
     uint64_t pid;
     enum proc_state state;
     struct ProcContext context;
-    uint64_t rip, cs;
-    uint64_t rflags;
-    uint64_t rsp, ss;
 } *procs, *curproc;
 
 void init_pcb(void);
 int create_proc(char *);
 void run_proc(struct Proc *proc);
 void kill_proc(struct Proc *proc);
+struct Proc *alloc_proc(void);
 
 #define IMAGE_SYMBOL(x) _binary_user_ ## x ## _start
 #define CREATE_PROC(x) do { \

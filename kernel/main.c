@@ -12,6 +12,7 @@ int main()
     CREATE_PROC(hello);
     CREATE_PROC(sort);
     CREATE_PROC(divzero);
+    CREATE_PROC(fork);
     sched();
     while (1);
 }

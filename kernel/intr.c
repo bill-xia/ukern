@@ -5,6 +5,9 @@
 #include "printk.h"
 #include "proc.h"
 #include "syscall.h"
+#include "sched.h"
+
+extern char *end_kmem;
 
 struct IDTGateDesc *idt;
 struct IDTDesc idt_desc;
@@ -117,6 +120,8 @@ void print_tf(struct ProcContext *tf)
     printk("r12: %x, r13: %x, r14: %x, r15: %x\n", tf->r12, tf->r13, tf->r14, tf->r15);
 }
 
+void page_fault_handler(struct ProcContext *tf, uint64_t errno);
+
 void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno)
 {
     if (vecnum == 32) {
@@ -127,18 +132,18 @@ void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno
         kill_proc(curproc);
         sched();
     }
+    if (vecnum == 14) {
+        page_fault_handler(trapframe, errno);
+        // printk("page fault solved\n");
+        return;
+    }
     printk("trap handler\n");
     printk("trapframe: %p, vecnum: %d, errno: %d\n", trapframe, vecnum, errno);
     print_tf(trapframe);
     while (1);
 }
 
-void divide_error_handler(uint64_t vecnum, uint64_t errno) {
-    printk("divide error :(\n");
-    while (1);
-}
-
-void default_intr_handler(uint64_t vecnum, uint64_t errno) {
-    printk("interrupt vector number: %d, errno: %d\n");
-    while (1);
+void page_fault_handler(struct ProcContext *tf, uint64_t errno) {
+    kill_proc(curproc);
+    sched();
 }

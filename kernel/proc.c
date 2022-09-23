@@ -5,6 +5,10 @@
 #include "printk.h"
 #include "sched.h"
 
+extern uint64_t *k_pml4;
+extern uint64_t nfreepages;
+extern char *end_kmem;
+
 void
 init_pcb(void)
 {
@@ -21,6 +25,7 @@ alloc_proc()
             struct PageInfo *page = alloc_page(FLAG_ZERO);
             procs[i].pgtbl = page->paddr;
             procs[i].state = PENDING;
+            procs[i].pid = i + 1;
             return procs + i;
         }
     }
@@ -34,7 +39,7 @@ uint64_t min(uint64_t a, uint64_t b) {
 int
 create_proc(char *img)
 {
-    printk("nfreepages before create_proc(): %d\n", nfreepages);
+    // printk("nfreepages before create_proc(): %d\n", nfreepages);
     struct Proc *proc = alloc_proc();
     if (proc == NULL) {
         printk("no pcb available\n");
@@ -72,17 +77,16 @@ create_proc(char *img)
     walk_pgtbl((void *)proc->pgtbl, USTACK - PGSIZE, &pte, 1);
     *pte |= PTE_U | PTE_W;
     // mapping kernel space
-    extern uint64_t *k_pml4;
     for (int i = 256; i < 512; ++i) {
         ((uint64_t *)(proc->pgtbl))[i] = k_pml4[i];
     }
-    proc->rip = ehdr->e_entry;
-    proc->cs = USER_CODE_SEL | 3;
-    proc->rsp = USTACK;
-    proc->ss = USER_DATA_SEL | 3;
-    proc->rflags = 0x02;
+    proc->context.rip = ehdr->e_entry;
+    proc->context.cs = USER_CODE_SEL | 3;
+    proc->context.rsp = USTACK;
+    proc->context.ss = USER_DATA_SEL | 3;
+    proc->context.rflags = 0x02;
     proc->state = READY;
-    printk("nfreepages after create_proc(): %d\n", nfreepages);
+    // printk("nfreepages after create_proc(): %d\n", nfreepages);
 }
 
 void
@@ -109,6 +113,7 @@ run_proc(struct Proc *proc)
         "popq %%r13\n"
         "popq %%r14\n"
         "popq %%r15\n"
+        "add $16, %%rsp\n"
         "iretq \n"
         :: "g"(context) : "memory");
 }
@@ -117,9 +122,9 @@ void
 kill_proc(struct Proc *proc)
 {
     lcr3(k2p(k_pml4));
-    printk("nfreepages before kill_proc(): %d\n", nfreepages);
+    // printk("nfreepages before kill_proc(): %d\n", nfreepages);
     proc->state = PENDING;
     free_pgtbl((void *)proc->pgtbl);
     proc->state = CLOSE;
-    printk("nfreepages after kill_proc(): %d\n", nfreepages);
+    // printk("nfreepages after kill_proc(): %d\n", nfreepages);
 }

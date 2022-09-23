@@ -14,6 +14,7 @@ console_putch(char c)
         for (int i = (ROWS - 1) * COLS; i < ROWS * COLS; ++i) {
             crt_buf[i] = ' ';
         }
+        crt_ind -= COLS;
     }
     switch (c) {
     case '\n':

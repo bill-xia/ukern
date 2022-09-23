@@ -8,5 +8,6 @@ int syscall(int num, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, uint64_
 void sys_hello(void);
 void sys_putch(char);
 void sys_exit(void);
+int sys_fork(void);
 
 #endif

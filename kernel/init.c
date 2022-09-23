@@ -1,6 +1,9 @@
 #include "mem.h"
 #include "proc.h"
 #include "intr.h"
+#include "sched.h"
+
+char *end_kmem;
 
 void init()
 {

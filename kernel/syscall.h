@@ -5,6 +5,5 @@
 #include "proc.h"
 
 void syscall(struct ProcContext *tf);
-void sys_hello(void);
 
 #endif

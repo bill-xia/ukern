@@ -11,6 +11,8 @@ struct MemInfo *k_meminfo; // read from NVRAM at boot time
 struct PageInfo *k_pageinfo; // info for every available 4K-page
 struct PageInfo *freepages = NULL;
 uint64_t *k_pdpt, *kpgtbl_end;
+char *end_kmem; // end of used kernel memory, in absolute address
+uint64_t *k_pml4, nfreepages;
 
 static uint64_t n_pml4, n_pdpt;
 static uint64_t max_addr;
@@ -309,4 +311,45 @@ free_pgtbl(uint64_t *pgtbl)
         free_page(PA2PGINFO(pdpt));
     }
     free_page(PA2PGINFO(pgtbl));
+}
+
+void
+copy_uvm(uint64_t *dst, uint64_t *src, uint64_t flags)
+{
+    struct PageInfo *pg;
+    for (int pml4i = 0; pml4i < 256; ++pml4i) { // only copy pages in user space!
+        if (!(src[pml4i] & PML4E_P))
+            continue;
+        pg = alloc_page(FLAG_ZERO);
+        dst[pml4i] = pg->paddr | PML4E_P | PML4E_W | PML4E_U;
+        uint64_t *pdpt_s = (void *)PAGEADDR(src[pml4i]);
+        uint64_t *pdpt_d = (void *)PAGEADDR(dst[pml4i]);
+        for (int pdpti = 0; pdpti < 512; ++pdpti) {
+            if (!(pdpt_s[pdpti] & PDPTE_P))
+                continue;
+            pg = alloc_page(FLAG_ZERO);
+            pdpt_d[pdpti] = pg->paddr | PDPTE_P | PDPTE_W | PDPTE_U;
+            uint64_t *pd_s = (void *)PAGEADDR(pdpt_s[pdpti]);
+            uint64_t *pd_d = (void *)PAGEADDR(pdpt_d[pdpti]);
+            for (int pdi = 0; pdi < 512; ++pdi) {
+                if (!(pd_s[pdi] & PDE_P))
+                    continue;
+                pg = alloc_page(FLAG_ZERO);
+                pd_d[pdi] = pg->paddr | PDE_P | PDE_W | PDE_U;
+                uint64_t *pt_s = (void *)PAGEADDR(pd_s[pdi]);
+                uint64_t *pt_d = (void *)PAGEADDR(pd_d[pdi]);
+                for (int pti = 0; pti < 512; ++pti) {
+                    if (!(pt_s[pti] & PTE_P))
+                        continue;
+                    pg = alloc_page(FLAG_ZERO);
+                    pt_d[pti] = pg->paddr | PDPTE_P | PDPTE_W | PDPTE_U;
+                    char *srcpage = (char *)PAGEADDR(pt_s[pti]),
+                         *dstpage = (char *)PAGEADDR(pt_d[pti]);
+                    for (int i = 0; i < PGSIZE; ++i) {
+                        dstpage[i] = srcpage[i];
+                    }
+                }
+            }
+        }
+    }
 }

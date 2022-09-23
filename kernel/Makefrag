@@ -22,6 +22,7 @@ KERNEL_HDRS := kernel/init.h \
 KERNEL_BINS := user/divzero \
 	user/hello \
 	user/sort \
+	user/fork \
 
 KERNEL_INC := -Iinclude -Ilib
 
