@@ -10,6 +10,8 @@ int main()
     init();
     printk("bye\n");
     CREATE_PROC(hello);
+    CREATE_PROC(sort);
+    CREATE_PROC(divzero);
     sched();
     while (1);
 }

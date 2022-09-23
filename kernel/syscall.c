@@ -10,6 +10,7 @@ syscall(struct ProcContext *tf)
     switch (num) {
     case 1:
         kill_proc(curproc);
+        sched();
     case 2:
         sys_hello();
         tf->rax = 0;

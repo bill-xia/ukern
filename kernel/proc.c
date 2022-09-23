@@ -118,5 +118,4 @@ kill_proc(struct Proc *proc)
     proc->state = PENDING;
     free_pgtbl((void *)proc->pgtbl);
     proc->state = CLOSE;
-    sched();
 }

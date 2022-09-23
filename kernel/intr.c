@@ -123,6 +123,10 @@ void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno
         syscall(trapframe);
         return;
     }
+    if (vecnum == 0) {
+        kill_proc(curproc);
+        sched();
+    }
     printk("trap handler\n");
     printk("trapframe: %p, vecnum: %d, errno: %d\n", trapframe, vecnum, errno);
     print_tf(trapframe);
