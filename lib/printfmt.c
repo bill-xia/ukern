@@ -1,18 +1,9 @@
-#include "ukernio.h"
+#include "printfmt.h"
+#include "types.h"
 #include "stdarg.h"
 
-static uint16_t *crt_buf = (uint16_t *)0xFFFF8000000B8000;
-static uint32_t crt_ind = 0;
-
-void printstr(char *s)
-{
-    while ((*s) != '\0') {
-        putch(*s);
-        ++s;
-    }
-}
-
-void printint(uint64_t n, int base, int width, char padc)
+void
+printint(void (*putch)(char c), uint64_t n, int base, int width, char padc)
 {
     static char buf[32];
     int len = 0;
@@ -41,22 +32,8 @@ void printint(uint64_t n, int base, int width, char padc)
     }
 }
 
-void putch(char c)
-{
-    if (crt_ind == 50 * 80) {
-        // screen full
-        for (int i = 0; i < 49 * 80; ++i) {
-            crt_buf[i] = crt_buf[i + 80];
-        }
-        for (int i = 49 * 80; i < 50 * 80; ++i) {
-            crt_buf[i] = ' ';
-        }
-    }
-    crt_buf[crt_ind] = (c | (COLOR_FORE_WHITE | COLOR_BACK_BLACK));
-    ++crt_ind;
-}
-
-int get_precision(uint64_t n, int base, int sign) {
+int
+get_precision(uint64_t n, int base, int sign) {
     if (sign && (int64_t)n < 0) {
         n = -(int64_t)n;
     }
@@ -69,11 +46,18 @@ int get_precision(uint64_t n, int base, int sign) {
     return len;
 }
 
-void printk(char *fmt, ...)
+void
+printfmt(void (*putch)(char), const char *fmt, ...)
 {
     va_list ap;
 	va_start(ap, fmt);
-	
+    vprintfmt(putch, fmt, ap);
+    va_end(ap);
+}
+
+void
+vprintfmt(void (*putch)(char), const char *fmt, va_list ap)
+{
     uint64_t num;
     int i = 0;
     while (fmt[i] != '\0') {
@@ -90,19 +74,19 @@ void printk(char *fmt, ...)
                     putch('-');
                     width--;
                 }
-                printint(num, 10, width, padc);
+                printint(putch, num, 10, width, padc);
                 break;
             case 'x':
                 num = va_arg(ap, uint64_t);
                 if (width == -1) width = get_precision(num, 16, 0);
-                printint(num, 16, width, padc);
+                printint(putch, num, 16, width, padc);
                 break;
             case 'p': ;
                 num = va_arg(ap, uint64_t);
                 if (width == -1) width = get_precision(num, 16, 0);
                 putch('0');
                 putch('x');
-                printint(num, 16, width, padc);
+                printint(putch, num, 16, width, padc);
                 break;
             case '%':
                 putch('%');
@@ -112,11 +96,6 @@ void printk(char *fmt, ...)
                 putch(fmt[i - 1]);
                 break;
             }
-        } else if (fmt[i] == '\n') {
-            do {
-                putch(' ');
-            } while (crt_ind % 80);
-            ++i;
         } else {
             putch(fmt[i]);
             ++i;

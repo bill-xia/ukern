@@ -2,8 +2,8 @@
 #include "mem.h"
 #include "elf64.h"
 #include "x86.h"
-#include "ukernio.h"
-// struct TSS g_tss;
+#include "printk.h"
+#include "sched.h"
 
 void
 init_pcb(void)
@@ -20,6 +20,7 @@ alloc_proc()
             // TODO: add lock here when multi-core is up
             struct PageInfo *page = alloc_page(FLAG_ZERO);
             procs[i].pgtbl = page->paddr;
+            procs[i].state = PENDING;
             return procs + i;
         }
     }
@@ -66,8 +67,10 @@ create_proc(char *img)
         }
     }
     uint64_t *pte;
+    // stack
     walk_pgtbl((void *)proc->pgtbl, USTACK - PGSIZE, &pte, 1);
     *pte |= PTE_U | PTE_W;
+    // mapping kernel space
     extern uint64_t *k_pml4;
     for (int i = 256; i < 512; ++i) {
         ((uint64_t *)(proc->pgtbl))[i] = k_pml4[i];
@@ -77,14 +80,15 @@ create_proc(char *img)
     proc->rsp = USTACK;
     proc->ss = USER_DATA_SEL | 3;
     proc->rflags = 0x02;
-    lcr3(proc->pgtbl);
-    restore_context(&proc->context);
+    proc->state = READY;
 }
 
 void
-restore_context(struct ProcContext *context)
+run_proc(struct Proc *proc)
 {
-    // while (1);
+    curproc = proc;
+    struct ProcContext *context = &proc->context;
+    lcr3(proc->pgtbl);
     asm volatile (
         "mov %0, %%rsp\n"
         "popq %%rax\n"
@@ -105,4 +109,14 @@ restore_context(struct ProcContext *context)
         "popq %%r15\n"
         "iretq \n"
         :: "g"(context) : "memory");
+}
+
+void
+kill_proc(struct Proc *proc)
+{
+    lcr3(k2p(k_pml4));
+    proc->state = PENDING;
+    free_pgtbl((void *)proc->pgtbl);
+    proc->state = CLOSE;
+    sched();
 }

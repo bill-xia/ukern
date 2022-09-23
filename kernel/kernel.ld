@@ -18,5 +18,5 @@ SECTIONS
     .rodata :
         { *(.rodata) }
     PROVIDE(end = .);
-    /DISCARD/ : { *(.comment) *(.eh_frame) *(.note) *(.group)}
+    /DISCARD/ : { *(.comment) *(.eh_frame) *(.note) *(.group) *(.debug_info)}
 }

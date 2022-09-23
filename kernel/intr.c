@@ -2,8 +2,9 @@
 #include "types.h"
 #include "mem.h"
 #include "x86.h"
-#include "ukernio.h"
+#include "printk.h"
 #include "proc.h"
+#include "syscall.h"
 
 struct IDTGateDesc *idt;
 struct IDTDesc idt_desc;
@@ -40,6 +41,7 @@ void _reserved_28_entry(void); // 28
 void _reserved_29_entry(void); // 29
 void _reserved_30_entry(void); // 30
 void _reserved_31_entry(void); // 31
+void _syscall_entry(void); // 32
 
 void (*intr_entry[])(void) = {
     _divide_error_entry,
@@ -74,6 +76,7 @@ void (*intr_entry[])(void) = {
     _reserved_29_entry,
     _reserved_30_entry,
     _reserved_31_entry,
+    _syscall_entry
 };
 
 void
@@ -116,6 +119,10 @@ void print_tf(struct ProcContext *tf)
 
 void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno)
 {
+    if (vecnum == 32) {
+        syscall(trapframe);
+        return;
+    }
     printk("trap handler\n");
     printk("trapframe: %p, vecnum: %d, errno: %d\n", trapframe, vecnum, errno);
     print_tf(trapframe);

@@ -33,6 +33,7 @@
 .global _reserved_29_entry
 .global _reserved_30_entry
 .global _reserved_31_entry
+.global _syscall_entry
 
 _divide_error_entry:
     pushq $0
@@ -186,6 +187,10 @@ _reserved_31_entry:
     pushq $31
     jmp call_trap_handler
 
+_syscall_entry:
+    pushq $0
+    pushq $32
+    jmp call_trap_handler
 
 call_trap_handler:
     push %r15

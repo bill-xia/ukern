@@ -1,7 +1,14 @@
-USERINC := lib
+USERINC := -Iinclude -Ilib
 
-user/%: user/%.o
+USERLIBS := lib/printf.o \
+	lib/usyscall.o \
+	lib/printfmt.o \
+
+user/%: user/%.o $(USERLIBS)
 	ld -T user/user.ld $^ -o $@
 
+lib/%.o: lib/%.c
+	$(CC) $(CFLAGS) $(USERINC) $< -c -o $@
+
 user/%.o: user/%.c
-	$(CC) $(CFLAG) -I $(USERINC) $^ -c -o $@
+	$(CC) $(CFLAGS) $(USERINC) $< -c -o $@

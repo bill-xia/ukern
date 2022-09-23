@@ -27,11 +27,12 @@ struct Proc {
     uint64_t rip, cs;
     uint64_t rflags;
     uint64_t rsp, ss;
-} *procs;
+} *procs, *curproc;
 
 void init_pcb(void);
 int create_proc(char *);
-void restore_context(struct ProcContext *);
+void run_proc(struct Proc *proc);
+void kill_proc(struct Proc *proc);
 
 #define IMAGE_SYMBOL(x) _binary_user_ ## x ## _start
 #define CREATE_PROC(x) do { \

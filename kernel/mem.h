@@ -40,6 +40,7 @@ typedef uint64_t pte_t;
 #define ADDR_MASK ~511
 #define MASK(x) ((1ul << (x)) - 1)
 #define PAGEADDR(x) ((x) & ~(PGSIZE - 1))
+#define PA2PGINFO(x) ((struct PageInfo *)(k_pageinfo + ((uint64_t)(x) >> 12)))
 
 #define PML4_INDEX(x) (((x) >> PML4_OFFSET) & 511)
 #define PDPT_INDEX(x) (((x) >> PDPT_OFFSET) & 511)
@@ -110,6 +111,7 @@ void init_gdt(void);
 
 extern char end[];
 char *end_kmem; // end of used kernel memory, in absolute address
+uint64_t *k_pml4;
 
 struct SegDesc {
     uint16_t limit1;

@@ -4,15 +4,15 @@
 
 #include "mem.h"
 #include "types.h"
-#include "ukernio.h"
+#include "printk.h"
 #include "x86.h"
 
 struct MemInfo *k_meminfo; // read from NVRAM at boot time
 struct PageInfo *k_pageinfo; // info for every available 4K-page
 struct PageInfo *freepages = NULL;
-uint64_t *k_pml4, *k_pdpt, *kpgtbl_end;
+uint64_t *k_pdpt, *kpgtbl_end;
 
-static uint64_t n_pages, n_pml4, n_pdpt;
+static uint64_t n_pml4, n_pdpt;
 static uint64_t max_addr;
 
 uint64_t max(uint64_t a, uint64_t b) {
@@ -99,12 +99,12 @@ init_kpageinfo(void)
         printk("beg_addr: %p, end_addr: %p\n", beg_addr, end_addr);
         max_addr = max(max_addr, end_addr);
         while (beg_addr < end_addr) {
-            k_pageinfo[n_pages++].paddr = beg_addr;
+            PA2PGINFO(beg_addr)->paddr = beg_addr;
             beg_addr += PGSIZE;
         }
         ++ind;
     }
-    end_kmem = (char *)(k_pageinfo + n_pages);
+    end_kmem = (char *)(PA2PGINFO(max_addr));
 }
 
 uint64_t div_roundup(uint64_t a, uint64_t b) {
@@ -147,12 +147,14 @@ init_kpgtbl(void)
 void
 init_freepages()
 {
-    for (int i = 0; i < n_pages; ++i) {
-        if (k_pageinfo[i].paddr >= k2p((uint64_t)end_kmem)) {
-            k_pageinfo[i].u.next = freepages;
-            freepages = k_pageinfo + i;
+    struct PageInfo *pginfo_end = PA2PGINFO(max_addr);
+    for (struct PageInfo *pginfo = k_pageinfo; pginfo < pginfo_end; ++pginfo) {
+        if (pginfo->paddr >= k2p((uint64_t)end_kmem)) {
+            // for unavailable page, paddr is 0x0
+            pginfo->u.next = freepages;
+            freepages = pginfo;
         } else {
-            k_pageinfo[i].u.ref++; // used by kernel
+            pginfo->u.ref++; // used by kernel
         }
     }
 }
@@ -274,4 +276,34 @@ void memcpy(char *dst, char *src, uint64_t n_bytes) {
     for (int i = 0; i < n_bytes; ++i) {
         dst[i] = src[i];
     }
+}
+
+void
+free_pgtbl(uint64_t *pgtbl)
+{
+    for (int pml4i = 0; pml4i < 256; ++pml4i) { // only free pages in user space!
+        if (!(pgtbl[pml4i] & PML4E_P))
+            continue;
+        uint64_t *pdpt = (void *)PAGEADDR(pgtbl[pml4i]);
+        for (int pdpti = 0; pdpti < 512; ++pdpti) {
+            if (!(pdpt[pdpti] & PDPTE_P))
+                continue;
+            uint64_t *pd = (void *)PAGEADDR(pdpt[pdpti]);
+            for (int pdi = 0; pdi < 512; ++pdi) {
+                if (!(pd[pdi] & PDE_P))
+                    continue;
+                uint64_t *pt = (void *)PAGEADDR(pd[pdi]);
+                for (int pti = 0; pti < 512; ++pti) {
+                    if (!(pt[pti] & PTE_P))
+                        continue;
+                    uint64_t *paddr = (void *)PAGEADDR(pt[pti]);
+                    free_page(PA2PGINFO(paddr));
+                }
+                free_page(PA2PGINFO(pt));
+            }
+            free_page(PA2PGINFO(pd));
+        }
+        free_page(PA2PGINFO(pdpt));
+    }
+    free_page(PA2PGINFO(pgtbl));
 }

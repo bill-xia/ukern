@@ -1,6 +1,5 @@
-int umain()
+int main()
 {
-    int i = *(int *)0xFFFF800000101000;
+    int i = 1 / 0;
     while (1);
-    return 0;
 }

@@ -1,22 +1,32 @@
 KERNEL_OBJS := kernel/main.o \
 	kernel/mem.o \
-	kernel/ukernio.o \
+	kernel/console.o \
+	kernel/printk.o \
 	kernel/init.o \
 	kernel/intr.o \
 	kernel/proc.o \
+	kernel/sched.o \
+	kernel/syscall.o \
+	lib/printfmt.o \
 
 KERNEL_HDRS := kernel/init.h \
 	kernel/intr.h \
 	kernel/mem.h \
 	kernel/proc.h \
-	kernel/ukernio.h \
+	kernel/printk.h \
+	kernel/sched.h \
+	kernel/syscall.h \
+	kernel/console.h \
+	kernel/printk.h \
 
-KERNEL_BINS := user/divzero
+KERNEL_BINS := user/divzero \
+	user/hello \
+	user/sort \
 
-KERNEL_INC := include
+KERNEL_INC := -Iinclude -Ilib
 
-kernel/kernel: $(KERNEL_OBJS) $(KERNEL_BINS) kernel/entry kernel/intr_entry
-	ld -T kernel/kernel.ld $^ -b binary $(KERNEL_BINS) -o kernel/kernel
+kernel/kernel: $(KERNEL_OBJS) $(KERNEL_BINS) kernel/entry kernel/intr_entry 
+	ld -T kernel/kernel.ld $(KERNEL_OBJS) kernel/entry kernel/intr_entry -b binary $(KERNEL_BINS) -o kernel/kernel --no-relax
 
 kernel/entry: kernel/entry.S
 	$(AS) $< -f elf64 -o $@
@@ -25,4 +35,7 @@ kernel/intr_entry: kernel/intr_entry.S
 	as $< -o $@
 
 kernel/%.o: kernel/%.c $(KERNEL_HDRS)
-	$(CC) $(CFLAGS) -I $(KERNEL_INC) $< -c -o $@
+	$(CC) $(CFLAGS) $(KERNEL_INC) $< -c -o $@
+
+lib/%.o: lib/%.c
+	$(CC) $(CFLAGS) $(KERNEL_INC) $< -c -o $@

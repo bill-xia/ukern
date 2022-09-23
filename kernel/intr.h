@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-#define NIDT 32
+#define NIDT 33
 
 struct IDTGateDesc {
     uint16_t offset1;

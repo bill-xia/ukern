@@ -13,5 +13,4 @@ void init()
     init_freepages(); // initialize the free page list
     // *(int*)0x7FFFFFFF0000 = 0;
     // from now on, anyone needing a new page have to call kalloc()
-    CREATE_PROC(divzero);
 }
