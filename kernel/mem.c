@@ -153,6 +153,7 @@ init_freepages()
             // for unavailable page, paddr is 0x0
             pginfo->u.next = freepages;
             freepages = pginfo;
+            nfreepages++;
         } else {
             pginfo->u.ref++; // used by kernel
         }
@@ -181,6 +182,7 @@ alloc_page(uint64_t flags)
     if (flags & FLAG_ZERO)
         for (int i = 0; i < PGSIZE; mem[i] = 0, ++i) ;
     ret->u.ref = 1;
+    nfreepages--;
     return ret;
 }
 
@@ -200,6 +202,7 @@ free_page(struct PageInfo *page)
     if (--page->u.ref == 0) {
         page->u.next = freepages;
         freepages = page;
+        nfreepages++;
     }
 }
 

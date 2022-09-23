@@ -111,7 +111,7 @@ void init_gdt(void);
 
 extern char end[];
 char *end_kmem; // end of used kernel memory, in absolute address
-uint64_t *k_pml4;
+uint64_t *k_pml4, nfreepages;
 
 struct SegDesc {
     uint16_t limit1;

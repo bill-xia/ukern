@@ -34,6 +34,7 @@ uint64_t min(uint64_t a, uint64_t b) {
 int
 create_proc(char *img)
 {
+    printk("nfreepages before create_proc(): %d\n", nfreepages);
     struct Proc *proc = alloc_proc();
     if (proc == NULL) {
         printk("no pcb available\n");
@@ -81,6 +82,7 @@ create_proc(char *img)
     proc->ss = USER_DATA_SEL | 3;
     proc->rflags = 0x02;
     proc->state = READY;
+    printk("nfreepages after create_proc(): %d\n", nfreepages);
 }
 
 void
@@ -115,7 +117,9 @@ void
 kill_proc(struct Proc *proc)
 {
     lcr3(k2p(k_pml4));
+    printk("nfreepages before kill_proc(): %d\n", nfreepages);
     proc->state = PENDING;
     free_pgtbl((void *)proc->pgtbl);
     proc->state = CLOSE;
+    printk("nfreepages after kill_proc(): %d\n", nfreepages);
 }
