@@ -118,6 +118,7 @@ void print_tf(struct ProcContext *tf)
     printk("rdi: %x, rsi: %x, rbp: %x\n", tf->rdi, tf->rsi, tf->rbp);
     printk("r8: %x, r9: %x, r10: %x, r11: %x\n", tf->r8, tf->r9, tf->r10, tf->r11);
     printk("r12: %x, r13: %x, r14: %x, r15: %x\n", tf->r12, tf->r13, tf->r14, tf->r15);
+    printk("cs: %x, rip: %x, ss: %x, rsp: %x\n", tf->cs, tf->rip, tf->ss, tf->rsp);
 }
 
 void page_fault_handler(struct ProcContext *tf, uint64_t errno);
@@ -132,18 +133,19 @@ void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno
         kill_proc(curproc);
         sched();
     }
+    printk("trap handler\n");
+    printk("trapframe: %p, vecnum: %d, errno: %d\n", trapframe, vecnum, errno);
+    print_tf(trapframe);
     if (vecnum == 14) {
         page_fault_handler(trapframe, errno);
         // printk("page fault solved\n");
         return;
     }
-    printk("trap handler\n");
-    printk("trapframe: %p, vecnum: %d, errno: %d\n", trapframe, vecnum, errno);
-    print_tf(trapframe);
     while (1);
 }
 
 void page_fault_handler(struct ProcContext *tf, uint64_t errno) {
+    printk("cr2: %p\n", rcr2());
     kill_proc(curproc);
     sched();
 }

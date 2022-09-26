@@ -121,10 +121,9 @@ run_proc(struct Proc *proc)
 void
 kill_proc(struct Proc *proc)
 {
-    lcr3(k2p(k_pml4));
     // printk("nfreepages before kill_proc(): %d\n", nfreepages);
     proc->state = PENDING;
-    free_pgtbl((void *)proc->pgtbl);
+    free_pgtbl((void *)P2K(proc->pgtbl));
     proc->state = CLOSE;
     // printk("nfreepages after kill_proc(): %d\n", nfreepages);
 }

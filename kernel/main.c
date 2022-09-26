@@ -6,6 +6,7 @@
 
 int main()
 {
+    for (int i = 0; i < 25; ++i) printk("\n");
     printk("\"hello, world!\" from ukern!\n");
     init();
     printk("bye\n");

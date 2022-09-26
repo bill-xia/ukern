@@ -40,7 +40,9 @@ typedef uint64_t pte_t;
 #define ADDR_MASK ~511
 #define MASK(x) ((1ul << (x)) - 1)
 #define PAGEADDR(x) ((x) & ~(PGSIZE - 1))
+#define PAGEKADDR(x) (((x) & ~(PGSIZE - 1)) | KERNBASE)
 #define PA2PGINFO(x) ((struct PageInfo *)(k_pageinfo + ((uint64_t)(x) >> 12)))
+#define KA2PGINFO(x) ((struct PageInfo *)(k_pageinfo + (((uint64_t)(x) & MASK(47)) >> 12)))
 
 #define PML4_INDEX(x) (((x) >> PML4_OFFSET) & 511)
 #define PDPT_INDEX(x) (((x) >> PDPT_OFFSET) & 511)
@@ -68,7 +70,8 @@ struct MemInfo {
 #define KERNBASE 0xFFFF800000000000
 #define USTACK   0x00007FFFFFFFF000
 #define KSTACK   0xFFFF800000010000
-#define k2p(x) ((uint64_t)(x) & ((1ul << 47) - 1))
+#define K2P(x) ((uint64_t)(x) & MASK(47))
+#define P2K(x) ((uint64_t)(x) | KERNBASE)
 
 #define KERN_CODE_SEL 0x08
 #define KERN_DATA_SEL 0x10

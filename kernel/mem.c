@@ -121,7 +121,7 @@ reg_kpgtbl_1Gpage(uint64_t addr)
 {
     uint64_t pml4i = addr >> PML4_OFFSET;
     uint64_t pdpti = addr >> PDPT_OFFSET;
-    k_pml4[pml4i] = k2p(&k_pdpt[pdpti & (~0x1FF)]) | PML4E_P;
+    k_pml4[pml4i] = K2P(&k_pdpt[pdpti & (~0x1FF)]) | PML4E_P;
     k_pdpt[pdpti] = addr | PDPTE_P | PDPTE_PS;
 }
 
@@ -140,7 +140,7 @@ init_kpgtbl(void)
     for (int i = 0; i < 256; ++i) {
         k_pml4[i + 256] = k_pml4[i];
     }
-    lcr3(k2p(k_pml4));
+    lcr3(K2P(k_pml4));
     end_kmem = (char *)(k_pdpt + n_pdpt);
 }
 
@@ -151,7 +151,7 @@ init_freepages()
 {
     struct PageInfo *pginfo_end = PA2PGINFO(max_addr);
     for (struct PageInfo *pginfo = k_pageinfo; pginfo < pginfo_end; ++pginfo) {
-        if (pginfo->paddr >= k2p((uint64_t)end_kmem)) {
+        if (pginfo->paddr >= K2P((uint64_t)end_kmem)) {
             // for unavailable page, paddr is 0x0
             pginfo->u.next = freepages;
             freepages = pginfo;
@@ -180,7 +180,7 @@ alloc_page(uint64_t flags)
     if (freepages == NULL) return NULL;
     struct PageInfo *ret = freepages;
     freepages = freepages->u.next;
-    char *mem = (char *)ret->paddr;
+    char *mem = (char *)P2K(ret->paddr);
     if (flags & FLAG_ZERO)
         for (int i = 0; i < PGSIZE; mem[i] = 0, ++i) ;
     ret->u.ref = 1;
@@ -235,7 +235,7 @@ walk_pgtbl(uint64_t *pgtbl, uint64_t vaddr, uint64_t **pte, int create)
         pgtbl[pml4i] = alloced[0]->paddr | PML4E_P | PML4E_W | PML4E_U;
     }
 
-    uint64_t *pdpt = (uint64_t *)PAGEADDR(pgtbl[pml4i]);
+    uint64_t *pdpt = (uint64_t *)PAGEKADDR(pgtbl[pml4i]);
     int pdpti = PDPT_INDEX(vaddr);
     if (!(pdpt[pdpti] & PDPTE_P)) {
         if (!create) goto no_mem;
@@ -246,7 +246,7 @@ walk_pgtbl(uint64_t *pgtbl, uint64_t vaddr, uint64_t **pte, int create)
         pdpt[pdpti] = alloced[1]->paddr | PDPTE_P | PDPTE_W | PDPTE_U;
     }
 
-    uint64_t *pd = (uint64_t *)PAGEADDR(pdpt[pdpti]);
+    uint64_t *pd = (uint64_t *)PAGEKADDR(pdpt[pdpti]);
     int pdi = PD_INDEX(vaddr);
     if (!(pd[pdi] & PDE_P)) {
         if (!create) goto no_mem;
@@ -257,7 +257,7 @@ walk_pgtbl(uint64_t *pgtbl, uint64_t vaddr, uint64_t **pte, int create)
         pd[pdi] = alloced[2]->paddr | PDE_P | PDE_W | PDE_U;
     }
 
-    uint64_t *pt = (uint64_t *)PAGEADDR(pd[pdi]);
+    uint64_t *pt = (uint64_t *)PAGEKADDR(pd[pdi]);
     int pti = PT_INDEX(vaddr);
     if (!(pt[pti] & PTE_P)) {
         if (!create) goto no_mem;
@@ -283,68 +283,74 @@ void memcpy(char *dst, char *src, uint64_t n_bytes) {
     }
 }
 
+//
+// pgtbl should be above KERNEL_BASE
+//
 void
 free_pgtbl(uint64_t *pgtbl)
 {
+    pgtbl = P2K(pgtbl);
     for (int pml4i = 0; pml4i < 256; ++pml4i) { // only free pages in user space!
         if (!(pgtbl[pml4i] & PML4E_P))
             continue;
-        uint64_t *pdpt = (void *)PAGEADDR(pgtbl[pml4i]);
+        uint64_t *pdpt = (void *)PAGEKADDR(pgtbl[pml4i]);
         for (int pdpti = 0; pdpti < 512; ++pdpti) {
             if (!(pdpt[pdpti] & PDPTE_P))
                 continue;
-            uint64_t *pd = (void *)PAGEADDR(pdpt[pdpti]);
+            uint64_t *pd = (void *)PAGEKADDR(pdpt[pdpti]);
             for (int pdi = 0; pdi < 512; ++pdi) {
                 if (!(pd[pdi] & PDE_P))
                     continue;
-                uint64_t *pt = (void *)PAGEADDR(pd[pdi]);
+                uint64_t *pt = (void *)PAGEKADDR(pd[pdi]);
                 for (int pti = 0; pti < 512; ++pti) {
                     if (!(pt[pti] & PTE_P))
                         continue;
-                    uint64_t *paddr = (void *)PAGEADDR(pt[pti]);
-                    free_page(PA2PGINFO(paddr));
+                    uint64_t *paddr = (void *)PAGEKADDR(pt[pti]);
+                    free_page(KA2PGINFO(paddr));
                 }
-                free_page(PA2PGINFO(pt));
+                free_page(KA2PGINFO(pt));
             }
-            free_page(PA2PGINFO(pd));
+            free_page(KA2PGINFO(pd));
         }
-        free_page(PA2PGINFO(pdpt));
+        free_page(KA2PGINFO(pdpt));
     }
-    free_page(PA2PGINFO(pgtbl));
+    free_page(KA2PGINFO(pgtbl));
 }
 
 void
 copy_uvm(uint64_t *dst, uint64_t *src, uint64_t flags)
 {
+    src = P2K(src);
+    dst = P2K(dst);
     struct PageInfo *pg;
     for (int pml4i = 0; pml4i < 256; ++pml4i) { // only copy pages in user space!
         if (!(src[pml4i] & PML4E_P))
             continue;
         pg = alloc_page(FLAG_ZERO);
         dst[pml4i] = pg->paddr | PML4E_P | PML4E_W | PML4E_U;
-        uint64_t *pdpt_s = (void *)PAGEADDR(src[pml4i]);
-        uint64_t *pdpt_d = (void *)PAGEADDR(dst[pml4i]);
+        uint64_t *pdpt_s = (void *)PAGEKADDR(src[pml4i]);
+        uint64_t *pdpt_d = (void *)PAGEKADDR(dst[pml4i]);
         for (int pdpti = 0; pdpti < 512; ++pdpti) {
             if (!(pdpt_s[pdpti] & PDPTE_P))
                 continue;
             pg = alloc_page(FLAG_ZERO);
             pdpt_d[pdpti] = pg->paddr | PDPTE_P | PDPTE_W | PDPTE_U;
-            uint64_t *pd_s = (void *)PAGEADDR(pdpt_s[pdpti]);
-            uint64_t *pd_d = (void *)PAGEADDR(pdpt_d[pdpti]);
+            uint64_t *pd_s = (void *)PAGEKADDR(pdpt_s[pdpti]);
+            uint64_t *pd_d = (void *)PAGEKADDR(pdpt_d[pdpti]);
             for (int pdi = 0; pdi < 512; ++pdi) {
                 if (!(pd_s[pdi] & PDE_P))
                     continue;
                 pg = alloc_page(FLAG_ZERO);
                 pd_d[pdi] = pg->paddr | PDE_P | PDE_W | PDE_U;
-                uint64_t *pt_s = (void *)PAGEADDR(pd_s[pdi]);
-                uint64_t *pt_d = (void *)PAGEADDR(pd_d[pdi]);
+                uint64_t *pt_s = (void *)PAGEKADDR(pd_s[pdi]);
+                uint64_t *pt_d = (void *)PAGEKADDR(pd_d[pdi]);
                 for (int pti = 0; pti < 512; ++pti) {
                     if (!(pt_s[pti] & PTE_P))
                         continue;
                     pg = alloc_page(FLAG_ZERO);
                     pt_d[pti] = pg->paddr | PDPTE_P | PDPTE_W | PDPTE_U;
-                    char *srcpage = (char *)PAGEADDR(pt_s[pti]),
-                         *dstpage = (char *)PAGEADDR(pt_d[pti]);
+                    char *srcpage = (char *)PAGEKADDR(pt_s[pti]),
+                         *dstpage = (char *)PAGEKADDR(pt_d[pti]);
                     for (int i = 0; i < PGSIZE; ++i) {
                         dstpage[i] = srcpage[i];
                     }

@@ -17,11 +17,10 @@ sys_hello()
 void
 sys_fork(struct ProcContext *tf)
 {
-    lcr3(k2p(k_pml4));
     struct Proc *nproc = alloc_proc();
     copy_uvm((void *)nproc->pgtbl, (void *)curproc->pgtbl, PTE_U);
     for (int i = 256; i < 512; ++i) {
-        ((uint64_t *)nproc->pgtbl)[i] = ((uint64_t *)curproc->pgtbl)[i];
+        ((uint64_t *)P2K(nproc->pgtbl))[i] = ((uint64_t *)P2K(curproc->pgtbl))[i];
     }
     // copy context
     nproc->context = *tf;
@@ -30,7 +29,6 @@ sys_fork(struct ProcContext *tf)
     nproc->context.rax = 0;
     // set state
     nproc->state = READY;
-    lcr3(curproc->pgtbl);
 }
 
 void
