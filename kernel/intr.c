@@ -7,8 +7,6 @@
 #include "syscall.h"
 #include "sched.h"
 
-extern char *end_kmem;
-
 struct IDTGateDesc *idt;
 struct IDTDesc idt_desc;
 
@@ -133,19 +131,50 @@ void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno
         kill_proc(curproc);
         sched();
     }
-    printk("trap handler\n");
-    printk("trapframe: %p, vecnum: %d, errno: %d\n", trapframe, vecnum, errno);
-    print_tf(trapframe);
     if (vecnum == 14) {
         page_fault_handler(trapframe, errno);
         // printk("page fault solved\n");
         return;
     }
+    printk("trap handler\n");
+    printk("trapframe: %p, vecnum: %d, errno: %d\n", trapframe, vecnum, errno);
+    print_tf(trapframe);
     while (1);
 }
 
 void page_fault_handler(struct ProcContext *tf, uint64_t errno) {
+    if (errno != 7) {
+        printk("cr2: %p\n", rcr2());
+        printk("errno: %x\n", errno);
+        printk("curproc: proc[%d]\n", curproc - procs);
+        kill_proc(curproc);
+        sched();
+    }
+    // check copy-on-write case
+    uint64_t vaddr = rcr2();
+    uint64_t *pte;
+    walk_pgtbl(curproc->p_pgtbl, vaddr, &pte, 0);
+    if ((*pte & PTE_P)
+    &&  (*pte & PTE_U)
+    &&  (*pte & PTE_W)) {
+        // copy-on-write
+        walk_pgtbl(curproc->pgtbl, vaddr, &pte, 0);
+        if (PA2PGINFO(*pte)->u.ref == 1) {
+            // just add the write flag
+            *pte |= PTE_W;
+        } else {
+            PA2PGINFO(*pte)->u.ref--;
+            struct PageInfo *page = alloc_page(0);
+            char *src = PAGEKADDR(*pte), *dst = PAGEKADDR(page->paddr);
+            for (int i = 0; i < PGSIZE; ++i) dst[i] = src[i];
+            *pte = page->paddr | PTE_P | PTE_U | PTE_W;
+        }
+        lcr3(rcr3());
+        return;
+    }
     printk("cr2: %p\n", rcr2());
+    printk("errno: %x\n", errno);
+    printk("curproc: proc[%d]\n", curproc - procs);
     kill_proc(curproc);
     sched();
 }

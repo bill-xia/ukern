@@ -5,10 +5,6 @@
 #include "printk.h"
 #include "sched.h"
 
-extern uint64_t *k_pml4;
-extern uint64_t nfreepages;
-extern char *end_kmem;
-
 void
 init_pcb(void)
 {
@@ -24,6 +20,8 @@ alloc_proc()
             // TODO: add lock here when multi-core is up
             struct PageInfo *page = alloc_page(FLAG_ZERO);
             procs[i].pgtbl = page->paddr;
+            page = alloc_page(FLAG_ZERO);
+            procs[i].p_pgtbl = page->paddr;
             procs[i].state = PENDING;
             procs[i].pid = i + 1;
             return procs + i;
@@ -51,7 +49,7 @@ create_proc(char *img)
     // stack
     uint64_t *pte;
     if (ret = walk_pgtbl((void *)proc->pgtbl, USTACK - PGSIZE, &pte, 1)) {
-        free_pgtbl((void *)proc->pgtbl);
+        free_pgtbl((void *)proc->pgtbl, FREE_PGTBL_DECREF);
         return ret;
     }
     *pte |= PTE_U | PTE_W;
@@ -104,7 +102,8 @@ kill_proc(struct Proc *proc)
 {
     // printk("nfreepages before kill_proc(): %d\n", nfreepages);
     proc->state = PENDING;
-    free_pgtbl((void *)P2K(proc->pgtbl));
+    free_pgtbl((void *)P2K(proc->pgtbl), FREE_PGTBL_DECREF);
+    free_pgtbl((void *)P2K(proc->p_pgtbl), 0);
     proc->state = CLOSE;
     // printk("nfreepages after kill_proc(): %d\n", nfreepages);
 }
@@ -133,7 +132,7 @@ loadimg(char *img, struct Proc *proc)
             uint64_t *pte;
             int ret = walk_pgtbl((void *)proc->pgtbl, PAGEADDR(vaddr), &pte, 1);
             if (ret) {
-                free_pgtbl((void *)proc->pgtbl);
+                free_pgtbl((void *)proc->pgtbl, FREE_PGTBL_DECREF);
                 return -E_NOMEM;
             }
             *pte |= PTE_U | PTE_W;

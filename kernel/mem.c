@@ -222,6 +222,7 @@ free_page(struct PageInfo *page)
 int
 walk_pgtbl(uint64_t *pgtbl, uint64_t vaddr, uint64_t **pte, int create)
 {
+    pgtbl = (uint64_t *)PAGEKADDR((uint64_t)pgtbl);
     struct PageInfo *alloced[4] = {NULL,NULL,NULL,NULL};
     vaddr = PAGEADDR(vaddr);
 
@@ -268,7 +269,7 @@ walk_pgtbl(uint64_t *pgtbl, uint64_t vaddr, uint64_t **pte, int create)
         // no permission given: let the caller do if needed
         pt[pti] = alloced[3]->paddr | PTE_P;
     }
-    *pte = pt + pti;
+    *pte = P2K(pt + pti);
     return 0;
 
 no_mem:
@@ -289,10 +290,10 @@ void memcpy(char *dst, char *src, uint64_t n_bytes) {
 // Also frees the page at pgtbl.
 //
 void
-free_pgtbl(uint64_t *pgtbl)
+free_pgtbl(uint64_t *pgtbl, uint64_t flags)
 {
     pgtbl = P2K(pgtbl);
-    for (int pml4i = 0; pml4i < 256; ++pml4i) { // only free pages in user space!
+    for (int pml4i = 0; pml4i < 256; ++pml4i) { // never touches kernel space
         if (!(pgtbl[pml4i] & PML4E_P))
             continue;
         uint64_t *pdpt = (void *)PAGEKADDR(pgtbl[pml4i]);
@@ -308,7 +309,8 @@ free_pgtbl(uint64_t *pgtbl)
                     if (!(pt[pti] & PTE_P))
                         continue;
                     uint64_t *paddr = (void *)PAGEKADDR(pt[pti]);
-                    free_page(KA2PGINFO(paddr));
+                    if (flags & FREE_PGTBL_DECREF)
+                        free_page(KA2PGINFO(paddr));
                 }
                 free_page(KA2PGINFO(pt));
             }
@@ -319,13 +321,18 @@ free_pgtbl(uint64_t *pgtbl)
     free_page(KA2PGINFO(pgtbl));
 }
 
-void
-copy_uvm(uint64_t *dst, uint64_t *src, uint64_t flags)
+/************************************************
+ *                 used by fork                 *
+ ************************************************/
+
+int
+copy_pgtbl(uint64_t *dst, uint64_t *src, uint64_t flags)
 {
     src = P2K(src);
     dst = P2K(dst);
     struct PageInfo *pg;
-    for (int pml4i = 0; pml4i < 256; ++pml4i) { // only copy pages in user space!
+    // copy user space
+    for (int pml4i = 0; pml4i < 256; ++pml4i) {
         if (!(src[pml4i] & PML4E_P))
             continue;
         pg = alloc_page(FLAG_ZERO);
@@ -349,13 +356,46 @@ copy_uvm(uint64_t *dst, uint64_t *src, uint64_t flags)
                 for (int pti = 0; pti < 512; ++pti) {
                     if (!(pt_s[pti] & PTE_P))
                         continue;
-                    pg = alloc_page(FLAG_ZERO);
-                    pt_d[pti] = pg->paddr | PDPTE_P | PDPTE_W | PDPTE_U;
-                    char *srcpage = (char *)PAGEKADDR(pt_s[pti]),
-                         *dstpage = (char *)PAGEKADDR(pt_d[pti]);
-                    for (int i = 0; i < PGSIZE; ++i) {
-                        dstpage[i] = srcpage[i];
-                    }
+                    pt_d[pti] = pt_s[pti];
+                    if (flags & CPY_PGTBL_CNTREF)
+                        PA2PGINFO(pt_s[pti])->u.ref++;
+                }
+            }
+        }
+    }
+    // copy kernel space
+    if (flags & CPY_PGTBL_WITHKSPACE) {
+        for (int i = 256; i < 512; ++i) {
+            dst[i] = src[i];
+        }
+    }
+    return 0;
+}
+
+void
+pgtbl_clearflags(uint64_t *pgtbl, uint64_t flags)
+{
+    pgtbl = (void *)PAGEKADDR((uint64_t)pgtbl);
+    flags &= PTE_FLAGS;
+    flags = ~flags;
+    printk("flags: %x", flags);
+    for (int pml4i = 0; pml4i < 256; ++pml4i) {
+        // only operate in user space
+        if (!(pgtbl[pml4i] & PML4E_P))
+            continue;
+        uint64_t *pdpt = (void *)PAGEKADDR(pgtbl[pml4i]);
+        for (int pdpti = 0; pdpti < 512; ++pdpti) {
+            if (!(pdpt[pdpti] & PDPTE_P))
+                continue;
+            uint64_t *pd = (void *)PAGEKADDR(pdpt[pdpti]);
+            for (int pdi = 0; pdi < 512; ++pdi) {
+                if (!(pd[pdi] & PDE_P))
+                    continue;
+                uint64_t *pt = (void *)PAGEKADDR(pd[pdi]);
+                for (int pti = 0; pti < 512; ++pti) {
+                    if (!(pt[pti] & PTE_P))
+                        continue;
+                    pt[pti] &= flags;
                 }
             }
         }

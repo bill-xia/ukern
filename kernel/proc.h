@@ -24,7 +24,8 @@ struct ProcContext {
 } __attribute__((aligned(16)));
 
 struct Proc {
-    uint64_t pgtbl;
+    uint64_t pgtbl,
+             p_pgtbl; // parent pagetable at fork() time
     uint64_t pid;
     enum proc_state state;
     struct ProcContext context;

@@ -3,8 +3,6 @@
 #include "intr.h"
 #include "sched.h"
 
-char *end_kmem;
-
 void init()
 {
     end_kmem = end;

@@ -18,10 +18,15 @@ void
 sys_fork(struct ProcContext *tf)
 {
     struct Proc *nproc = alloc_proc();
-    copy_uvm((void *)nproc->pgtbl, (void *)curproc->pgtbl, PTE_U);
-    for (int i = 256; i < 512; ++i) {
-        ((uint64_t *)P2K(nproc->pgtbl))[i] = ((uint64_t *)P2K(curproc->pgtbl))[i];
-    }
+    copy_pgtbl((void *)nproc->pgtbl, (void *)curproc->pgtbl, CPY_PGTBL_CNTREF | CPY_PGTBL_WITHKSPACE);
+    // save the "real" page table
+    copy_pgtbl((void *)nproc->p_pgtbl, (void *)curproc->pgtbl, 0);
+    free_pgtbl(curproc->p_pgtbl, 0);
+    curproc->p_pgtbl = alloc_page(FLAG_ZERO)->paddr;
+    copy_pgtbl((void *)curproc->p_pgtbl, (void *)curproc->pgtbl, 0);
+    // clear write flag at "write-on-copy" pages
+    pgtbl_clearflags((void *)nproc->pgtbl, PTE_W);
+    pgtbl_clearflags((void *)curproc->pgtbl, PTE_W);
     // copy context
     nproc->context = *tf;
     // set return value

@@ -31,6 +31,7 @@ typedef uint64_t pte_t;
 #define PTE_P 0x1
 #define PTE_W 0x2
 #define PTE_U 0x4
+#define PTE_FLAGS 0x7
 
 #define PML4_OFFSET 39
 #define PDPT_OFFSET 30
@@ -80,6 +81,11 @@ struct MemInfo {
 
 #define FLAG_ZERO 0x1
 
+#define FREE_PGTBL_DECREF 0x1
+
+#define CPY_PGTBL_CNTREF 0x1
+#define CPY_PGTBL_WITHKSPACE 0x2
+
 /*
 
 ukern uses 4-level paging. The addresses above 0xFF0000000000 is saved for
@@ -107,14 +113,19 @@ BASE     ---------------------------------------- 0x000000000000
 void init_kpageinfo();
 void init_kpgtbl();
 void init_freepages();
-int walk_pgtbl(uint64_t *, uint64_t, uint64_t **, int);
+int walk_pgtbl(uint64_t *pgtbl, uint64_t vaddr, uint64_t **pte, int create);
 struct PageInfo * alloc_page(uint64_t);
 void memcpy(char *dst, char *src, uint64_t n_bytes);
 void init_gdt(void);
 void copy_uvm(uint64_t *dst, uint64_t *src, uint64_t flags);
-void free_pgtbl(uint64_t *pgtbl);
+void free_pgtbl(uint64_t *pgtbl, uint64_t flags);
+int copy_pgtbl(uint64_t *dst, uint64_t *src, uint64_t flags);
+void pgtbl_clearflags(uint64_t *pgtbl, uint64_t flags);
 
 extern char end[];
+extern uint64_t *k_pml4, nfreepages;
+extern char *end_kmem;
+extern struct PageInfo *k_pageinfo;
 
 struct SegDesc {
     uint16_t limit1;
