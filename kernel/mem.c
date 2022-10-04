@@ -285,6 +285,8 @@ void memcpy(char *dst, char *src, uint64_t n_bytes) {
 
 //
 // pgtbl should be above KERNEL_BASE
+// Free the pagetable with pml4 table at `pgtbl`.
+// Also frees the page at pgtbl.
 //
 void
 free_pgtbl(uint64_t *pgtbl)

@@ -39,47 +39,28 @@ uint64_t min(uint64_t a, uint64_t b) {
 int
 create_proc(char *img)
 {
+    int ret = 0;
     // printk("nfreepages before create_proc(): %d\n", nfreepages);
     struct Proc *proc = alloc_proc();
     if (proc == NULL) {
-        printk("no pcb available\n");
-        while (1);
+        return -E_NOPCB;
     }
-    struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
-    if (*(uint32_t *)ehdr->e_ident != ELF_MAGIC) {
-        printk("not elf64 file\n");
-        while (1);
+    if (ret = loadimg(img, proc)) {
+        return ret;
     }
-    struct Elf64_Phdr *phdr = (struct Elf64_Phdr *)(img + ehdr->e_phoff);
-    for (int i = 0; i < ehdr->e_phnum; ++i, ++phdr) {
-        char *src = img + phdr->p_offset, 
-             *src_fileend = src + phdr->p_filesz,
-             *src_memend = src + phdr->p_memsz;
-        uint64_t vaddr = phdr->p_vaddr;
-        while (src < src_memend) {
-            uint64_t *pte;
-            int ret = walk_pgtbl((void *)proc->pgtbl, PAGEADDR(vaddr), &pte, 1);
-            if (ret) {
-                printk("no mem\n");
-                while (1);
-            }
-            *pte |= PTE_U | PTE_W;
-            if (src <= src_fileend) {
-                uint64_t siz = min(PGSIZE - (vaddr & (PGSIZE - 1)), (src_fileend - src));
-                memcpy((void *)(PAGEADDR(*pte) + (vaddr & (PGSIZE - 1))), src, siz);
-            }
-            src = (char *)PAGEADDR((uint64_t)src + PGSIZE);
-            vaddr = PAGEADDR(vaddr + PGSIZE);
-        }
-    }
-    uint64_t *pte;
     // stack
-    walk_pgtbl((void *)proc->pgtbl, USTACK - PGSIZE, &pte, 1);
+    uint64_t *pte;
+    if (ret = walk_pgtbl((void *)proc->pgtbl, USTACK - PGSIZE, &pte, 1)) {
+        free_pgtbl((void *)proc->pgtbl);
+        return ret;
+    }
     *pte |= PTE_U | PTE_W;
     // mapping kernel space
     for (int i = 256; i < 512; ++i) {
         ((uint64_t *)(proc->pgtbl))[i] = k_pml4[i];
     }
+    // set up runtime enviroment
+    struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
     proc->context.rip = ehdr->e_entry;
     proc->context.cs = USER_CODE_SEL | 3;
     proc->context.rsp = USTACK;
@@ -126,4 +107,43 @@ kill_proc(struct Proc *proc)
     free_pgtbl((void *)P2K(proc->pgtbl));
     proc->state = CLOSE;
     // printk("nfreepages after kill_proc(): %d\n", nfreepages);
+}
+
+//
+// Load program image pointed by `ehdr`
+// into `proc`'s memory space.
+// Returns 0 on success,
+//        -ENOMEM when memory not enough,
+//        -EFORMAT when img is not ELF64 file.
+//
+int
+loadimg(char *img, struct Proc *proc)
+{
+    struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
+    if (*(uint32_t *)ehdr->e_ident != ELF_MAGIC) {
+        return -E_FORMAT;
+    }
+    struct Elf64_Phdr *phdr = (struct Elf64_Phdr *)(img + ehdr->e_phoff);
+    for (int i = 0; i < ehdr->e_phnum; ++i, ++phdr) {
+        char *src = img + phdr->p_offset, 
+             *src_fileend = src + phdr->p_filesz,
+             *src_memend = src + phdr->p_memsz;
+        uint64_t vaddr = phdr->p_vaddr;
+        while (src < src_memend) {
+            uint64_t *pte;
+            int ret = walk_pgtbl((void *)proc->pgtbl, PAGEADDR(vaddr), &pte, 1);
+            if (ret) {
+                free_pgtbl((void *)proc->pgtbl);
+                return -E_NOMEM;
+            }
+            *pte |= PTE_U | PTE_W;
+            if (src <= src_fileend) {
+                uint64_t siz = min(PGSIZE - (vaddr & (PGSIZE - 1)), (src_fileend - src));
+                memcpy((void *)(PAGEADDR(*pte) + (vaddr & (PGSIZE - 1))), src, siz);
+            }
+            src = (char *)PAGEADDR((uint64_t)src + PGSIZE);
+            vaddr = PAGEADDR(vaddr + PGSIZE);
+        }
+    }
+    return 0;
 }

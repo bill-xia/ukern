@@ -15,4 +15,7 @@ typedef uint32_t size_t;
 
 #define E_NOMEM 1
 
+#define E_FORMAT 2 // for loading program image
+#define E_NOPCB 3  // for creating proc
+
 #endif
