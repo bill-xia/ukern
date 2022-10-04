@@ -11,3 +11,6 @@ kernel/intr_entry
 kernel/kernel
 
 user/divzero
+user/fork
+user/hello
+user/sort
