@@ -2,10 +2,12 @@
 #include "proc.h"
 #include "intr.h"
 #include "sched.h"
+#include "console.h"
 
-void init()
+void init(void)
 {
     end_kmem = end;
+    init_console();
     init_gdt();
     init_kpageinfo(); // after the kernel image, is the k_pageinfo array
     init_kpgtbl(); // then comes kernel pagetable, which maps the whole physical memory space

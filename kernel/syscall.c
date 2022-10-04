@@ -6,10 +6,8 @@
 #include "x86.h"
 #include "sched.h"
 
-extern uint64_t *k_pml4;
-
 void
-sys_hello()
+sys_hello(void)
 {
     printk("\"hello, world!\" from user space!\n");
 }
@@ -18,15 +16,15 @@ void
 sys_fork(struct ProcContext *tf)
 {
     struct Proc *nproc = alloc_proc();
-    copy_pgtbl((void *)nproc->pgtbl, (void *)curproc->pgtbl, CPY_PGTBL_CNTREF | CPY_PGTBL_WITHKSPACE);
+    copy_pgtbl(nproc->pgtbl, curproc->pgtbl, CPY_PGTBL_CNTREF | CPY_PGTBL_WITHKSPACE);
     // save the "real" page table
-    copy_pgtbl((void *)nproc->p_pgtbl, (void *)curproc->pgtbl, 0);
-    free_pgtbl((void *)curproc->p_pgtbl, 0);
-    curproc->p_pgtbl = alloc_page(FLAG_ZERO)->paddr;
-    copy_pgtbl((void *)curproc->p_pgtbl, (void *)curproc->pgtbl, 0);
+    copy_pgtbl(nproc->p_pgtbl, curproc->pgtbl, 0);
+    free_pgtbl(curproc->p_pgtbl, 0);
+    curproc->p_pgtbl = (pgtbl_t)alloc_page(FLAG_ZERO)->paddr;
+    copy_pgtbl(curproc->p_pgtbl, curproc->pgtbl, 0);
     // clear write flag at "write-on-copy" pages
-    pgtbl_clearflags((void *)nproc->pgtbl, PTE_W);
-    pgtbl_clearflags((void *)curproc->pgtbl, PTE_W);
+    pgtbl_clearflags(nproc->pgtbl, PTE_W);
+    pgtbl_clearflags(curproc->pgtbl, PTE_W);
     // copy context
     nproc->context = *tf;
     // set return value
@@ -34,6 +32,7 @@ sys_fork(struct ProcContext *tf)
     nproc->context.rax = 0;
     // set state
     nproc->state = READY;
+    lcr3(rcr3());
 }
 
 void

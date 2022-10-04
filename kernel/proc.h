@@ -24,19 +24,19 @@ struct ProcContext {
 } __attribute__((aligned(16)));
 
 struct Proc {
-    uint64_t pgtbl,
-             p_pgtbl; // parent pagetable at fork() time
+    pgtbl_t pgtbl,
+            p_pgtbl; // parent pagetable at fork() time
     uint64_t pid;
     enum proc_state state;
     struct ProcContext context;
 } *procs, *curproc;
 
 void init_pcb(void);
-int create_proc(char *);
+int create_proc(char *img);
 void run_proc(struct Proc *proc);
 void kill_proc(struct Proc *proc);
 struct Proc *alloc_proc(void);
-int loadimg(char *, struct Proc *);
+int load_img(char *img, struct Proc *proc);
 
 #define IMAGE_SYMBOL(x) _binary_user_ ## x ## _start
 #define CREATE_PROC(x) do { \

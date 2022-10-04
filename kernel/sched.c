@@ -3,7 +3,7 @@
 #include "printk.h"
 
 void
-sched() // never returns
+sched(void) // never returns
 {
     while (1) {
         for (int i = 0; i < NPROCS; ++i) {

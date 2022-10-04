@@ -7,11 +7,6 @@
 
 #include "types.h"
 
-typedef uint64_t pml4e_t;
-typedef uint64_t pdpte_t;
-typedef uint64_t pde_t;
-typedef uint64_t pte_t;
-
 #define PGSIZE 4096
 #define PML4_LEN 512
 #define PDPT_LEN 512
@@ -108,24 +103,8 @@ EXT_16MB ---------------------------------------- 0x000001000000
 EXT_1MB  ---------------------------------------- 0x000000100000
         We don't use these addresses after kernel is ready.
 BASE     ---------------------------------------- 0x000000000000
+
 */
-
-void init_kpageinfo();
-void init_kpgtbl();
-void init_freepages();
-int walk_pgtbl(uint64_t *pgtbl, uint64_t vaddr, uint64_t **pte, int create);
-struct PageInfo * alloc_page(uint64_t);
-void memcpy(char *dst, char *src, uint64_t n_bytes);
-void init_gdt(void);
-void copy_uvm(uint64_t *dst, uint64_t *src, uint64_t flags);
-void free_pgtbl(uint64_t *pgtbl, uint64_t flags);
-int copy_pgtbl(uint64_t *dst, uint64_t *src, uint64_t flags);
-void pgtbl_clearflags(uint64_t *pgtbl, uint64_t flags);
-
-extern char end[];
-extern uint64_t *k_pml4, nfreepages;
-extern char *end_kmem;
-extern struct PageInfo *k_pageinfo;
 
 struct SegDesc {
     uint16_t limit1;
@@ -187,5 +166,22 @@ struct TSSDesc {
     uint32_t base4;
     uint32_t res;
 } __attribute__((packed));
+
+extern char end[];
+extern pgtbl_t k_pml4;
+extern uint64_t nfreepages;
+extern char *end_kmem;
+extern struct PageInfo *k_pageinfo;
+
+void init_kpageinfo(void);
+void init_kpgtbl(void);
+void init_freepages(void);
+int walk_pgtbl(pgtbl_t pgtbl, uint64_t vaddr, pte_t **pte, int create);
+struct PageInfo *alloc_page(uint64_t flags);
+void memcpy(char *dst, char *src, uint64_t n_bytes);
+void init_gdt(void);
+void free_pgtbl(pgtbl_t pgtbl, uint64_t flags);
+int copy_pgtbl(pgtbl_t dst, pgtbl_t src, uint64_t flags);
+void pgtbl_clearflags(pgtbl_t pgtbl, uint64_t flags);
 
 #endif

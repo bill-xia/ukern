@@ -11,6 +11,16 @@ typedef unsigned long uint64_t;
 typedef long int64_t;
 typedef uint32_t size_t;
 
+typedef uint64_t pml4e_t;
+typedef uint64_t pdpte_t;
+typedef uint64_t pde_t;
+typedef uint64_t pte_t;
+
+typedef uint64_t* pgtbl_t;
+typedef uint64_t* pdpt_t;
+typedef uint64_t* pd_t;
+typedef uint64_t* pt_t;
+
 #define NULL 0
 
 #define E_NOMEM 1

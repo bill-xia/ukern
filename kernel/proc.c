@@ -13,15 +13,15 @@ init_pcb(void)
 }
 
 struct Proc *
-alloc_proc()
+alloc_proc(void)
 {
     for (int i = 0; i < NPROCS; ++i) {
         if (procs[i].state == CLOSE) {
             // TODO: add lock here when multi-core is up
             struct PageInfo *page = alloc_page(FLAG_ZERO);
-            procs[i].pgtbl = page->paddr;
+            procs[i].pgtbl = (pgtbl_t)page->paddr;
             page = alloc_page(FLAG_ZERO);
-            procs[i].p_pgtbl = page->paddr;
+            procs[i].p_pgtbl = (pgtbl_t)page->paddr;
             procs[i].state = PENDING;
             procs[i].pid = i + 1;
             return procs + i;
@@ -43,19 +43,19 @@ create_proc(char *img)
     if (proc == NULL) {
         return -E_NOPCB;
     }
-    if (ret = loadimg(img, proc)) {
+    if (ret = load_img(img, proc)) {
         return ret;
     }
     // stack
-    uint64_t *pte;
-    if (ret = walk_pgtbl((void *)proc->pgtbl, USTACK - PGSIZE, &pte, 1)) {
-        free_pgtbl((void *)proc->pgtbl, FREE_PGTBL_DECREF);
+    pte_t *pte;
+    if (ret = walk_pgtbl(proc->pgtbl, USTACK - PGSIZE, &pte, 1)) {
+        free_pgtbl(proc->pgtbl, FREE_PGTBL_DECREF);
         return ret;
     }
     *pte |= PTE_U | PTE_W;
     // mapping kernel space
     for (int i = 256; i < 512; ++i) {
-        ((uint64_t *)(proc->pgtbl))[i] = k_pml4[i];
+        proc->pgtbl[i] = k_pml4[i];
     }
     // set up runtime enviroment
     struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
@@ -73,7 +73,7 @@ run_proc(struct Proc *proc)
 {
     curproc = proc;
     struct ProcContext *context = &proc->context;
-    lcr3(proc->pgtbl);
+    lcr3((uint64_t)proc->pgtbl);
     asm volatile (
         "mov %0, %%rsp\n"
         "popq %%rax\n"
@@ -102,8 +102,8 @@ kill_proc(struct Proc *proc)
 {
     // printk("nfreepages before kill_proc(): %d\n", nfreepages);
     proc->state = PENDING;
-    free_pgtbl((void *)P2K(proc->pgtbl), FREE_PGTBL_DECREF);
-    free_pgtbl((void *)P2K(proc->p_pgtbl), 0);
+    free_pgtbl((pgtbl_t)P2K(proc->pgtbl), FREE_PGTBL_DECREF);
+    free_pgtbl((pgtbl_t)P2K(proc->p_pgtbl), 0);
     proc->state = CLOSE;
     // printk("nfreepages after kill_proc(): %d\n", nfreepages);
 }
@@ -116,7 +116,7 @@ kill_proc(struct Proc *proc)
 //        -EFORMAT when img is not ELF64 file.
 //
 int
-loadimg(char *img, struct Proc *proc)
+load_img(char *img, struct Proc *proc)
 {
     struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
     if (*(uint32_t *)ehdr->e_ident != ELF_MAGIC) {
@@ -129,16 +129,16 @@ loadimg(char *img, struct Proc *proc)
              *src_memend = src + phdr->p_memsz;
         uint64_t vaddr = phdr->p_vaddr;
         while (src < src_memend) {
-            uint64_t *pte;
-            int ret = walk_pgtbl((void *)proc->pgtbl, PAGEADDR(vaddr), &pte, 1);
+            pte_t *pte;
+            int ret = walk_pgtbl(proc->pgtbl, PAGEADDR(vaddr), &pte, 1);
             if (ret) {
-                free_pgtbl((void *)proc->pgtbl, FREE_PGTBL_DECREF);
+                free_pgtbl(proc->pgtbl, FREE_PGTBL_DECREF);
                 return -E_NOMEM;
             }
             *pte |= PTE_U | PTE_W;
             if (src <= src_fileend) {
                 uint64_t siz = min(PGSIZE - (vaddr & (PGSIZE - 1)), (src_fileend - src));
-                memcpy((void *)(PAGEADDR(*pte) + (vaddr & (PGSIZE - 1))), src, siz);
+                memcpy((char *)(PAGEADDR(*pte) + (vaddr & (PGSIZE - 1))), src, siz);
             }
             src = (char *)PAGEADDR((uint64_t)src + PGSIZE);
             vaddr = PAGEADDR(vaddr + PGSIZE);

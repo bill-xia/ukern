@@ -39,10 +39,9 @@ start:
     mov es, ax
     mov fs, ax
 
-; clear screen
-    mov ax, 0600h
-    mov cx, 0000h
-    mov dx, 184fh
+; disable cursor
+    mov ax, 0100h
+    mov cx, 3F00h
     int 10h
 
 ; get memory info
