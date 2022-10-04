@@ -21,7 +21,7 @@ sys_fork(struct ProcContext *tf)
     copy_pgtbl((void *)nproc->pgtbl, (void *)curproc->pgtbl, CPY_PGTBL_CNTREF | CPY_PGTBL_WITHKSPACE);
     // save the "real" page table
     copy_pgtbl((void *)nproc->p_pgtbl, (void *)curproc->pgtbl, 0);
-    free_pgtbl(curproc->p_pgtbl, 0);
+    free_pgtbl((void *)curproc->p_pgtbl, 0);
     curproc->p_pgtbl = alloc_page(FLAG_ZERO)->paddr;
     copy_pgtbl((void *)curproc->p_pgtbl, (void *)curproc->pgtbl, 0);
     // clear write flag at "write-on-copy" pages

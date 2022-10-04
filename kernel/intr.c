@@ -153,19 +153,19 @@ void page_fault_handler(struct ProcContext *tf, uint64_t errno) {
     // check copy-on-write case
     uint64_t vaddr = rcr2();
     uint64_t *pte;
-    walk_pgtbl(curproc->p_pgtbl, vaddr, &pte, 0);
+    walk_pgtbl((void *)curproc->p_pgtbl, vaddr, &pte, 0);
     if ((*pte & PTE_P)
     &&  (*pte & PTE_U)
     &&  (*pte & PTE_W)) {
         // copy-on-write
-        walk_pgtbl(curproc->pgtbl, vaddr, &pte, 0);
+        walk_pgtbl((void *)curproc->pgtbl, vaddr, &pte, 0);
         if (PA2PGINFO(*pte)->u.ref == 1) {
             // just add the write flag
             *pte |= PTE_W;
         } else {
             PA2PGINFO(*pte)->u.ref--;
             struct PageInfo *page = alloc_page(0);
-            char *src = PAGEKADDR(*pte), *dst = PAGEKADDR(page->paddr);
+            char *src = (void *)PAGEKADDR(*pte), *dst = (void *)PAGEKADDR(page->paddr);
             for (int i = 0; i < PGSIZE; ++i) dst[i] = src[i];
             *pte = page->paddr | PTE_P | PTE_U | PTE_W;
         }

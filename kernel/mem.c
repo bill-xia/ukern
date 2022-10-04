@@ -269,7 +269,7 @@ walk_pgtbl(uint64_t *pgtbl, uint64_t vaddr, uint64_t **pte, int create)
         // no permission given: let the caller do if needed
         pt[pti] = alloced[3]->paddr | PTE_P;
     }
-    *pte = P2K(pt + pti);
+    *pte = (uint64_t *)P2K(pt + pti);
     return 0;
 
 no_mem:
@@ -292,7 +292,7 @@ void memcpy(char *dst, char *src, uint64_t n_bytes) {
 void
 free_pgtbl(uint64_t *pgtbl, uint64_t flags)
 {
-    pgtbl = P2K(pgtbl);
+    pgtbl = (uint64_t *)P2K(pgtbl);
     for (int pml4i = 0; pml4i < 256; ++pml4i) { // never touches kernel space
         if (!(pgtbl[pml4i] & PML4E_P))
             continue;
@@ -328,8 +328,8 @@ free_pgtbl(uint64_t *pgtbl, uint64_t flags)
 int
 copy_pgtbl(uint64_t *dst, uint64_t *src, uint64_t flags)
 {
-    src = P2K(src);
-    dst = P2K(dst);
+    src = (uint64_t *)P2K(src);
+    dst = (uint64_t *)P2K(dst);
     struct PageInfo *pg;
     // copy user space
     for (int pml4i = 0; pml4i < 256; ++pml4i) {
@@ -377,8 +377,7 @@ pgtbl_clearflags(uint64_t *pgtbl, uint64_t flags)
 {
     pgtbl = (void *)PAGEKADDR((uint64_t)pgtbl);
     flags &= PTE_FLAGS;
-    flags = ~flags;
-    printk("flags: %x", flags);
+    uint64_t mask = ~flags;
     for (int pml4i = 0; pml4i < 256; ++pml4i) {
         // only operate in user space
         if (!(pgtbl[pml4i] & PML4E_P))
@@ -395,7 +394,7 @@ pgtbl_clearflags(uint64_t *pgtbl, uint64_t flags)
                 for (int pti = 0; pti < 512; ++pti) {
                     if (!(pt[pti] & PTE_P))
                         continue;
-                    pt[pti] &= flags;
+                    pt[pti] &= mask;
                 }
             }
         }
