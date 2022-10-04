@@ -124,6 +124,8 @@ load_img(char *img, struct Proc *proc)
     }
     struct Elf64_Phdr *phdr = (struct Elf64_Phdr *)(img + ehdr->e_phoff);
     for (int i = 0; i < ehdr->e_phnum; ++i, ++phdr) {
+        if (phdr->p_type != PT_LOAD)
+            continue;
         char *src = img + phdr->p_offset, 
              *src_fileend = src + phdr->p_filesz,
              *src_memend = src + phdr->p_memsz;
