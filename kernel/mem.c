@@ -141,7 +141,7 @@ init_kpgtbl(void)
         k_pml4[i + 256] = k_pml4[i];
     }
     lcr3(K2P(k_pml4));
-    end_kmem = (char *)(k_pdpt + n_pdpt);
+    end_kmem = (char *)(kpgtbl_end);
 }
 
 // initiating free page list:
