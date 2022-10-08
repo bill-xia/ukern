@@ -1,14 +1,14 @@
 USERINC := -Iinclude -Ilib
 
-USERLIBS := lib/printf.o \
-	lib/usyscall.o \
-	lib/printfmt.o \
+USERLIBS := $(OBJ_DIR)/user/lib/printf.o \
+	$(OBJ_DIR)/user/lib/usyscall.o \
+	$(OBJ_DIR)/user/lib/printfmt.o \
 
-user/%: user/%.o $(USERLIBS)
+$(OBJ_DIR)/user/%: $(OBJ_DIR)/user/%.o $(USERLIBS)
 	ld -T user/user.ld $^ -o $@
 
-lib/%.o: lib/%.c
+$(OBJ_DIR)/user/lib/%.o: lib/%.c
 	$(CC) $(CFLAGS) $(USERINC) $< -c -o $@
 
-user/%.o: user/%.c
+$(OBJ_DIR)/user/%.o: user/%.c
 	$(CC) $(CFLAGS) $(USERINC) $< -c -o $@

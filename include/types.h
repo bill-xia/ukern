@@ -23,9 +23,4 @@ typedef uint64_t* pt_t;
 
 #define NULL 0
 
-#define E_NOMEM 1
-
-#define E_FORMAT 2 // for loading program image
-#define E_NOPCB 3  // for creating proc
-
 #endif

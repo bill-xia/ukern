@@ -2,6 +2,10 @@
 #include "types.h"
 #include "stdarg.h"
 
+#ifdef KERNEL
+    #include "errno.h"
+#endif
+
 void
 printint(void (*putch)(char c), uint64_t n, int base, int width, char padc)
 {
@@ -56,9 +60,21 @@ printfmt(void (*putch)(char), const char *fmt, ...)
 }
 
 void
+printstr(void (*putch)(char), const char *str)
+{
+    while (*str != '\0') {
+        putch(*str);
+        str++;
+    }
+}
+
+#define FMT_LONG 0x1
+
+void
 vprintfmt(void (*putch)(char), const char *fmt, va_list ap)
 {
     uint64_t num;
+    int64_t sgn_num;
     int i = 0;
     while (fmt[i] != '\0') {
         if (fmt[i] == '%') {
@@ -66,22 +82,42 @@ vprintfmt(void (*putch)(char), const char *fmt, va_list ap)
             uint64_t flags = 0;
             int width = -1, precision = -1;
             char padc = ' ';
+        movein:
             switch (fmt[i++]) {
+            case 'l':
+                flags |= FMT_LONG;
+                goto movein;
+                break;
             case 'd':
-                num = va_arg(ap, int64_t);
-                if (width == -1) width = get_precision(num, 10, 1);
-                if (num < 0) {
+                if (flags & FMT_LONG)
+                    sgn_num = va_arg(ap, int64_t);
+                else
+                    sgn_num = va_arg(ap, int32_t);
+                if (width == -1) width = get_precision(sgn_num, 10, 1);
+                if (sgn_num < 0) {
                     putch('-');
                     width--;
+                    sgn_num = -sgn_num;
                 }
+                printint(putch, sgn_num, 10, width, padc);
+                break;
+            case 'u':
+                if (flags & FMT_LONG)
+                    num = va_arg(ap, uint64_t);
+                else
+                    num = va_arg(ap, uint32_t);
+                if (width == -1) width = get_precision(num, 10, 0);
                 printint(putch, num, 10, width, padc);
                 break;
             case 'x':
-                num = va_arg(ap, uint64_t);
+                if (flags & FMT_LONG)
+                    num = va_arg(ap, uint64_t);
+                else
+                    num = va_arg(ap, uint32_t);
                 if (width == -1) width = get_precision(num, 16, 0);
                 printint(putch, num, 16, width, padc);
                 break;
-            case 'p': ;
+            case 'p':
                 num = va_arg(ap, uint64_t);
                 if (width == -1) width = get_precision(num, 16, 0);
                 putch('0');
@@ -91,6 +127,14 @@ vprintfmt(void (*putch)(char), const char *fmt, va_list ap)
             case '%':
                 putch('%');
                 break;
+            #ifdef KERNEL
+                case 'e':
+                    num = -(va_arg(ap, int32_t));
+                    if (num <= 0 || num >= E_MAX)
+                        num = 0; // E_INVALID
+                    printstr(putch, error_msg[num]);
+                    break;
+            #endif
             default:
                 putch('%');
                 putch(fmt[i - 1]);
@@ -102,4 +146,5 @@ vprintfmt(void (*putch)(char), const char *fmt, va_list ap)
         }
     }
 	va_end(ap);
+    return;
 }

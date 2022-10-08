@@ -1,16 +1,4 @@
 image
-*.o
 .vscode/
 *.pdf
-
-boot/boot.out
-boot/boot
-
-kernel/entry
-kernel/intr_entry
-kernel/kernel
-
-user/divzero
-user/fork
-user/hello
-user/sort
+obj/

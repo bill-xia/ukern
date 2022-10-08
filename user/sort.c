@@ -14,8 +14,8 @@ int main()
             }
         }
     }
-    for (int i = 0; i < 10; ++i) {
-        printf("%d ", a[i]);
+    for (int i = 0; i < 10; i += 2) {
+        printf("%d %d ", 1ll * a[i], 1ll * a[i + 1]);
     }
     printf("\n");
     sys_exit();

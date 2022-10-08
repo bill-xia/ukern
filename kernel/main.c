@@ -3,6 +3,7 @@
 #include "intr.h"
 #include "proc.h"
 #include "sched.h"
+#include "errno.h"
 
 int main()
 {

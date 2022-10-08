@@ -5,8 +5,7 @@ SECTIONS
   . = 0x7c00;
   .text : { *(.text) }
   .data : { *(.data) }
-  .bss : { *(.bss) }
-  /DISCARD/ : { *(.comment) *(.eh_frame) *(.note.gnu.property) }
+  /DISCARD/ : { *(.comment) *(.eh_frame) *(.note.gnu.property) *(.bss)}
   . = 0x7dfe;
-  .mbrsign : { boot/boot.out(.mbrsign)}
+  .mbrsign : { obj/boot/boot.out(.mbrsign)}
 }

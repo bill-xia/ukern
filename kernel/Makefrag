@@ -1,13 +1,14 @@
-KERNEL_OBJS := kernel/main.o \
-	kernel/mem.o \
-	kernel/console.o \
-	kernel/printk.o \
-	kernel/init.o \
-	kernel/intr.o \
-	kernel/proc.o \
-	kernel/sched.o \
-	kernel/syscall.o \
-	lib/printfmt.o \
+KERNEL_OBJS := $(OBJ_DIR)/kernel/main.o \
+	$(OBJ_DIR)/kernel/mem.o \
+	$(OBJ_DIR)/kernel/console.o \
+	$(OBJ_DIR)/kernel/printk.o \
+	$(OBJ_DIR)/kernel/init.o \
+	$(OBJ_DIR)/kernel/intr.o \
+	$(OBJ_DIR)/kernel/proc.o \
+	$(OBJ_DIR)/kernel/sched.o \
+	$(OBJ_DIR)/kernel/syscall.o \
+	$(OBJ_DIR)/kernel/errno.o \
+	$(OBJ_DIR)/kernel/lib/printfmt.o \
 
 KERNEL_HDRS := kernel/init.h \
 	kernel/intr.h \
@@ -18,25 +19,28 @@ KERNEL_HDRS := kernel/init.h \
 	kernel/syscall.h \
 	kernel/console.h \
 	kernel/printk.h \
+	kernel/errno.h \
 
-KERNEL_BINS := user/divzero \
-	user/hello \
-	user/sort \
-	user/fork \
+KERNEL_BINS := $(OBJ_DIR)/user/divzero \
+	$(OBJ_DIR)/user/hello \
+	$(OBJ_DIR)/user/sort \
+	$(OBJ_DIR)/user/fork \
 
-KERNEL_INC := -Iinclude -Ilib
+KERNEL_INC := -Iinclude -Ilib -Ikernel
 
-kernel/kernel: $(KERNEL_OBJS) $(KERNEL_BINS) kernel/entry kernel/intr_entry 
-	ld -T kernel/kernel.ld $(KERNEL_OBJS) kernel/entry kernel/intr_entry -b binary $(KERNEL_BINS) -o kernel/kernel --no-relax
+KERNEL_CFLAGS := -DKERNEL
 
-kernel/entry: kernel/entry.S
+$(OBJ_DIR)/kernel/kernel: $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry $(OBJ_DIR)/kernel/intr_entry $(KERNEL_BINS)
+	ld -T kernel/kernel.ld $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry $(OBJ_DIR)/kernel/intr_entry -b binary $(KERNEL_BINS) -o $(OBJ_DIR)/kernel/kernel --no-relax
+
+$(OBJ_DIR)/kernel/entry: kernel/entry.S
 	$(AS) $< -f elf64 -o $@
 
-kernel/intr_entry: kernel/intr_entry.S
+$(OBJ_DIR)/kernel/intr_entry: kernel/intr_entry.S
 	as $< -o $@
 
-kernel/%.o: kernel/%.c $(KERNEL_HDRS)
-	$(CC) $(CFLAGS) $(KERNEL_INC) $< -c -o $@
+$(OBJ_DIR)/kernel/%.o: kernel/%.c $(KERNEL_HDRS)
+	$(CC) $(CFLAGS) $(KERNEL_CFLAGS) $(KERNEL_INC) $< -c -o $@
 
-lib/%.o: lib/%.c
-	$(CC) $(CFLAGS) $(KERNEL_INC) $< -c -o $@
+$(OBJ_DIR)/kernel/lib/%.o: lib/%.c
+	$(CC) $(CFLAGS) $(KERNEL_CFLAGS) $(KERNEL_INC) $< -c -o $@

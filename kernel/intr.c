@@ -112,11 +112,11 @@ init_intr(void)
 
 void print_tf(struct ProcContext *tf)
 {
-    printk("rax: %x, rcx: %x, rdx: %x, rbx: %x\n", tf->rax, tf->rcx, tf->rdx, tf->rbx);
-    printk("rdi: %x, rsi: %x, rbp: %x\n", tf->rdi, tf->rsi, tf->rbp);
-    printk("r8: %x, r9: %x, r10: %x, r11: %x\n", tf->r8, tf->r9, tf->r10, tf->r11);
-    printk("r12: %x, r13: %x, r14: %x, r15: %x\n", tf->r12, tf->r13, tf->r14, tf->r15);
-    printk("cs: %x, rip: %x, ss: %x, rsp: %x\n", tf->cs, tf->rip, tf->ss, tf->rsp);
+    printk("rax: %lx, rcx: %lx, rdx: %lx, rbx: %lx\n", tf->rax, tf->rcx, tf->rdx, tf->rbx);
+    printk("rdi: %lx, rsi: %lx, rbp: %lx\n", tf->rdi, tf->rsi, tf->rbp);
+    printk("r8: %lx, r9: %lx, r10: %lx, r11: %lx\n", tf->r8, tf->r9, tf->r10, tf->r11);
+    printk("r12: %lx, r13: %lx, r14: %lx, r15: %lx\n", tf->r12, tf->r13, tf->r14, tf->r15);
+    printk("cs: %lx, rip: %lx, ss: %lx, rsp: %lx\n", tf->cs, tf->rip, tf->ss, tf->rsp);
 }
 
 void page_fault_handler(struct ProcContext *tf, uint64_t errno);
@@ -137,7 +137,7 @@ void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno
         return;
     }
     printk("trap handler\n");
-    printk("trapframe: %p, vecnum: %d, errno: %d\n", trapframe, vecnum, errno);
+    printk("trapframe: %p, vecnum: %ld, errno: %ld\n", trapframe, vecnum, errno);
     print_tf(trapframe);
     while (1);
 }
@@ -145,8 +145,8 @@ void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno
 void page_fault_handler(struct ProcContext *tf, uint64_t errno) {
     if (errno != 7) {
         printk("cr2: %p\n", rcr2());
-        printk("errno: %x\n", errno);
-        printk("curproc: proc[%d]\n", curproc - procs);
+        printk("errno: %lx\n", errno);
+        printk("curproc: proc[%ld]\n", curproc - procs);
         kill_proc(curproc);
         sched();
     }
@@ -173,8 +173,8 @@ void page_fault_handler(struct ProcContext *tf, uint64_t errno) {
         return;
     }
     printk("cr2: %p\n", rcr2());
-    printk("errno: %x\n", errno);
-    printk("curproc: proc[%d]\n", curproc - procs);
+    printk("errno: %lx\n", errno);
+    printk("curproc: proc[%ld]\n", curproc - procs);
     kill_proc(curproc);
     sched();
 }

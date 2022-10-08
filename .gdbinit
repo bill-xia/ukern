@@ -1,3 +1,3 @@
 echo + target remote localhost:1234\n
 target remote localhost:1234
-file kernel/kernel
+file obj/kernel/kernel

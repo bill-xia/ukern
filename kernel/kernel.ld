@@ -5,14 +5,14 @@ SECTIONS
 {
     . = 0x100000;
     .text_entry : AT (0x100000)
-        { kernel/entry(.text .text.* .text64 .got.plt)}
+        { obj/kernel/entry(.text .text.* .text64 .got.plt)}
     .data_entry :
-        { kernel/entry(.data) }
+        { obj/kernel/entry(.data) }
     . = 0xFFFF800000101000;
     .text : AT (0x101000)
-        { EXCLUDE_FILE (kernel/entry) *(.text .text.* ) *(.got.plt)}
+        { EXCLUDE_FILE (obj/kernel/entry) *(.text .text.* ) *(.got.plt)}
     .data :
-        { EXCLUDE_FILE (kernel/entry) *(.data .data.*) }
+        { EXCLUDE_FILE (obj/kernel/entry) *(.data .data.*) }
     .bss :
         { *(.bss) }
     .rodata :

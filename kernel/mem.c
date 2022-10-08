@@ -6,6 +6,7 @@
 #include "types.h"
 #include "printk.h"
 #include "x86.h"
+#include "errno.h"
 
 struct MemInfo *k_meminfo; // read from NVRAM at boot time
 struct PageInfo *k_pageinfo; // info for every available 4K-page
@@ -100,7 +101,7 @@ init_kpageinfo(void)
         }
         uint64_t beg_addr = ROUNDUP(k_meminfo[ind].paddr, PGSIZE),
                  end_addr = ROUNDDOWN(k_meminfo[ind].paddr + k_meminfo[ind].length, PGSIZE);
-        printk("beg_addr: %p, end_addr: %p\n", beg_addr, end_addr);
+        printk("beg_addr: %lx, end_addr: %lx\n", beg_addr, end_addr);
         max_addr = max(max_addr, end_addr);
         while (beg_addr < end_addr) {
             PA2PGINFO(beg_addr)->paddr = beg_addr;

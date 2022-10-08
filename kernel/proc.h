@@ -38,7 +38,7 @@ void kill_proc(struct Proc *proc);
 struct Proc *alloc_proc(void);
 int load_img(char *img, struct Proc *proc);
 
-#define IMAGE_SYMBOL(x) _binary_user_ ## x ## _start
+#define IMAGE_SYMBOL(x) _binary_obj_user_ ## x ## _start
 #define CREATE_PROC(x) do { \
     extern char IMAGE_SYMBOL(x); \
     create_proc(&IMAGE_SYMBOL(x)); \
