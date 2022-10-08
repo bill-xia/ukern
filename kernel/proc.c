@@ -4,6 +4,7 @@
 #include "x86.h"
 #include "printk.h"
 #include "sched.h"
+#include "errno.h"
 
 void
 init_pcb(void)
