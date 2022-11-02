@@ -29,7 +29,8 @@ struct Proc {
     uint64_t pid;
     enum proc_state state;
     struct ProcContext context;
-} *procs, *curproc;
+};
+extern struct Proc *procs, *curproc;
 
 void init_pcb(void);
 int create_proc(char *img);

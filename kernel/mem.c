@@ -16,6 +16,9 @@ pdpt_t k_pdpt;
 char *end_kpgtbl;
 char *end_kmem; // end of used kernel memory, in absolute address
 uint64_t nfreepages;
+struct SegDesc gdt[9];
+struct GdtDesc gdt_desc;
+struct TSS tss;
 
 static uint64_t n_pml4, n_pdpt;
 static uint64_t max_addr;

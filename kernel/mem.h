@@ -120,12 +120,16 @@ struct SegDesc {
             d_b     : 1,
             g       : 1;
     uint8_t base3;
-} gdt[9];
+};
+
+extern struct SegDesc gdt[9];
 
 struct GdtDesc {
     uint16_t limit;
     uint64_t base;
-} __attribute__((packed)) gdt_desc;
+} __attribute__((packed));
+
+extern struct GdtDesc gdt_desc;
 
 struct TSS {
     uint32_t res0;
@@ -147,7 +151,8 @@ struct TSS {
     uint64_t res2;
     uint16_t res3;
     uint16_t io_base;
-} __attribute__((packed)) tss;
+} __attribute__((packed));
+extern struct TSS tss;
 
 struct TSSDesc {
     uint16_t limit1;

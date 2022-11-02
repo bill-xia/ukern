@@ -6,6 +6,8 @@
 #include "sched.h"
 #include "errno.h"
 
+struct Proc *procs, *curproc;
+
 void
 init_pcb(void)
 {
