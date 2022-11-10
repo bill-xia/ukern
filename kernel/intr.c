@@ -146,29 +146,30 @@ void page_fault_handler(struct ProcContext *tf, uint64_t errno);
 
 void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno)
 {
-    if (vecnum == 32) {
-        syscall(trapframe);
-        return;
-    }
-    if (vecnum == 0) {
+    switch(vecnum) {
+    case 0:
         kill_proc(curproc);
         sched();
-    }
-    if (vecnum == 14) {
+        break;
+    case 14:
         page_fault_handler(trapframe, errno);
         // printk("page fault solved\n");
         return;
-    }
-    if (vecnum == 33) {
+    case 32:
+        syscall(trapframe);
+        return;
+    case 33:
         lapic_eoi();
         curproc->context = *trapframe;
         curproc->state = READY;
         sched();
+        break;
+    default: // panic
+        printk("trap handler\n");
+        printk("trapframe: %p, vecnum: %ld, errno: %lx\n", trapframe, vecnum, errno);
+        print_tf(trapframe);
+        while (1);
     }
-    printk("trap handler\n");
-    printk("trapframe: %p, vecnum: %ld, errno: %lx\n", trapframe, vecnum, errno);
-    print_tf(trapframe);
-    while (1);
 }
 
 void page_fault_handler(struct ProcContext *tf, uint64_t errno) {
