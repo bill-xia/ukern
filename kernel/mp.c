@@ -101,8 +101,9 @@ init_mp(void)
 void
 init_timer(void)
 {
-    lapicw(TIMER, 33);
-    lapicw(TICR, 1000000000);
+    lapicw(TIMER, 33 | PERIODIC);
+    lapicw(TDCR, X1);
+    lapicw(TICR, 10000000);
 }
 
 void

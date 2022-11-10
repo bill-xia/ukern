@@ -159,13 +159,15 @@ void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno
         // printk("page fault solved\n");
         return;
     }
+    if (vecnum == 33) {
+        lapic_eoi();
+        curproc->context = *trapframe;
+        curproc->state = READY;
+        sched();
+    }
     printk("trap handler\n");
     printk("trapframe: %p, vecnum: %ld, errno: %lx\n", trapframe, vecnum, errno);
     print_tf(trapframe);
-    if (vecnum == 33) {
-        lapic_eoi();
-        return;
-    }
     while (1);
 }
 

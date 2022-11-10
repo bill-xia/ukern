@@ -9,7 +9,7 @@ int main()
         printf("parent after fork, child: %d\n", child);
     } else {
         printf("child after fork\n");
-        while(1);
+        // while(1);
     }
     sys_exit();
 }
