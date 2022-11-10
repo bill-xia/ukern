@@ -3,6 +3,9 @@
 
 #include "types.h"
 
+#define RFLAGS_IF 0x200
+#define RFLAGS_IOPL_SHIFT 12
+
 static inline void
 breakpoint(void)
 {
@@ -224,21 +227,28 @@ read_esp(void)
 }
 
 static inline void
-cpuid(uint64_t info, uint64_t *eaxp, uint64_t *ebxp, uint64_t *ecxp, uint64_t *edxp)
+cpuid(uint64_t info, uint64_t *raxp, uint64_t *rbxp, uint64_t *rcxp, uint64_t *rdxp)
 {
-	uint64_t eax, ebx, ecx, edx;
+	uint64_t rax, rbx, rcx, rdx;
 	asm volatile("cpuid"
-		     : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx)
+		     : "=a" (rax), "=b" (rbx), "=c" (rcx), "=d" (rdx)
 		     : "a" (info));
-	if (eaxp)
-		*eaxp = eax;
-	if (ebxp)
-		*ebxp = ebx;
-	if (ecxp)
-		*ecxp = ecx;
-	if (edxp)
-		*edxp = edx;
+	if (raxp)
+		*raxp = rax;
+	if (rbxp)
+		*rbxp = rbx;
+	if (rcxp)
+		*rcxp = rcx;
+	if (rdxp)
+		*rdxp = rdx;
 }
+
+static inline void
+sti(void)
+{
+	asm volatile("sti" :::);
+}
+
 
 static inline uint64_t
 read_tsc(void)
@@ -258,6 +268,16 @@ xchg(volatile uint64_t *addr, uint64_t newval)
 		     : "+m" (*addr), "=a" (result)
 		     : "1" (newval)
 		     : "cc");
+	return result;
+}
+
+static inline uint64_t
+rdmsr(uint64_t addr)
+{
+	uint64_t result;
+	asm volatile("mov %0, %%rcx; rdmsr;"
+			 : "=a" (result)
+			 : "r" (addr));
 	return result;
 }
 

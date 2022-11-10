@@ -34,6 +34,9 @@
 .global _reserved_30_entry
 .global _reserved_31_entry
 .global _syscall_entry
+.global _timer_entry
+.global _apic_error_entry
+.global _apic_spurious_entry
 
 _divide_error_entry:
     pushq $0
@@ -76,6 +79,7 @@ _no_math_coprocessor_entry:
     jmp call_trap_handler
 
 _double_fault_entry: // has errno
+    pushq $0
     pushq $8
     jmp call_trap_handler
 
@@ -190,6 +194,21 @@ _reserved_31_entry:
 _syscall_entry:
     pushq $0
     pushq $32
+    jmp call_trap_handler
+
+_timer_entry:
+    pushq $0
+    pushq $33
+    jmp call_trap_handler
+
+_apic_error_entry:
+    pushq $0
+    pushq $34
+    jmp call_trap_handler
+
+_apic_spurious_entry:
+    pushq $0
+    pushq $35
     jmp call_trap_handler
 
 call_trap_handler:

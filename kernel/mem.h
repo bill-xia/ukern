@@ -27,6 +27,8 @@
 #define PTE_W 0x2
 #define PTE_U 0x4
 #define PTE_FLAGS 0x7
+#define PTE_PWT 0x8
+#define PTE_PCD 0x10
 
 #define PML4_OFFSET 39
 #define PDPT_OFFSET 30

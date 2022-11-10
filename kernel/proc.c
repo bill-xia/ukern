@@ -66,7 +66,7 @@ create_proc(char *img)
     proc->context.cs = USER_CODE_SEL | 3;
     proc->context.rsp = USTACK;
     proc->context.ss = USER_DATA_SEL | 3;
-    proc->context.rflags = 0x02;
+    proc->context.rflags = 0x02 | RFLAGS_IF | (3 << RFLAGS_IOPL_SHIFT);
     proc->state = READY;
     // printk("nfreepages after create_proc(): %d\n", nfreepages);
 }

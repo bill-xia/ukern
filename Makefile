@@ -31,4 +31,4 @@ gdb: pre-qemu
 	gdb -n -x .gdbinit
 
 clean:
-	rm -rf obj/
+	rm -rf obj/ image

@@ -6,6 +6,7 @@
 #include "proc.h"
 #include "syscall.h"
 #include "sched.h"
+#include "mp.h"
 
 struct IDTGateDesc *idt;
 struct IDTDesc idt_desc;
@@ -43,6 +44,9 @@ void _reserved_29_entry(void); // 29
 void _reserved_30_entry(void); // 30
 void _reserved_31_entry(void); // 31
 void _syscall_entry(void); // 32
+void _timer_entry(void); // 33
+void _apic_error_entry(void); // 34
+void _apic_spurious_entry(void); // 34
 
 void (*intr_entry[])(void) = {
     _divide_error_entry,
@@ -77,7 +81,10 @@ void (*intr_entry[])(void) = {
     _reserved_29_entry,
     _reserved_30_entry,
     _reserved_31_entry,
-    _syscall_entry
+    _syscall_entry,
+    _timer_entry,
+    _apic_error_entry,
+    _apic_spurious_entry
 };
 
 void
@@ -92,18 +99,34 @@ init_intr(void)
             .seg_sel = KERN_CODE_SEL,
             .ist = 0,
             .zeros = 0,
-            .type = 15, // 14 - interrupt gate, 15 - trap gate
+            .type = 14, // 14 - interrupt gate, 15 - trap gate
             .S = 0,
             .DPL = 3, // user
             .P = 1,
-            .offset2 = ((uint64_t)intr_entry[i] >> 16) & MASK(32),
+            .offset2 = ((uint64_t)intr_entry[i] >> 16) & MASK(16),
             .offset3 = (uint64_t)intr_entry[i] >> 32,
             .reserved = 0
         };
         idt[i] = tmp;
     }
+    for (int i = NIDT; i < 256; ++i) {
+        struct IDTGateDesc tmp = {
+            .offset1 = (uint64_t)(_reserved_31_entry) & MASK(16),
+            .seg_sel = KERN_CODE_SEL,
+            .ist = 0,
+            .zeros = 0,
+            .type = 14, // 14 - interrupt gate, 15 - trap gate
+            .S = 0,
+            .DPL = 3, // user
+            .P = 1,
+            .offset2 = ((uint64_t)(_reserved_31_entry) >> 16) & MASK(16),
+            .offset3 = (uint64_t)(_reserved_31_entry) >> 32,
+            .reserved = 0
+        };
+        idt[i] = tmp;
+    }
     struct IDTDesc tmp = {
-        .limit = 16 * NIDT - 1,
+        .limit = 16 * 256 - 1,
         .addr = (uint64_t)idt
     };
     idt_desc = tmp;
@@ -137,8 +160,12 @@ void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno
         return;
     }
     printk("trap handler\n");
-    printk("trapframe: %p, vecnum: %ld, errno: %ld\n", trapframe, vecnum, errno);
+    printk("trapframe: %p, vecnum: %ld, errno: %lx\n", trapframe, vecnum, errno);
     print_tf(trapframe);
+    if (vecnum == 33) {
+        lapic_eoi();
+        return;
+    }
     while (1);
 }
 
