@@ -162,6 +162,7 @@ void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno
         lapic_eoi();
         curproc->context = *trapframe;
         curproc->state = READY;
+        curproc->exec_time++;
         sched();
         break;
     default: // panic

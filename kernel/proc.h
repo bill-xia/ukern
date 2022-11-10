@@ -28,6 +28,7 @@ struct Proc {
             p_pgtbl; // parent pagetable at fork() time
     uint64_t pid;
     enum proc_state state;
+    uint64_t exec_time;
     struct ProcContext context;
 };
 extern struct Proc *procs, *curproc;

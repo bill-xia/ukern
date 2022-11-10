@@ -108,6 +108,8 @@ kill_proc(struct Proc *proc)
     free_pgtbl((pgtbl_t)P2K(proc->pgtbl), FREE_PGTBL_DECREF);
     free_pgtbl((pgtbl_t)P2K(proc->p_pgtbl), 0);
     proc->state = CLOSE;
+    printk("proc[%d] exec time: %d timer periods.\n", proc - procs, proc->exec_time);
+    proc->exec_time = 0;
     // printk("nfreepages after kill_proc(): %d\n", nfreepages);
 }
 
