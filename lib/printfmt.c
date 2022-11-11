@@ -88,6 +88,10 @@ vprintfmt(void (*putch)(char), const char *fmt, va_list ap)
                 flags |= FMT_LONG;
                 goto movein;
                 break;
+            case 'c':
+                num = va_arg(ap, uint32_t);
+                putch((char)(num));
+                break;
             case 'd':
                 if (flags & FMT_LONG)
                     sgn_num = va_arg(ap, int64_t);

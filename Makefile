@@ -22,10 +22,10 @@ image: pre-build $(OBJ_DIR)/boot/boot $(OBJ_DIR)/kernel/kernel
 	dd oflag=append conv=notrunc if=$(OBJ_DIR)/kernel/kernel of=image
 
 qemu: pre-qemu
-	qemu-system-x86_64 $(QEMU_FLAGS) -drive file=image,format=raw
+	qemu-system-x86_64 $(QEMU_FLAGS) -drive file=image,format=raw -drive file=image1,format=raw
 
 qemu-gdb: pre-qemu
-	qemu-system-x86_64 $(QEMU_FLAGS) -drive file=image,format=raw -s -S
+	qemu-system-x86_64 $(QEMU_FLAGS) -drive file=image,format=raw -drive file=image1,format=raw -s -S
 
 gdb: pre-qemu
 	gdb -n -x .gdbinit

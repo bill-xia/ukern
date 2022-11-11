@@ -4,6 +4,8 @@
 #include "sched.h"
 #include "console.h"
 #include "mp.h"
+#include "ioapic.h"
+#include "ide.h"
 
 void init(void)
 {
@@ -18,4 +20,6 @@ void init(void)
     // *(int*)0x7FFFFFFF0000 = 0;
     // from now on, anyone needing a new page have to call kalloc()
     init_mp();
+    init_ioapic();
+    init_ide();
 }

@@ -9,6 +9,8 @@ KERNEL_OBJS := $(OBJ_DIR)/kernel/main.o \
 	$(OBJ_DIR)/kernel/syscall.o \
 	$(OBJ_DIR)/kernel/errno.o \
 	$(OBJ_DIR)/kernel/mp.o \
+	$(OBJ_DIR)/kernel/ioapic.o \
+	$(OBJ_DIR)/kernel/ide.o \
 	$(OBJ_DIR)/kernel/lib/printfmt.o \
 
 KERNEL_HDRS := kernel/init.h \
@@ -22,11 +24,14 @@ KERNEL_HDRS := kernel/init.h \
 	kernel/printk.h \
 	kernel/errno.h \
 	kernel/mp.h \
+	kernel/ioapic.h \
+	kernel/ide.h \
 
 KERNEL_BINS := $(OBJ_DIR)/user/divzero \
 	$(OBJ_DIR)/user/hello \
 	$(OBJ_DIR)/user/sort \
 	$(OBJ_DIR)/user/fork \
+	$(OBJ_DIR)/user/idle \
 
 KERNEL_INC := -Iinclude -Ilib -Ikernel
 

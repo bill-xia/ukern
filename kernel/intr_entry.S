@@ -37,6 +37,7 @@
 .global _timer_entry
 .global _apic_error_entry
 .global _apic_spurious_entry
+.global _apic_keyboard_entry
 
 _divide_error_entry:
     pushq $0
@@ -209,6 +210,11 @@ _apic_error_entry:
 _apic_spurious_entry:
     pushq $0
     pushq $35
+    jmp call_trap_handler
+
+_apic_keyboard_entry:
+    pushq $0
+    pushq $36
     jmp call_trap_handler
 
 call_trap_handler:

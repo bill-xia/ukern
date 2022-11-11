@@ -29,6 +29,8 @@ init_mp(void)
     *pte = 0xFEE00000 | PTE_P | PTE_W | PTE_PWT | PTE_PCD;
 	lcr3(rcr3());
 	// info
+	uint32_t lapicid = lapic[LAPICR_ID];
+	printk("id: %x\n", lapicid);
 	uint32_t ver = lapic[LAPICR_VER];
 	printk("ver: %x\n", ver);
 	uint32_t svr = lapic[LAPICR_SVR];

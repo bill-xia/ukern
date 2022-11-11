@@ -7,6 +7,7 @@
 #include "syscall.h"
 #include "sched.h"
 #include "mp.h"
+#include "kbd.h"
 
 struct IDTGateDesc *idt;
 struct IDTDesc idt_desc;
@@ -46,7 +47,8 @@ void _reserved_31_entry(void); // 31
 void _syscall_entry(void); // 32
 void _timer_entry(void); // 33
 void _apic_error_entry(void); // 34
-void _apic_spurious_entry(void); // 34
+void _apic_spurious_entry(void); // 35
+void _apic_keyboard_entry(void); // 36
 
 void (*intr_entry[])(void) = {
     _divide_error_entry,
@@ -84,7 +86,8 @@ void (*intr_entry[])(void) = {
     _syscall_entry,
     _timer_entry,
     _apic_error_entry,
-    _apic_spurious_entry
+    _apic_spurious_entry,
+    _apic_keyboard_entry
 };
 
 void
@@ -143,6 +146,7 @@ void print_tf(struct ProcContext *tf)
 }
 
 void page_fault_handler(struct ProcContext *tf, uint64_t errno);
+int keyboard_handler(void);
 
 void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno)
 {
@@ -159,12 +163,17 @@ void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno
         syscall(trapframe);
         return;
     case 33:
-        lapic_eoi();
         curproc->context = *trapframe;
         curproc->state = READY;
         curproc->exec_time++;
+        lapic_eoi();
         sched();
         break;
+    case 36:
+        int c = keyboard_handler();
+        if (c > 0) printk("key got: %c\n", c);
+        lapic_eoi();
+        return;
     default: // panic
         printk("trap handler\n");
         printk("trapframe: %p, vecnum: %ld, errno: %lx\n", trapframe, vecnum, errno);
@@ -208,4 +217,56 @@ void page_fault_handler(struct ProcContext *tf, uint64_t errno) {
     printk("curproc: proc[%ld]\n", curproc - procs);
     kill_proc(curproc);
     sched();
+}
+
+int
+keyboard_handler(void)
+{
+	int c;
+	uint8_t stat, data;
+	static uint32_t shift;
+
+	stat = inb(KBSTATP);
+	if ((stat & KBS_DIB) == 0)
+		return -1;
+	// Ignore data from mouse.
+	if (stat & KBS_TERR)
+		return -1;
+
+	data = inb(KBDATAP);
+
+	if (data == 0xE0) {
+		// E0 escape character
+		shift |= E0ESC;
+		return 0;
+	} else if (data & 0x80) {
+		// Key released
+		data = (shift & E0ESC ? data : data & 0x7F);
+		shift &= ~(shiftcode[data] | E0ESC);
+		return 0;
+	} else if (shift & E0ESC) {
+		// Last character was an E0 escape; or with 0x80
+		data |= 0x80;
+		shift &= ~E0ESC;
+	}
+
+	shift |= shiftcode[data];
+	shift ^= togglecode[data];
+
+	c = charcode[shift & (CTL | SHIFT)][data];
+	if (shift & CAPSLOCK) {
+		if ('a' <= c && c <= 'z')
+			c += 'A' - 'a';
+		else if ('A' <= c && c <= 'Z')
+			c += 'a' - 'A';
+	}
+
+	// Process special keys
+	// Ctrl-Alt-Del: reboot
+	if (!(~shift & (CTL | ALT)) && c == KEY_DEL) {
+		printk("Rebooting!\n");
+		outb(0x92, 0x3); // courtesy of Chris Frost
+	}
+
+	return c;
 }
