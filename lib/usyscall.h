@@ -9,5 +9,7 @@ void sys_hello(void);
 void sys_putch(char);
 void sys_exit(void);
 int sys_fork(void);
+int sys_open(const char *fn);
+int sys_read(void);
 
 #endif

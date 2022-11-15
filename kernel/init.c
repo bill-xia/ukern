@@ -6,6 +6,7 @@
 #include "mp.h"
 #include "ioapic.h"
 #include "ide.h"
+#include "fs.h"
 
 void init(void)
 {
@@ -22,4 +23,5 @@ void init(void)
     init_mp();
     init_ioapic();
     init_ide();
+    init_fs();
 }

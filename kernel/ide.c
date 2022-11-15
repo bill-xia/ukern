@@ -64,6 +64,8 @@ ide_read(uint32_t secno, void *dst, size_t nsecs)
 {
 	int r;
 
+	// printk("step 0  ");
+
 	if (nsecs > 256) {
         printk("nsecs too much.\n");
         while(1);
@@ -71,7 +73,7 @@ ide_read(uint32_t secno, void *dst, size_t nsecs)
 
 	ide_wait_ready(0);
 
-    printk("step 1\n");
+    // printk("step 1  ");
 
 	outb(0x1F2, nsecs);
 	outb(0x1F3, secno & 0xFF);
@@ -79,13 +81,13 @@ ide_read(uint32_t secno, void *dst, size_t nsecs)
 	outb(0x1F5, (secno >> 16) & 0xFF);
 	outb(0x1F6, 0xE0 | ((diskno&1)<<4) | ((secno>>24)&0x0F));
 	outb(0x1F7, 0x20);	// CMD 0x20 means read sector
-    printk("step 2\n");
+    // printk("step 2  ");
 
 	for (; nsecs > 0; nsecs--, dst += SECTSIZE) {
-        printk("step 3\n");
+        // printk("step 3  ");
 		if ((r = ide_wait_ready(1)) < 0)
 			return r;
-        printk("step 4\n");
+        // printk("step 4  ");
 		insl(0x1F0, dst, SECTSIZE/4);
 	}
 

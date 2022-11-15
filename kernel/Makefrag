@@ -11,6 +11,7 @@ KERNEL_OBJS := $(OBJ_DIR)/kernel/main.o \
 	$(OBJ_DIR)/kernel/mp.o \
 	$(OBJ_DIR)/kernel/ioapic.o \
 	$(OBJ_DIR)/kernel/ide.o \
+	$(OBJ_DIR)/kernel/fs.o \
 	$(OBJ_DIR)/kernel/lib/printfmt.o \
 
 KERNEL_HDRS := kernel/init.h \
@@ -26,6 +27,7 @@ KERNEL_HDRS := kernel/init.h \
 	kernel/mp.h \
 	kernel/ioapic.h \
 	kernel/ide.h \
+	kernel/fs.h \
 
 KERNEL_BINS := $(OBJ_DIR)/user/divzero \
 	$(OBJ_DIR)/user/hello \

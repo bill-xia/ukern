@@ -184,6 +184,7 @@ void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno
 
 void page_fault_handler(struct ProcContext *tf, uint64_t errno) {
     if (errno != 7) {
+        print_tf(tf);
         printk("cr2: %p\n", rcr2());
         printk("errno: %lx\n", errno);
         printk("curproc: proc[%ld]\n", curproc - procs);

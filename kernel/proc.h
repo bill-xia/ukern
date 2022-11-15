@@ -2,6 +2,7 @@
 #define PROC_H
 
 #include "types.h"
+#include "fs.h"
 
 #define NPROCS 1024
 
@@ -30,6 +31,7 @@ struct Proc {
     enum proc_state state;
     uint64_t exec_time;
     struct ProcContext context;
+    struct file_desc fdesc[64];
 };
 extern struct Proc *procs, *curproc;
 

@@ -40,3 +40,15 @@ sys_fork(void)
 {
     return syscall(4,0,0,0,0,0,0);
 }
+
+int
+sys_open(const char *fn)
+{
+    return syscall(5, fn, 0,0,0,0,0);
+}
+
+int
+sys_read(void)
+{
+    return syscall(6, 0, 0,0,0,0,0);
+}
