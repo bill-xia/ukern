@@ -18,6 +18,7 @@ int main()
     CREATE_PROC(fork);
     CREATE_PROC(idle);
     CREATE_PROC(read);
+    CREATE_PROC(mal_read);
     sched();
     while (1);
 }

@@ -22,7 +22,7 @@ struct ProcContext {
     uint64_t rip, cs;
     uint64_t rflags;
     uint64_t rsp, ss;
-} __attribute__((aligned(16)));
+};
 
 struct Proc {
     pgtbl_t pgtbl,

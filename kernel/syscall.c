@@ -8,6 +8,23 @@
 #include "ide.h"
 #include "fs.h"
 
+int
+check_umem_mapping(uint64_t addr, uint64_t siz)
+{
+    addr = PAGEADDR(addr);
+    uint64_t end = PAGEADDR(addr + siz) + PGSIZE;
+    uint64_t *pte, flags = PTE_U | PTE_P | PTE_W;
+    pgtbl_t pgtbl = (pgtbl_t)P2K(rcr3());
+    while (addr != end) {
+        walk_pgtbl(pgtbl, addr, &pte, 0);
+        if ((*pte & flags) != flags) {
+            return 0;
+        }
+        addr += PGSIZE;
+    }
+    return 1;
+}
+
 void
 sys_hello(void)
 {
@@ -75,15 +92,19 @@ sys_read(struct ProcContext *tf)
         tf->rax = -E_INVALID_FD;
         return;
     }
-    if (curproc->fdesc[fd].head_cluster == 0) {
+    struct file_desc *fdesc = &curproc->fdesc[fd];
+    if (fdesc->head_cluster == 0) {
         tf->rax = -E_FD_NOT_OPENED;
         return;
     }
-    // TODO: check validation of dst, or it can even overwrite the kernel!
-    int r = read_file(curproc->fdesc[fd].head_cluster, 
-        curproc->fdesc[fd].read_ptr,
+    if (!check_umem_mapping(tf->rcx, tf->rbx)) {
+        tf->rax = -E_INVALID_MEM;
+        return;
+    }
+    int r = read_file(fdesc->head_cluster, 
+        fdesc->read_ptr,
         (void *)tf->rcx,
-        min(tf->rbx, curproc->fdesc[fd].file_len - curproc->fdesc[fd].read_ptr));
+        min(tf->rbx, fdesc->file_len - fdesc->read_ptr));
     tf->rax = r;
     curproc->fdesc[fd].read_ptr += r;
 }

@@ -44,11 +44,11 @@ sys_fork(void)
 int
 sys_open(const char *fn)
 {
-    return syscall(5, fn, 0,0,0,0,0);
+    return syscall(5, (uint64_t)fn, 0,0,0,0,0);
 }
 
 int
 sys_read(int fd, char *fn, uint32_t sz)
 {
-    return syscall(6, fd, fn, sz, 0,0,0);
+    return syscall(6, (uint64_t)fd, (uint64_t)fn, sz, 0,0,0);
 }

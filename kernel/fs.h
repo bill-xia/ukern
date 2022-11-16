@@ -10,6 +10,7 @@
 
 #define E_INVALID_FD    1
 #define E_FD_NOT_OPENED 2
+#define E_INVALID_MEM   3
 
 struct exFAT_hdr {
     uint8_t jmp_boot[3];

@@ -95,20 +95,20 @@ open_file(const char *filename, uint32_t *head_cluster, uint64_t *file_len)
                 }
                 switch (_dir[j % 16].entry_type) {
                 case 0x85: ;// file_dir
-                    struct file_dir_entry *fd_dir = &_dir[j % 16];
+                    struct file_dir_entry *fd_dir = (struct file_dir_entry *)&_dir[j % 16];
                     secondary_count = fd_dir->secondary_count;
                     keep_cmp_fn = 1;
                     ptr = 0;
                     isdir = (fd_dir->file_attr & 0x10) >> 4; // Directory
                     break;
                 case 0xC0: ;// stream_ext
-                    struct stream_ext_entry *str_ext_dir = &_dir[j % 16];
+                    struct stream_ext_entry *str_ext_dir = (struct stream_ext_entry *)&_dir[j % 16];
                     clus_id = str_ext_dir->first_clus;
                     fn_len = str_ext_dir->name_len;
                     data_len = str_ext_dir->valid_data_len;
                     break;
                 case 0xC1: ;// file_name
-                    struct file_name_entry *fn_dir = &_dir[j % 16];
+                    struct file_name_entry *fn_dir = (struct file_name_entry *)&_dir[j % 16];
                     for (int k = 0; keep_cmp_fn && k < 15 && ptr < fn_len && ptr < ind; k++) {
                         if (cmp_fn(name[ptr++], fn_dir->file_name[k])) {
                             keep_cmp_fn = 0;

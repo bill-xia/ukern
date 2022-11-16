@@ -1,7 +1,7 @@
 #include "stdio.h"
 #include "usyscall.h"
 
-char buf[513];
+char *buf = 0xFFFFFFFFFFFFE000;
 
 int main()
 {
