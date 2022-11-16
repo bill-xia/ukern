@@ -3,6 +3,11 @@
 
 #include "types.h"
 
+#define E_TRAVEL_INTO_FILE      1
+#define E_FILE_NOT_EXIST        2
+#define E_FILE_NAME_TOO_LONG    3
+#define E_NO_AVAIL_FD           4
+
 struct exFAT_hdr {
     uint8_t jmp_boot[3];
     uint8_t fs_name[8];
@@ -76,6 +81,7 @@ struct file_name_entry {
 
 void init_fs();
 uint32_t get_fat_at(uint32_t id);
+int open_file(const char *filename, uint32_t *head_cluster);
 
 extern struct exFAT_hdr *fsinfo;
 
