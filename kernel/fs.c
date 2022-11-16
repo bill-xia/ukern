@@ -35,16 +35,29 @@ init_fs()
 uint32_t
 get_fat_at(uint32_t id)
 {
-    printk("get_fat_at(%x)\n", id);
+    // printk("get_fat_at(%x)\n", id);
     ide_read(fsinfo->fat_offset + (id >> 7), fat, 1);
     return fat[id & 127];
+}
+
+uint8_t
+to_upper_case(uint8_t c)
+{
+    if ('a' <= c && c <= 'z') c += 'A' - 'a';
+    return c;
+}
+
+int
+cmp_fn(uint8_t c1, uint16_t c2) {
+    // printk("cmp_fn(%c,%c):%x  ",c1,c2,to_upper_case(c1) != to_upper_case(c2));
+    return to_upper_case(c1) != to_upper_case(c2);
 }
 
 // open file identified by `filename`
 // pass the head cluster id to *head_cluster
 // return status: 0 if success, < 0 if error
 int
-open_file(const char *filename, uint32_t *head_cluster)
+open_file(const char *filename, uint32_t *head_cluster, uint64_t *file_len)
 {
     uint32_t    dir_clus_id,
                 clus_id = 0,
@@ -52,6 +65,7 @@ open_file(const char *filename, uint32_t *head_cluster)
                 isdir = 1,
                 secondary_count,
                 fn_len,
+                data_len,
                 ptr,
                 keep_cmp_fn,
                 matched;
@@ -91,6 +105,7 @@ open_file(const char *filename, uint32_t *head_cluster)
                     struct stream_ext_entry *str_ext_dir = &_dir[j % 16];
                     clus_id = str_ext_dir->first_clus;
                     fn_len = str_ext_dir->name_len;
+                    data_len = str_ext_dir->valid_data_len;
                     break;
                 case 0xC1: ;// file_name
                     struct file_name_entry *fn_dir = &_dir[j % 16];
@@ -118,10 +133,34 @@ open_file(const char *filename, uint32_t *head_cluster)
                     return -E_FILE_NOT_EXIST; // file not exist
                 }
                 *head_cluster = clus_id;
+                *file_len = data_len;
                 return 0;
             }
             ind = -1;
         }
     }
     return -E_FILE_NAME_TOO_LONG;
+}
+
+int
+read_file(uint32_t clus_id, uint64_t ptr, char *dst, uint32_t sz)
+{
+    int r = 0;
+    while (ptr >> 9) {
+        ptr -= 512;
+        clus_id = get_fat_at(clus_id);
+    }
+    ide_read(fsinfo->cluster_heap_offset - 2 + clus_id, fs_buf, 1);
+    while (sz--) {
+        *dst = fs_buf[ptr];
+        ptr++;
+        r++;
+        dst++;
+        if (ptr == 512) {
+            clus_id = get_fat_at(clus_id);
+            ide_read(fsinfo->cluster_heap_offset - 2 + clus_id, fs_buf, 1);
+            ptr = 0;
+        }
+    }
+    return r;
 }

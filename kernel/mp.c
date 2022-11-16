@@ -19,10 +19,10 @@ init_mp(void)
     lapic = (uint32_t *)LAPIC_BASE;
     uint64_t rax, rbx, rcx, rdx;
     cpuid(1, &rax, &rbx, &rcx, &rdx); // read APIC info
-    printk("detect APIC: %lx\n", (rdx >> 9) & 1);
+    // printk("detect APIC: %lx\n", (rdx >> 9) & 1);
 	// read MSR
 	uint64_t apic_base_msr = rdmsr(0x1B);
-	printk("apic_base_msr: %lx\n", apic_base_msr);
+	// printk("apic_base_msr: %lx\n", apic_base_msr);
     // set up APIC register mapping
     pte_t *pte;
     walk_pgtbl(k_pml4, LAPIC_BASE, &pte, 1);
@@ -30,11 +30,11 @@ init_mp(void)
 	lcr3(rcr3());
 	// info
 	uint32_t lapicid = lapic[LAPICR_ID];
-	printk("id: %x\n", lapicid);
+	// printk("id: %x\n", lapicid);
 	uint32_t ver = lapic[LAPICR_VER];
-	printk("ver: %x\n", ver);
+	// printk("ver: %x\n", ver);
 	uint32_t svr = lapic[LAPICR_SVR];
-	printk("svr: %x\n", svr);
+	// printk("svr: %x\n", svr);
 	lapicw(LAPICR_SVR, 0x100 | 35);
 	// Init LVT
     init_timer();

@@ -48,7 +48,7 @@ sys_open(const char *fn)
 }
 
 int
-sys_read(void)
+sys_read(int fd, char *fn, uint32_t sz)
 {
-    return syscall(6, 0, 0,0,0,0,0);
+    return syscall(6, fd, fn, sz, 0,0,0);
 }

@@ -37,26 +37,18 @@ sys_fork(struct ProcContext *tf)
     lcr3(rcr3());
 }
 
-uint8_t to_upper_case(uint8_t c)
-{
-    if ('a' <= c && c <= 'z') c += 'A' - 'a';
-    return c;
-}
-
-int cmp_fn(uint8_t c1, uint16_t c2) {
-    printk("cmp_fn(%c,%c):%x  ",c1,c2,to_upper_case(c1) != to_upper_case(c2));
-    return to_upper_case(c1) != to_upper_case(c2);
-}
-
 void
 sys_open(struct ProcContext *tf)
 {
     uint32_t head_cluster;
-    int r = open_file((void *)(tf->rdx), &head_cluster);
+    uint64_t file_len;
+    int r = open_file((void *)(tf->rdx), &head_cluster, &file_len);
     if (r == 0) {
         for (int fd = 0; fd < 256; ++fd) {
             if (curproc->fdesc[fd].head_cluster) continue;
             curproc->fdesc[fd].head_cluster = head_cluster;
+            curproc->fdesc[fd].read_ptr = 0;
+            curproc->fdesc[fd].file_len = file_len;
             tf->rax = fd;
             return;
         }
@@ -69,10 +61,31 @@ sys_open(struct ProcContext *tf)
     }
 }
 
+inline uint64_t
+min(uint64_t a, uint64_t b)
+{
+    return a < b ? a : b;
+}
+
 void
 sys_read(struct ProcContext *tf)
 {
-    printk("sys_read() not implemented yet.\n");
+    int fd = tf->rdx;
+    if (fd < 0 || fd >= 64) {
+        tf->rax = -E_INVALID_FD;
+        return;
+    }
+    if (curproc->fdesc[fd].head_cluster == 0) {
+        tf->rax = -E_FD_NOT_OPENED;
+        return;
+    }
+    // TODO: check validation of dst, or it can even overwrite the kernel!
+    int r = read_file(curproc->fdesc[fd].head_cluster, 
+        curproc->fdesc[fd].read_ptr,
+        (void *)tf->rcx,
+        min(tf->rbx, curproc->fdesc[fd].file_len - curproc->fdesc[fd].read_ptr));
+    tf->rax = r;
+    curproc->fdesc[fd].read_ptr += r;
 }
 
 void

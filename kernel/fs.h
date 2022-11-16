@@ -8,6 +8,9 @@
 #define E_FILE_NAME_TOO_LONG    3
 #define E_NO_AVAIL_FD           4
 
+#define E_INVALID_FD    1
+#define E_FD_NOT_OPENED 2
+
 struct exFAT_hdr {
     uint8_t jmp_boot[3];
     uint8_t fs_name[8];
@@ -34,7 +37,7 @@ struct exFAT_hdr {
 
 struct file_desc {
     uint32_t head_cluster; // 0/1 means empty file desc, otherwise in use
-    uint32_t read_ptr;
+    uint64_t file_len, read_ptr;
 };
 
 struct dir_entry {
@@ -81,7 +84,8 @@ struct file_name_entry {
 
 void init_fs();
 uint32_t get_fat_at(uint32_t id);
-int open_file(const char *filename, uint32_t *head_cluster);
+int open_file(const char *filename, uint32_t *head_cluster, uint64_t *file_len);
+int read_file(uint32_t clus_id, uint64_t ptr, char *dst, uint32_t sz);
 
 extern struct exFAT_hdr *fsinfo;
 

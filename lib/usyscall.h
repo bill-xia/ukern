@@ -10,6 +10,6 @@ void sys_putch(char);
 void sys_exit(void);
 int sys_fork(void);
 int sys_open(const char *fn);
-int sys_read(void);
+int sys_read(int fd, char *fn, uint32_t sz);
 
 #endif

@@ -40,9 +40,9 @@ init_ioapic()
 	lcr3(rcr3());
     wioreg(0x0, 0x9 << 24); // IOAPIC's ID is 9
     // log some info
-    printk("IOAPICID: %x\n", rioreg(0x0) >> 24);
-    printk("IOAPICVER: %x\n", rioreg(0x1));
-    printk("IOAPICARB: %x\n", rioreg(0x2));
+    // printk("IOAPICID: %x\n", rioreg(0x0) >> 24);
+    // printk("IOAPICVER: %x\n", rioreg(0x1));
+    // printk("IOAPICARB: %x\n", rioreg(0x2));
     // mask all interrupts, except for keyboard
     for (int index = 0x10; index < 0x40; index += 2) {
         wioregl(index, IOAPIC_MASKED);
