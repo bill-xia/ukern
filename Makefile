@@ -22,6 +22,8 @@ fsimg: $(KERNEL_BINS)
 	mkfs.exfat fsimg -b 512 -c 512
 	mkdir fsdir
 	sudo mount fsimg fsdir/ -o loop
+	echo "hel" | sudo tee -a fsdir/hel
+	echo "helloworld" | sudo tee -a fsdir/helloworld
 	for bin in $(KERNEL_BINS) ; do \
 		sudo cp $$bin fsdir/ ; \
 	done
