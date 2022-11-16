@@ -3,6 +3,7 @@
 #include "console.h"
 #include "proc.h"
 #include "mem.h"
+#include "elf64.h"
 #include "x86.h"
 #include "sched.h"
 #include "ide.h"
@@ -57,15 +58,16 @@ sys_fork(struct ProcContext *tf)
 void
 sys_open(struct ProcContext *tf)
 {
-    uint32_t head_cluster;
+    uint32_t head_cluster, use_fat;
     uint64_t file_len;
-    int r = open_file((void *)(tf->rdx), &head_cluster, &file_len);
+    int r = open_file((void *)(tf->rdx), &head_cluster, &file_len, &use_fat);
     if (r == 0) {
         for (int fd = 0; fd < 256; ++fd) {
             if (curproc->fdesc[fd].head_cluster) continue;
             curproc->fdesc[fd].head_cluster = head_cluster;
             curproc->fdesc[fd].read_ptr = 0;
             curproc->fdesc[fd].file_len = file_len;
+            curproc->fdesc[fd].use_fat = use_fat;
             tf->rax = fd;
             return;
         }
@@ -104,9 +106,116 @@ sys_read(struct ProcContext *tf)
     int r = read_file(fdesc->head_cluster, 
         fdesc->read_ptr,
         (void *)tf->rcx,
-        min(tf->rbx, fdesc->file_len - fdesc->read_ptr));
+        min(tf->rbx, fdesc->file_len - fdesc->read_ptr),
+        fdesc->use_fat);
     tf->rax = r;
     curproc->fdesc[fd].read_ptr += r;
+}
+
+void strncpy(char *dst, char *src, int n)
+{
+    for (int i = 0; i < n && *src != '\0'; ++i) {
+        *dst = *src;
+        src++;
+        dst++;
+    }
+}
+
+void
+sys_exec(struct ProcContext *tf)
+{
+    static char argv_buf[16][256];
+    uint32_t head_cluster, use_fat;
+    uint64_t file_len;
+    int ret = 0;
+    int r = open_file((void *)(tf->rdx), &head_cluster, &file_len, &use_fat);
+    if (r) { // open file failed
+        tf->rax = r;
+        return;
+    }
+    // save argv
+    char **ori_argv = (char **)tf->rbx;
+    for (int i = 0; i < 16; ++i) {
+        if (ori_argv[i] != NULL) {
+            strncpy(argv_buf[i], ori_argv[i], ARGLEN);
+        }
+    }
+    // read image
+    char *img = (char *)EXEC_IMG;
+    uint64_t addr = EXEC_IMG, addr_end = EXEC_IMG + file_len;
+    lcr3(K2P(k_pml4));
+    // if (img < img_end) {
+        // file too large, seldom happen
+    // }
+    while (addr < addr_end) {
+        pte_t *pte;
+        if (ret = walk_pgtbl(k_pml4, addr, &pte, 1)) {
+            tf->rax = -E_NOMEM;
+            // TODO: free memory for img?
+            return;
+        }
+        *pte |= PTE_U | PTE_W;
+        addr += PGSIZE;
+    }
+    lcr3(rcr3());
+    read_file(head_cluster, 0, img, file_len, use_fat);
+    // TODO: check file format before destroying current enviroment,
+    // return enough information if format error
+    curproc->state = PENDING;
+    // from now on, old process image is destroyed
+    free_pgtbl(curproc->pgtbl, FREE_PGTBL_DECREF);
+    free_pgtbl(curproc->p_pgtbl, 0);
+    struct PageInfo *page = alloc_page(FLAG_ZERO);
+    curproc->pgtbl = (pgtbl_t)page->paddr;
+    page = alloc_page(FLAG_ZERO);
+    curproc->p_pgtbl = (pgtbl_t)page->paddr;
+    // code below is copied from create_proc()
+    // may delete create_proc() in the future
+    struct Proc *proc = curproc;
+    if (ret = load_img(img, proc)) {
+        kill_proc(proc);
+        sched();
+    }
+    // TODO: unmap img here
+    // stack
+    pte_t *pte;
+    if (ret = walk_pgtbl(proc->pgtbl, USTACK - PGSIZE, &pte, 1)) {
+        kill_proc(proc);
+        sched();
+    }
+    *pte |= PTE_U | PTE_W;
+    // uargs
+    char **uargv = (char **)(PAGEKADDR(*pte) + PGSIZE - NARGS * sizeof(uint64_t));
+    for (int i = 0; i < NARGS; ++i) {
+        uargv[i] = (char *)((uint64_t)UARGS + 256 * i);
+    }
+    if (ret = walk_pgtbl(proc->pgtbl, UARGS, &pte, 1)) {
+        kill_proc(proc);
+        sched();
+    }
+    *pte |= PTE_U | PTE_W;
+    char *uarg_pg = (char *)PAGEKADDR(*pte);
+    for (int i = 0; i < NARGS; ++i) {
+        strncpy(uarg_pg + i * ARGLEN, argv_buf[i], ARGLEN);
+    }
+    // mapping kernel space
+    pgtbl_t *pgtbl = (pgtbl_t)P2K(proc->pgtbl);
+    for (int i = 256; i < 512; ++i) {
+        pgtbl[i] = k_pml4[i];
+    }
+    // set up runtime enviroment
+    struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
+    proc->context.rip = ehdr->e_entry;
+    proc->context.cs = USER_CODE_SEL | 3;
+    proc->context.rsp = USTACK - NARGS * sizeof(uint64_t);
+    proc->context.ss = USER_DATA_SEL | 3;
+    proc->context.rflags = 0x02 | RFLAGS_IF | (3 << RFLAGS_IOPL_SHIFT);
+    // argc in rdi
+    proc->context.rdi = tf->rcx;
+    // argv in rsi, which is predefined
+    proc->context.rsi = USTACK - NARGS * sizeof(uint64_t);
+    proc->state = READY;
+    sched();
 }
 
 void
@@ -133,6 +242,9 @@ syscall(struct ProcContext *tf)
         break;
     case 6:
         sys_read(tf);
+        break;
+    case 7:
+        sys_exec(tf);
         break;
     default:
         printk("unknown syscall\n");

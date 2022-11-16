@@ -52,3 +52,9 @@ sys_read(int fd, char *fn, uint32_t sz)
 {
     return syscall(6, (uint64_t)fd, (uint64_t)fn, sz, 0,0,0);
 }
+
+int
+sys_exec(const char *fn, int argc, char *argv[])
+{
+    return syscall(7, (uint64_t)fn, (uint64_t)argc, (uint64_t)argv, 0,0,0);
+}

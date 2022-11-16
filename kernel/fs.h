@@ -12,6 +12,8 @@
 #define E_FD_NOT_OPENED 2
 #define E_INVALID_MEM   3
 
+#define NO_FAT_CHAIN 0x02
+
 struct exFAT_hdr {
     uint8_t jmp_boot[3];
     uint8_t fs_name[8];
@@ -37,7 +39,8 @@ struct exFAT_hdr {
 };
 
 struct file_desc {
-    uint32_t head_cluster; // 0/1 means empty file desc, otherwise in use
+    uint32_t head_cluster, // 0/1 means empty file desc, otherwise in use
+             use_fat;
     uint64_t file_len, read_ptr;
 };
 
@@ -85,8 +88,8 @@ struct file_name_entry {
 
 void init_fs();
 uint32_t get_fat_at(uint32_t id);
-int open_file(const char *filename, uint32_t *head_cluster, uint64_t *file_len);
-int read_file(uint32_t clus_id, uint64_t ptr, char *dst, uint32_t sz);
+int open_file(const char *filename, uint32_t *head_cluster, uint64_t *file_len, uint32_t *use_fat);
+int read_file(uint32_t clus_id, uint64_t ptr, char *dst, uint32_t sz, uint32_t use_fat);
 
 extern struct exFAT_hdr *fsinfo;
 

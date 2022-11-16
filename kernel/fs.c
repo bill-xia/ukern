@@ -57,7 +57,7 @@ cmp_fn(uint8_t c1, uint16_t c2) {
 // pass the head cluster id to *head_cluster
 // return status: 0 if success, < 0 if error
 int
-open_file(const char *filename, uint32_t *head_cluster, uint64_t *file_len)
+open_file(const char *filename, uint32_t *head_cluster, uint64_t *file_len, uint32_t *use_fat)
 {
     uint32_t    dir_clus_id,
                 clus_id = 0,
@@ -68,7 +68,9 @@ open_file(const char *filename, uint32_t *head_cluster, uint64_t *file_len)
                 data_len,
                 ptr,
                 keep_cmp_fn,
-                matched;
+                matched,
+                cur_use_fat,
+                nxt_use_fat = 1;
     static char name[256];
     static struct dir_entry _dir[16];
     for (int i = 0, ind = 0; i < 256; ++i, ++ind) {
@@ -84,6 +86,8 @@ open_file(const char *filename, uint32_t *head_cluster, uint64_t *file_len)
             }
             dir_clus_id = nxt_level_clus_id;
             nxt_level_clus_id = 0;
+            cur_use_fat = nxt_use_fat;
+            nxt_use_fat = 0;
             // start matching the name
             matched = 0;
             for (int j = 0;; ++j) {
@@ -91,7 +95,10 @@ open_file(const char *filename, uint32_t *head_cluster, uint64_t *file_len)
                     if (dir_clus_id == 0xFFFFFFFF) break;
                     ide_read(fsinfo->cluster_heap_offset + dir_clus_id - 2, _dir, 1);
                     // printk("dir_clus_id: %x\n", dir_clus_id);
-                    dir_clus_id = get_fat_at(dir_clus_id);
+                    if (cur_use_fat)
+                        dir_clus_id = get_fat_at(dir_clus_id);
+                    else
+                        dir_clus_id++;
                 }
                 switch (_dir[j % 16].entry_type) {
                 case 0x85: ;// file_dir
@@ -106,6 +113,7 @@ open_file(const char *filename, uint32_t *head_cluster, uint64_t *file_len)
                     clus_id = str_ext_dir->first_clus;
                     fn_len = str_ext_dir->name_len;
                     data_len = str_ext_dir->valid_data_len;
+                    nxt_use_fat = !(str_ext_dir->secondary_flags & NO_FAT_CHAIN); 
                     break;
                 case 0xC1: ;// file_name
                     struct file_name_entry *fn_dir = (struct file_name_entry *)&_dir[j % 16];
@@ -134,6 +142,7 @@ open_file(const char *filename, uint32_t *head_cluster, uint64_t *file_len)
                 }
                 *head_cluster = clus_id;
                 *file_len = data_len;
+                *use_fat = nxt_use_fat;
                 return 0;
             }
             ind = -1;
@@ -143,7 +152,7 @@ open_file(const char *filename, uint32_t *head_cluster, uint64_t *file_len)
 }
 
 int
-read_file(uint32_t clus_id, uint64_t ptr, char *dst, uint32_t sz)
+read_file(uint32_t clus_id, uint64_t ptr, char *dst, uint32_t sz, uint32_t use_fat)
 {
     int r = 0;
     while (ptr >> 9) {
@@ -151,13 +160,17 @@ read_file(uint32_t clus_id, uint64_t ptr, char *dst, uint32_t sz)
         clus_id = get_fat_at(clus_id);
     }
     ide_read(fsinfo->cluster_heap_offset - 2 + clus_id, fs_buf, 1);
+    char *d = dst;
     while (sz--) {
         *dst = fs_buf[ptr];
         ptr++;
         r++;
         dst++;
         if (ptr == 512) {
-            clus_id = get_fat_at(clus_id);
+            if (use_fat)
+                clus_id = get_fat_at(clus_id);
+            else
+                clus_id++;
             ide_read(fsinfo->cluster_heap_offset - 2 + clus_id, fs_buf, 1);
             ptr = 0;
         }

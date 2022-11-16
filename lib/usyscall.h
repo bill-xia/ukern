@@ -11,5 +11,6 @@ void sys_exit(void);
 int sys_fork(void);
 int sys_open(const char *fn);
 int sys_read(int fd, char *fn, uint32_t sz);
+int sys_exec(const char *fn, int argc, char *argv[]);
 
 #endif

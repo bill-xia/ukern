@@ -1,7 +1,7 @@
 #include "stdio.h"
 #include "usyscall.h"
 
-char buf[513];
+char buf[4097];
 
 int main()
 {
@@ -10,8 +10,9 @@ int main()
     if (fd < 0) {
         sys_exit();
     }
-    int r = sys_read(fd, buf, 512);
-    printf("sys_read(%d, buf, 512): %d\n", fd, r);
+    int r = sys_read(fd, buf, 4096);
+    printf("sys_read(%d, buf, 4096): %d\n", fd, r);
+    buf[r] = 0;
     if (r >= 0) {
         buf[r] = 0;
         for (int i = 0; i < r; ++i) {

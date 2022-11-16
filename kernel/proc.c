@@ -56,6 +56,16 @@ create_proc(char *img)
         return ret;
     }
     *pte |= PTE_U | PTE_W;
+    // uargs
+    char **uargv = (char **)(PAGEKADDR(*pte) + PGSIZE - NARGS * sizeof(uint64_t));
+    for (int i = 0; i < NARGS; ++i) {
+        uargv[i] = (char *)((uint64_t)UARGS + 256 * i);
+    }
+    if (ret = walk_pgtbl(proc->pgtbl, UARGS, &pte, 1)) {
+        free_pgtbl(proc->pgtbl, FREE_PGTBL_DECREF);
+        return ret;
+    }
+    *pte |= PTE_U | PTE_W;
     // mapping kernel space
     for (int i = 256; i < 512; ++i) {
         proc->pgtbl[i] = k_pml4[i];
@@ -64,9 +74,12 @@ create_proc(char *img)
     struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
     proc->context.rip = ehdr->e_entry;
     proc->context.cs = USER_CODE_SEL | 3;
-    proc->context.rsp = USTACK;
+    proc->context.rsp = USTACK - NARGS * sizeof(uint64_t);
     proc->context.ss = USER_DATA_SEL | 3;
     proc->context.rflags = 0x02 | RFLAGS_IF | (3 << RFLAGS_IOPL_SHIFT);
+    // argc in rdi, which should be find elsewhere
+    // argv in rsi, which is predefined
+    proc->context.rsi = USTACK - NARGS * sizeof(uint64_t);
     proc->state = READY;
     // printk("nfreepages after create_proc(): %d\n", nfreepages);
 }
@@ -112,7 +125,7 @@ kill_proc(struct Proc *proc)
         proc->fdesc[i].head_cluster = 0;
         proc->fdesc[i].read_ptr = 0;
     }
-    printk("proc[%d] exec time: %d timer periods.\n", proc - procs, proc->exec_time);
+    // printk("proc[%d] exec time: %d timer periods.\n", proc - procs, proc->exec_time);
     proc->exec_time = 0;
     // printk("nfreepages after kill_proc(): %d\n", nfreepages);
 }
@@ -139,20 +152,21 @@ load_img(char *img, struct Proc *proc)
              *src_fileend = src + phdr->p_filesz,
              *src_memend = src + phdr->p_memsz;
         uint64_t vaddr = phdr->p_vaddr;
+        pte_t *pte = NULL;
         while (src < src_memend) {
-            pte_t *pte;
-            int ret = walk_pgtbl(proc->pgtbl, PAGEADDR(vaddr), &pte, 1);
-            if (ret) {
-                free_pgtbl(proc->pgtbl, FREE_PGTBL_DECREF);
-                return -E_NOMEM;
+            if (pte == NULL || (vaddr & (PGSIZE - 1)) == 0) {
+                int ret = walk_pgtbl(proc->pgtbl, PAGEADDR(vaddr), &pte, 1);
+                if (ret) {
+                    free_pgtbl(proc->pgtbl, FREE_PGTBL_DECREF);
+                    return -E_NOMEM;
+                }
+                *pte |= PTE_U | PTE_W;
             }
-            *pte |= PTE_U | PTE_W;
             if (src <= src_fileend) {
-                uint64_t siz = min(PGSIZE - (vaddr & (PGSIZE - 1)), (src_fileend - src));
-                memcpy((char *)(PAGEADDR(*pte) + (vaddr & (PGSIZE - 1))), src, siz);
+                *(char *)(PAGEKADDR(*pte) + (vaddr & (PGSIZE - 1))) = *src;
             }
-            src = (char *)PAGEADDR((uint64_t)src + PGSIZE);
-            vaddr = PAGEADDR(vaddr + PGSIZE);
+            src++;
+            vaddr++;
         }
     }
     return 0;

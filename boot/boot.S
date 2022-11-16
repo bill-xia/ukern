@@ -110,12 +110,15 @@ Label_ReadProgramHeader:
     mov ecx, [eax + 32] ; size in file
     shr ecx, 9 ; calc num of sectors to read
     inc ecx ; also read the tail
+    mov ebx, [eax] ; type
+    cmp ebx, 1
+    jne Label_ReadNextProgramHeader
 Label_ReadProgramSector:
     mov ax, 0
     mov es, ax
     mov bx, 0x8000
     push ecx
-    mov cl, 1
+    mov cx, 1
     mov eax, [lba]
     call Func_ReadOneSector
 
@@ -129,6 +132,7 @@ Label_ReadProgramSector:
     dec ecx
     jnz Label_ReadProgramSector
 
+Label_ReadNextProgramHeader:
     ; read one program header done
     pop ax ; phnum
     dec ax

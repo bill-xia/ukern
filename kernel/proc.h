@@ -5,6 +5,8 @@
 #include "fs.h"
 
 #define NPROCS 1024
+#define NARGS  16
+#define ARGLEN 256
 
 enum proc_state {
     CLOSE,
