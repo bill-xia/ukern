@@ -2,7 +2,7 @@
 #define MP_H
 
 // Local APIC registers, divided by 4 for use as uint32_t[] indices.
-#define LAPIC_BASE      0xFFFFFFFFFFFFE000 // Base kernel address for lapic registers
+#define LAPIC_BASE      0xFFFFFFFFFFFFD000 // Base kernel address for lapic registers
 #define LAPICR_ID      (0x0020/4)   // ID
 #define LAPICR_VER     (0x0030/4)   // Version
 #define LAPICR_TPR     (0x0080/4)   // Task Priority

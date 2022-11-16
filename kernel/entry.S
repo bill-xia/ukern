@@ -14,6 +14,10 @@
 %define PDPTE_P 0x1
 %define PDPTE_W 0x2
 %define PDPTE_PS 0x80
+%define PDE_P 0x1
+%define PDE_W 0x2
+%define PTE_P 0x1
+%define PTE_W 0x2
 
 %macro SEG_DESC_64 5
 ; %1 base, %2 lim, %3 type, %4 L, %5 dpl
@@ -36,6 +40,11 @@ prot_to_ia32e:
     mov dword [0x11008], 0x40000000 | PDPTE_P | PDPTE_W | PDPTE_PS
     mov dword [0x11010], 0x80000000 | PDPTE_P | PDPTE_W | PDPTE_PS
     mov dword [0x11018], 0xC0000000 | PDPTE_P | PDPTE_W | PDPTE_PS
+; kernel stack
+    mov dword [0x10FF8], 0x12000 | PML4E_P | PML4E_W
+    mov dword [0x12FF8], 0x13000 | PDPTE_P | PDPTE_W
+    mov dword [0x13FF8], 0x14000 | PDE_P | PDE_W
+    mov dword [0x14FF0], 0xF000 | PTE_P | PTE_W
 
     mov eax, cr0
     and eax, ~CR0_PG
@@ -69,7 +78,7 @@ section .text64
 ia32e:
     ; need to be canonical address, the high 4 bytes
     ; cannot be 0x0000, see "The Manual" vol.1 3.3.7.1
-    mov rax, 0xFFFF800000010000 ; kernel stack
+    mov rax, 0xFFFFFFFFFFFFF000 ; kernel stack
     mov rsp, rax
     mov rax, main
     call rax

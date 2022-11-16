@@ -143,9 +143,10 @@ init_kpgtbl(void)
     for (uint64_t i = 0; i < max_addr; i += 0x40000000) { // 1G pages
         reg_kpgtbl_1Gpage(i);
     }
-    for (int i = 0; i < 256; ++i) {
+    for (int i = 0; i < 255; ++i) {
         k_pml4[i + 256] = k_pml4[i];
     }
+    k_pml4[511] = 0x12003; // kernel stack, see entry.S
     lcr3(K2P(k_pml4));
     end_kmem = end_kpgtbl;
 }
