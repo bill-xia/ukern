@@ -6,7 +6,7 @@
 #include "sched.h"
 #include "errno.h"
 
-struct Proc *procs, *curproc;
+struct Proc *procs, *curproc, *kbd_proc;
 
 void
 init_pcb(void)
@@ -70,6 +70,7 @@ create_proc(char *img)
     for (int i = 256; i < 512; ++i) {
         proc->pgtbl[i] = k_pml4[i];
     }
+    copy_pgtbl(proc->p_pgtbl, proc->pgtbl, CPY_PGTBL_WITHKSPACE);
     // set up runtime enviroment
     struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
     proc->context.rip = ehdr->e_entry;
@@ -127,6 +128,8 @@ kill_proc(struct Proc *proc)
     }
     // printk("proc[%d] exec time: %d timer periods.\n", proc - procs, proc->exec_time);
     proc->exec_time = 0;
+    if (proc == kbd_proc)
+        kbd_proc = NULL;
     // printk("nfreepages after kill_proc(): %d\n", nfreepages);
 }
 

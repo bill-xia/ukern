@@ -36,12 +36,9 @@ void
 sys_fork(struct ProcContext *tf)
 {
     struct Proc *nproc = alloc_proc();
-    copy_pgtbl(nproc->pgtbl, curproc->pgtbl, CPY_PGTBL_CNTREF | CPY_PGTBL_WITHKSPACE);
+    copy_pgtbl(nproc->pgtbl, curproc->p_pgtbl, CPY_PGTBL_CNTREF | CPY_PGTBL_WITHKSPACE);
     // save the "real" page table
-    copy_pgtbl(nproc->p_pgtbl, curproc->pgtbl, 0);
-    free_pgtbl(curproc->p_pgtbl, 0);
-    curproc->p_pgtbl = (pgtbl_t)alloc_page(FLAG_ZERO)->paddr;
-    copy_pgtbl(curproc->p_pgtbl, curproc->pgtbl, 0);
+    copy_pgtbl(nproc->p_pgtbl, curproc->p_pgtbl, CPY_PGTBL_WITHKSPACE);
     // clear write flag at "write-on-copy" pages
     pgtbl_clearflags(nproc->pgtbl, PTE_W);
     pgtbl_clearflags(curproc->pgtbl, PTE_W);
@@ -135,7 +132,7 @@ sys_exec(struct ProcContext *tf)
     }
     // save argv
     char **ori_argv = (char **)tf->rbx;
-    for (int i = 0; i < 16; ++i) {
+    for (int i = 0; i < NARGS; ++i) {
         if (ori_argv[i] != NULL) {
             strncpy(argv_buf[i], ori_argv[i], ARGLEN);
         }
@@ -203,6 +200,7 @@ sys_exec(struct ProcContext *tf)
     for (int i = 256; i < 512; ++i) {
         pgtbl[i] = k_pml4[i];
     }
+    copy_pgtbl(proc->p_pgtbl, proc->pgtbl, CPY_PGTBL_WITHKSPACE);
     // set up runtime enviroment
     struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
     proc->context.rip = ehdr->e_entry;
@@ -215,6 +213,21 @@ sys_exec(struct ProcContext *tf)
     // argv in rsi, which is predefined
     proc->context.rsi = USTACK - NARGS * sizeof(uint64_t);
     proc->state = READY;
+    sched();
+}
+
+#define E_KBD_IN_USE 1
+void
+sys_getch(struct ProcContext *tf)
+{
+    if (kbd_proc == NULL) {
+        kbd_proc = curproc;
+    } else {
+        tf->rax = -E_KBD_IN_USE; // keyboard in use
+        return;
+    }
+    curproc->context = *tf;
+    curproc->state = PENDING;
     sched();
 }
 
@@ -245,6 +258,9 @@ syscall(struct ProcContext *tf)
         break;
     case 7:
         sys_exec(tf);
+        break;
+    case 8:
+        sys_getch(tf);
         break;
     default:
         printk("unknown syscall\n");

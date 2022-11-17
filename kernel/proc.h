@@ -28,14 +28,17 @@ struct ProcContext {
 
 struct Proc {
     pgtbl_t pgtbl,
-            p_pgtbl; // parent pagetable at fork() time
+            p_pgtbl;// p_pgtbl's corresponding mapping should be
+                    // different with pgtbl only at W flag, and
+                    // kernel space in p_pgtbl may be not mapped,
+                    // because we don't use them in p_pgtbl
     uint64_t pid;
     enum proc_state state;
     uint64_t exec_time;
     struct ProcContext context;
     struct file_desc fdesc[64];
 };
-extern struct Proc *procs, *curproc;
+extern struct Proc *procs, *curproc, *kbd_proc;
 
 void init_pcb(void);
 int create_proc(char *img);

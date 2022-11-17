@@ -171,7 +171,15 @@ void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno
         break;
     case 36:
         int c = keyboard_handler();
-        if (c > 0) printk("key got: %c\n", c);
+        if (c > 0) {
+            if (kbd_proc != NULL) {
+                kbd_proc->context.rax = c;
+                kbd_proc->state = READY;
+                kbd_proc = NULL;
+                // do not sched() now, because we're interrupting
+                // in someone else's process
+            }
+        }
         lapic_eoi();
         return;
     default: // panic
@@ -209,10 +217,13 @@ void page_fault_handler(struct ProcContext *tf, uint64_t errno) {
             char *src = (char *)PAGEKADDR(*pte), *dst = (char *)PAGEKADDR(page->paddr);
             for (int i = 0; i < PGSIZE; ++i) dst[i] = src[i];
             *pte = page->paddr | PTE_P | PTE_U | PTE_W;
+            walk_pgtbl(curproc->p_pgtbl, vaddr, &pte, 0);
+            *pte = page->paddr | PTE_P | PTE_U | PTE_W;
         }
         lcr3(rcr3());
         return;
     }
+    print_tf(tf);
     printk("cr2: %p\n", rcr2());
     printk("errno: %lx\n", errno);
     printk("curproc: proc[%ld]\n", curproc - procs);
