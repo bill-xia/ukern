@@ -26,6 +26,7 @@ console_putch(char c)
         break;
     case '\b':
         crt_ind--;
+        crt_buf[crt_ind] = ' ';
         break;
     case '\r':
         crt_ind -= crt_ind % COLS;
