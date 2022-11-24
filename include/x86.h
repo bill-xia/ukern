@@ -46,10 +46,10 @@ insw(int port, void *addr, int cnt)
 		     : "memory", "cc");
 }
 
-static inline uint64_t
+static inline uint32_t
 inl(int port)
 {
-	uint64_t data;
+	uint32_t data;
 	asm volatile("inl %w1,%0" : "=a" (data) : "d" (port));
 	return data;
 }
@@ -103,7 +103,7 @@ outsl(int port, const void *addr, int cnt)
 }
 
 static inline void
-outl(int port, uint64_t data)
+outl(int port, uint32_t data)
 {
 	asm volatile("outl %0,%w1" : : "a" (data), "d" (port));
 }

@@ -35,7 +35,7 @@ image: pre-build $(OBJ_DIR)/boot/boot $(OBJ_DIR)/kernel/kernel fsimg
 	dd oflag=append conv=notrunc if=$(OBJ_DIR)/kernel/kernel of=image
 
 qemu: pre-qemu
-	qemu-system-x86_64 $(QEMU_FLAGS) -drive file=image,format=raw -drive file=fsimg,format=raw
+	qemu-system-x86_64 $(QEMU_FLAGS) -device qemu-xhci -drive file=image,format=raw -drive file=fsimg,format=raw
 
 qemu-gdb: pre-qemu
 	qemu-system-x86_64 $(QEMU_FLAGS) -drive file=image,format=raw -drive file=fsimg,format=raw -s -S

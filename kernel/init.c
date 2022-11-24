@@ -8,6 +8,7 @@
 #include "ide.h"
 #include "fs.h"
 #include "acpi.h"
+#include "pci.h"
 
 void init(void)
 {
@@ -26,4 +27,5 @@ void init(void)
     // init_ide();
     // init_fs();
     init_acpi();
+    init_pci();
 }
