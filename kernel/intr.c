@@ -192,12 +192,15 @@ void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno
 
 void page_fault_handler(struct ProcContext *tf, uint64_t errno) {
     if (errno != 7) {
-        print_tf(tf);
         printk("cr2: %p\n", rcr2());
         printk("errno: %lx\n", errno);
         printk("curproc: proc[%ld]\n", curproc - procs);
-        while (1);
-        // TODO: judge whether inside kernel, panic if so
+        print_tf(tf);
+        if (tf->cs == KERN_CODE_SEL) {
+            printk("panic: page fault in kernel.\n");
+            while (1);
+        }
+        // in user process, kill it
         kill_proc(curproc);
         sched();
     }
