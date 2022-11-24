@@ -284,6 +284,18 @@ no_mem:
     return -E_NOMEM;
 }
 
+int
+map_mmio(pgtbl_t pgtbl, uint64_t vaddr, uint64_t mmioaddr, pte_t **pte)
+{
+    int r;
+    if (r = walk_pgtbl(pgtbl, vaddr, pte, 1)) {
+        return r;
+    }
+    free_page(PA2PGINFO(PAGEADDR(**pte)));
+    **pte = mmioaddr | PTE_P;
+    return 0;
+}
+
 void memcpy(char *dst, char *src, uint64_t n_bytes) {
     // TODO: this is currently buggy: src[0:n_bytes] and dst[0:n_bytes] may overlap!
     for (int i = 0; i < n_bytes; ++i) {

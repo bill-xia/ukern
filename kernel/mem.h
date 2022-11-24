@@ -187,6 +187,7 @@ void init_kpageinfo(void);
 void init_kpgtbl(void);
 void init_freepages(void);
 int walk_pgtbl(pgtbl_t pgtbl, uint64_t vaddr, pte_t **pte, int create);
+int map_mmio(pgtbl_t pgtbl, uint64_t vaddr, uint64_t mmioaddr, pte_t **pte);
 struct PageInfo *alloc_page(uint64_t flags);
 void memcpy(char *dst, char *src, uint64_t n_bytes);
 void init_gdt(void);
