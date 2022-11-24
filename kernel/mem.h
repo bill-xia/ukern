@@ -70,6 +70,7 @@ struct MemInfo {
 #define KSTACK   0xFFFFFFFFFFFFF000
 #define UARGS    0x3FF000
 #define EXEC_IMG 0xFFFF900000000000
+#define KMMIO    0xFFFFA00000000000
 
 #define K2P(x) ((uint64_t)(x) & MASK(47))
 #define P2K(x) ((uint64_t)(x) | KERNBASE)
