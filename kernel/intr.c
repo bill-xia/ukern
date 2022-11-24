@@ -169,7 +169,7 @@ void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno
         lapic_eoi();
         sched();
         break;
-    case 36:
+    case 36: ;
         int c = keyboard_handler();
         if (c > 0) {
             if (kbd_proc != NULL) {
