@@ -187,9 +187,9 @@ alloc_page(uint64_t flags)
     if (freepages == NULL) return NULL;
     struct PageInfo *ret = freepages;
     freepages = freepages->u.next;
-    char *mem = (char *)P2K(ret->paddr);
+    uint64_t *mem = (uint64_t *)P2K(ret->paddr);
     if (flags & FLAG_ZERO)
-        for (int i = 0; i < PGSIZE; mem[i] = 0, ++i) ;
+        for (int i = 0; i < PGSIZE / sizeof(uint64_t); mem[i] = 0, ++i) ;
     ret->u.ref = 1;
     nfreepages--;
     return ret;
