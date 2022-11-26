@@ -6,7 +6,12 @@
 #define CONFIG_ADDRESS 0xCF8
 #define CONFIG_DATA 0xCFC
 
-#define VENDOR 0
+#define VENDORID 0
+#define DEVICEID 2
+#define COMMAND  4
+#define STATUS   6
+
+#define CAPPTR   0x34
 
 static inline uint32_t
 pci_read(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
@@ -45,12 +50,30 @@ pci_readw(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
     addr = (lbus << 16) | (lslot << 11) | (lfunc << 8) | (offset & 0xFC) | (0x80000000);
     outl(CONFIG_ADDRESS, addr);
     uint32_t r = inl(CONFIG_DATA);
-    if (offset & 3) {
+    if (offset & 3) { // odd offset is not permitted
         r >>= 16;
     } else {
         r &= (1 << 16) - 1;
     }
     return (uint16_t)r;
+}
+
+static inline uint8_t
+pci_readb(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
+{
+    uint32_t addr,
+        lbus = bus,
+        lslot = slot,
+        lfunc = func,
+        loffset = offset;
+    addr = (lbus << 16) | (lslot << 11) | (lfunc << 8) | (offset & 0xFC) | (0x80000000);
+    outl(CONFIG_ADDRESS, addr);
+    uint32_t r = inl(CONFIG_DATA);
+    if (offset & 3) {
+        r >>= 8 * (offset & 3);
+    }
+    r &= 0xFF;
+    return (uint8_t)r;
 }
 
 #endif

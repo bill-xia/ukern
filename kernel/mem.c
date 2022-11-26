@@ -223,7 +223,8 @@ free_page(struct PageInfo *page)
 // that `pgtbl` should be an available physical address,
 // thus it is not checked.
 //
-// Pass out a pointer to the page table entry at *pte.
+// Pass out a pointer to the page table entry at *pte, pass
+// NULL if vaddr is not mapped.
 // Returns 0 on success, or -E_NOMEM if memory not enough.
 //
 int
@@ -235,7 +236,7 @@ walk_pgtbl(pgtbl_t pgtbl, uint64_t vaddr, pte_t **pte, int create)
 
     int pml4i = PML4_INDEX(vaddr);
     if (!(pgtbl[pml4i] & PML4E_P)) {
-        if (!create) goto no_mem;
+        if (!create) goto unmapped;
         alloced[0] = alloc_page(FLAG_ZERO); // unused entries must be zero
         if (alloced[0] == NULL) goto no_mem;
         // give all permission here, let caller control access rights
@@ -246,7 +247,7 @@ walk_pgtbl(pgtbl_t pgtbl, uint64_t vaddr, pte_t **pte, int create)
     pdpt_t pdpt = (pdpt_t)PAGEKADDR(pgtbl[pml4i]);
     int pdpti = PDPT_INDEX(vaddr);
     if (!(pdpt[pdpti] & PDPTE_P)) {
-        if (!create) goto no_mem;
+        if (!create) goto unmapped;
         alloced[1] = alloc_page(FLAG_ZERO);
         if (alloced[1] == NULL) {
             goto no_mem;
@@ -257,7 +258,7 @@ walk_pgtbl(pgtbl_t pgtbl, uint64_t vaddr, pte_t **pte, int create)
     pd_t pd = (pd_t)PAGEKADDR(pdpt[pdpti]);
     int pdi = PD_INDEX(vaddr);
     if (!(pd[pdi] & PDE_P)) {
-        if (!create) goto no_mem;
+        if (!create) goto unmapped;
         alloced[2] = alloc_page(FLAG_ZERO);
         if (alloced[2] == NULL) {
             goto no_mem;
@@ -268,7 +269,7 @@ walk_pgtbl(pgtbl_t pgtbl, uint64_t vaddr, pte_t **pte, int create)
     pt_t pt = (pt_t)PAGEKADDR(pd[pdi]);
     int pti = PT_INDEX(vaddr);
     if (!(pt[pti] & PTE_P)) {
-        if (!create) goto no_mem;
+        if (!create) goto unmapped;
         alloced[3] = alloc_page(FLAG_ZERO);
         if (alloced[3] == NULL) {
             goto no_mem;
@@ -278,7 +279,8 @@ walk_pgtbl(pgtbl_t pgtbl, uint64_t vaddr, pte_t **pte, int create)
     }
     *pte = (pte_t *)P2K(pt + pti);
     return 0;
-
+unmapped:
+    *pte = NULL;
 no_mem:
     for (int i = 0; i < 4 && alloced[i] != NULL; ++i) free_page(alloced[i]);
     return -E_NOMEM;
@@ -292,7 +294,7 @@ map_mmio(pgtbl_t pgtbl, uint64_t vaddr, uint64_t mmioaddr, pte_t **pte)
         return r;
     }
     free_page(PA2PGINFO(PAGEADDR(**pte)));
-    **pte = mmioaddr | PTE_P;
+    **pte = mmioaddr | PTE_P | PTE_PWT | PTE_PCD;
     return 0;
 }
 

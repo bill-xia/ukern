@@ -14,6 +14,7 @@ KERNEL_OBJS := $(OBJ_DIR)/kernel/main.o \
 	$(OBJ_DIR)/kernel/fs.o \
 	$(OBJ_DIR)/kernel/acpi.o \
 	$(OBJ_DIR)/kernel/pci.o \
+	$(OBJ_DIR)/kernel/xhci.o \
 	$(OBJ_DIR)/kernel/lib/printfmt.o \
 
 KERNEL_HDRS := kernel/init.h \
