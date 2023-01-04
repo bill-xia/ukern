@@ -23,7 +23,7 @@ void init(void)
     // from now on, anyone needing a new page have to call kalloc()
     init_mp();
     init_ioapic();
-    // init_ide();
-    // init_fs();
+    init_ide();
+    init_fs();
     init_acpi();
 }
