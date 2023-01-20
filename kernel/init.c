@@ -27,5 +27,5 @@ void init(void)
     // init_ide();
     // init_fs();
     init_acpi();
-    init_pci();
+    // init_pci();
 }

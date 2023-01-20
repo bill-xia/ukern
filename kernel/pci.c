@@ -1,7 +1,7 @@
 #include "pci.h"
 #include "printk.h"
 #include "mem.h"
-#include "xhci.h"
+#include "pcie/xhci.h"
 
 void
 check_device(uint8_t bus, uint8_t device)

@@ -13,8 +13,9 @@ KERNEL_OBJS := $(OBJ_DIR)/kernel/main.o \
 	$(OBJ_DIR)/kernel/ide.o \
 	$(OBJ_DIR)/kernel/fs.o \
 	$(OBJ_DIR)/kernel/acpi.o \
-	$(OBJ_DIR)/kernel/pci.o \
-	$(OBJ_DIR)/kernel/xhci.o \
+	$(OBJ_DIR)/kernel/pcie/pcie.o \
+	$(OBJ_DIR)/kernel/pcie/nvme.o \
+	$(OBJ_DIR)/kernel/pcie/sata.o \
 	$(OBJ_DIR)/kernel/lib/printfmt.o \
 
 KERNEL_HDRS := kernel/init.h \
@@ -31,6 +32,9 @@ KERNEL_HDRS := kernel/init.h \
 	kernel/ioapic.h \
 	kernel/ide.h \
 	kernel/fs.h \
+	kernel/pcie/pcie.h \
+	kernel/pcie/nvme.h \
+	kernel/acpi.h \
 
 KERNEL_BINS := $(OBJ_DIR)/user/divzero \
 	$(OBJ_DIR)/user/hello \
@@ -57,6 +61,9 @@ $(OBJ_DIR)/kernel/intr_entry: kernel/intr_entry.S
 	as $< -o $@
 
 $(OBJ_DIR)/kernel/%.o: kernel/%.c $(KERNEL_HDRS)
+	$(CC) $(CFLAGS) $(KERNEL_CFLAGS) $(KERNEL_INC) $< -c -o $@
+
+$(OBJ_DIR)/kernel/pcie/%.o: kernel/pcie/%.c $(KERNEL_HDRS)
 	$(CC) $(CFLAGS) $(KERNEL_CFLAGS) $(KERNEL_INC) $< -c -o $@
 
 $(OBJ_DIR)/kernel/lib/%.o: lib/%.c

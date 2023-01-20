@@ -140,13 +140,13 @@ sys_exec(struct ProcContext *tf)
     // read image
     char *img = (char *)EXEC_IMG;
     uint64_t addr = EXEC_IMG, addr_end = EXEC_IMG + file_len;
-    lcr3(K2P(k_pml4));
+    lcr3(K2P(k_pgtbl));
     // if (img < img_end) {
         // file too large, seldom happen
     // }
     while (addr < addr_end) {
         pte_t *pte;
-        if (ret = walk_pgtbl(k_pml4, addr, &pte, 1)) {
+        if (ret = walk_pgtbl(k_pgtbl, addr, &pte, 1)) {
             tf->rax = -E_NOMEM;
             // TODO: free memory for img?
             return;
@@ -198,7 +198,7 @@ sys_exec(struct ProcContext *tf)
     // mapping kernel space
     pgtbl_t *pgtbl = (pgtbl_t)P2K(proc->pgtbl);
     for (int i = 256; i < 512; ++i) {
-        pgtbl[i] = k_pml4[i];
+        pgtbl[i] = k_pgtbl[i];
     }
     copy_pgtbl(proc->p_pgtbl, proc->pgtbl, CPY_PGTBL_WITHKSPACE);
     // set up runtime enviroment

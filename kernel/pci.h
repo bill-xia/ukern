@@ -6,10 +6,22 @@
 #define CONFIG_ADDRESS 0xCF8
 #define CONFIG_DATA 0xCFC
 
-#define VENDORID 0
-#define DEVICEID 2
-#define COMMAND  4
-#define STATUS   6
+#define VENDORID    0x00
+#define DEVICEID    0x02
+#define COMMAND     0x04
+#define STATUS      0x06
+#define REVID       0x08
+#define PROGIF      0x09
+#define SUBCLASS    0x0A
+#define CLASS       0x0B
+#define CACHELINE   0x0C
+#define LATENCY     0x0D
+#define HDRTYPE     0x0E
+#define BIST        0x0F
+
+#define PRIBUS      0x18
+#define SECBUS      0x19
+#define SUBBUS      0x1A
 
 #define CAPPTR   0x34
 

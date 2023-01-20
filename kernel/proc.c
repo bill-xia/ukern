@@ -68,7 +68,7 @@ create_proc(char *img)
     *pte |= PTE_U | PTE_W;
     // mapping kernel space
     for (int i = 256; i < 512; ++i) {
-        proc->pgtbl[i] = k_pml4[i];
+        proc->pgtbl[i] = k_pgtbl[i];
     }
     copy_pgtbl(proc->p_pgtbl, proc->pgtbl, CPY_PGTBL_WITHKSPACE);
     // set up runtime enviroment

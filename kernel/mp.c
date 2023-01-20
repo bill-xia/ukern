@@ -25,7 +25,7 @@ init_mp(void)
 	// printk("apic_base_msr: %lx\n", apic_base_msr);
     // set up APIC register mapping
     pte_t *pte;
-    walk_pgtbl(k_pml4, LAPIC_BASE, &pte, 1);
+    walk_pgtbl(k_pgtbl, LAPIC_BASE, &pte, 1);
     *pte = 0xFEE00000 | PTE_P | PTE_W | PTE_PWT | PTE_PCD;
 	lcr3(rcr3());
 	// info

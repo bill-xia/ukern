@@ -1,4 +1,4 @@
-#include "xhci.h"
+#include "pcie/xhci.h"
 #include "pci.h"
 #include "mem.h"
 #include "printk.h"
@@ -71,9 +71,9 @@ init_xhci(uint8_t bus, uint8_t device, uint8_t func)
                     msix_table_addr |= (uint64_t)pci_read(bus, device, func, 0x14 + 4 * table_bir) << 32;
                 }
                 pte_t *pte;
-                walk_pgtbl(k_pml4, KMMIO | msix_table_addr, &pte, 0);
+                walk_pgtbl(k_pgtbl, KMMIO | msix_table_addr, &pte, 0);
                 if (pte == NULL) { // not mapped
-                    map_mmio(k_pml4, KMMIO | msix_table_addr, msix_table_addr, &pte);
+                    map_mmio(k_pgtbl, KMMIO | msix_table_addr, msix_table_addr, &pte);
                 }
                 msix_table = (struct msix_table_entry *)(KMMIO | msix_table_addr);
                 /** MSI-X PBA **/
@@ -85,9 +85,9 @@ init_xhci(uint8_t bus, uint8_t device, uint8_t func)
                 if ((bar & 0x6) == 4) {
                     msix_pba_addr |= (uint64_t)pci_read(bus, device, func, 0x14 + 4 * pba_bir) << 32;
                 }
-                walk_pgtbl(k_pml4, KMMIO | msix_pba_addr, &pte, 0);
+                walk_pgtbl(k_pgtbl, KMMIO | msix_pba_addr, &pte, 0);
                 if (pte == NULL) { // not mapped
-                    map_mmio(k_pml4, KMMIO | msix_pba_addr, msix_pba_addr, &pte);
+                    map_mmio(k_pgtbl, KMMIO | msix_pba_addr, msix_pba_addr, &pte);
                 }
                 msix_pba = (uint64_t *)(KMMIO | msix_pba_addr);
             }
@@ -103,7 +103,7 @@ init_xhci(uint8_t bus, uint8_t device, uint8_t func)
 
     /** MMIO **/
     pte_t *pte;
-    map_mmio(k_pml4, KMMIO + bar, bar, &pte);
+    map_mmio(k_pgtbl, KMMIO + bar, bar, &pte);
     uint32_t *xhci_root = (uint32_t *)((KMMIO + bar) & 0xFFFFFFFFFFFFFFF0);
     
     /** start initialize **/

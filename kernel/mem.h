@@ -179,7 +179,7 @@ struct TSSDesc {
 } __attribute__((packed));
 
 extern char end[];
-extern pgtbl_t k_pml4;
+extern pgtbl_t k_pgtbl;
 extern uint64_t nfreepages;
 extern char *end_kmem;
 extern struct PageInfo *k_pageinfo;

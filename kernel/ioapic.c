@@ -35,7 +35,7 @@ init_ioapic()
 {
     // map ioapic to kernel address
     pte_t *pte;
-    walk_pgtbl(k_pml4, PAGEADDR((uint64_t)ioregsel), &pte, 1);
+    walk_pgtbl(k_pgtbl, PAGEADDR((uint64_t)ioregsel), &pte, 1);
     *pte = 0xFEC00000 | PTE_P | PTE_W | PTE_PWT | PTE_PCD;
 	lcr3(rcr3());
     wioreg(0x0, 0x9 << 24); // IOAPIC's ID is 9

@@ -11,7 +11,7 @@
 struct MemInfo *k_meminfo; // read from NVRAM at boot time
 struct PageInfo *k_pageinfo; // info for every available 4K-page
 struct PageInfo *freepages = NULL;
-pgtbl_t k_pml4;
+pgtbl_t k_pgtbl;
 pdpt_t k_pdpt;
 char *end_kpgtbl;
 char *end_kmem; // end of used kernel memory, in absolute address
@@ -127,7 +127,7 @@ reg_kpgtbl_1Gpage(uint64_t addr)
 {
     uint64_t pml4i = addr >> PML4_OFFSET;
     uint64_t pdpti = addr >> PDPT_OFFSET;
-    k_pml4[pml4i] = K2P(&k_pdpt[pdpti & (~0x1FF)]) | PML4E_P;
+    k_pgtbl[pml4i] = K2P(&k_pdpt[pdpti & (~0x1FF)]) | PML4E_P;
     k_pdpt[pdpti] = addr | PDPTE_P | PDPTE_PS;
 }
 
@@ -135,19 +135,24 @@ reg_kpgtbl_1Gpage(uint64_t addr)
 void
 init_kpgtbl(void)
 {
-    k_pml4 = (pgtbl_t)ROUNDUP((uint64_t)(end_kmem), PGSIZE);
+    k_pgtbl = (pgtbl_t)ROUNDUP((uint64_t)(end_kmem), PGSIZE);
     n_pml4 = NENTRY(max_addr, PML4_OFFSET);
-    k_pdpt = (pdpt_t)ROUNDUP((uint64_t)(k_pml4 + n_pml4), PGSIZE);
+    k_pdpt = (pdpt_t)ROUNDUP((uint64_t)(k_pgtbl + n_pml4), PGSIZE);
     n_pdpt = NENTRY(max_addr, PDPT_OFFSET);
     end_kpgtbl = (char *)ROUNDUP((uint64_t)(k_pdpt + n_pdpt), PGSIZE);
+    uint64_t *ptr = (uint64_t *)k_pgtbl;
+    while (ptr < (uint64_t *)end_kpgtbl) {
+        *ptr = 0;
+        ptr++;
+    }
     for (uint64_t i = 0; i < max_addr; i += 0x40000000) { // 1G pages
         reg_kpgtbl_1Gpage(i);
     }
     for (int i = 0; i < 255; ++i) {
-        k_pml4[i + 256] = k_pml4[i];
+        k_pgtbl[i + 256] = k_pgtbl[i];
     }
-    k_pml4[511] = 0x12003; // kernel stack, see entry.S
-    lcr3(K2P(k_pml4));
+    k_pgtbl[511] = 0x12003; // kernel stack, see entry.S
+    lcr3(K2P(k_pgtbl));
     end_kmem = end_kpgtbl;
 }
 
@@ -277,24 +282,30 @@ walk_pgtbl(pgtbl_t pgtbl, uint64_t vaddr, pte_t **pte, int create)
         // no permission given: let the caller do if needed
         pt[pti] = alloced[3]->paddr | PTE_P;
     }
-    *pte = (pte_t *)P2K(pt + pti);
+    if (pte != NULL)
+        *pte = (pte_t *)P2K(pt + pti);
     return 0;
 unmapped:
-    *pte = NULL;
+    if (pte != NULL)
+        *pte = NULL;
 no_mem:
     for (int i = 0; i < 4 && alloced[i] != NULL; ++i) free_page(alloced[i]);
     return -E_NOMEM;
 }
 
 int
-map_mmio(pgtbl_t pgtbl, uint64_t vaddr, uint64_t mmioaddr, pte_t **pte)
+map_mmio(pgtbl_t pgtbl, uint64_t vaddr, uint64_t mmioaddr, pte_t **_pte)
 {
     int r;
-    if (r = walk_pgtbl(pgtbl, vaddr, pte, 1)) {
+    pte_t *pte;
+    if (r = walk_pgtbl(pgtbl, vaddr, &pte, 1)) {
         return r;
     }
-    free_page(PA2PGINFO(PAGEADDR(**pte)));
-    **pte = mmioaddr | PTE_P | PTE_PWT | PTE_PCD;
+    free_page(PA2PGINFO(PAGEADDR(*pte)));
+    *pte = mmioaddr | PTE_P | PTE_PWT | PTE_PCD;
+    if (_pte != NULL) {
+        *_pte = pte;
+    }
     return 0;
 }
 

@@ -31,6 +31,12 @@ struct DescHeader {
     uint32_t CreatorRevision;
 } __attribute__ ((packed));
 
+struct MCFG_entry {
+    uint64_t ECAMBase;
+    uint16_t PCISegGroupNum;
+    uint8_t  StartPCIBusNum, EndPCIBusNum, rsv[4];
+} __attribute__ ((packed));
+
 int init_acpi();
 
 #endif
