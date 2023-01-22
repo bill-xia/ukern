@@ -117,7 +117,12 @@ Label_ReadProgramHeader:
     mov ebx, [eax] ; type
     cmp ebx, 1
     jne Label_ReadNextProgramHeader
+
 Label_ReadProgramSector:
+    cmp ecx, 0
+    je Label_ReadProgramSectorEnd
+
+    dec ecx
     mov ax, 0
     mov es, ax
     mov bx, 0x8000
@@ -133,11 +138,10 @@ Label_ReadProgramSector:
     inc dword [lba]
 
     pop ecx
-    dec ecx
-    jnz Label_ReadProgramSector
+    jmp Label_ReadProgramSector
 
+Label_ReadProgramSectorEnd:
     push ecx
-
     mov eax, [paddrrem]
     mov ecx, eax
     add eax, [filesz]
