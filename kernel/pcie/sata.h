@@ -1,6 +1,9 @@
 #ifndef SATA_H
 #define SATA_H
 
+#include "mem.h"
+#include "pcie/pcie.h"
+
 extern uint32_t *sata_regs;
 
 #define SATA_CAP (0x00 / 4)
@@ -175,7 +178,14 @@ struct sata_cmd_tbl {
     struct sata_prdt prdt[0];
 } __attribute__ ((packed));
 
+static uint64_t
+blk2kaddr(int blk)
+{
+    return KDISK | (blk << PGSHIFT);
+}
+
 void pcie_sata_register(void);
 void pcie_sata_ahci_init(volatile struct pci_config_device *cfg);
+int sata_read_block(int port, uint64_t block);
 
 #endif

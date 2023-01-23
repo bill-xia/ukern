@@ -309,13 +309,6 @@ map_mmio(pgtbl_t pgtbl, uint64_t vaddr, uint64_t mmioaddr, pte_t **_pte)
     return 0;
 }
 
-void memcpy(char *dst, char *src, uint64_t n_bytes) {
-    // TODO: this is currently buggy: src[0:n_bytes] and dst[0:n_bytes] may overlap!
-    for (int i = 0; i < n_bytes; ++i) {
-        dst[i] = src[i];
-    }
-}
-
 //
 // pgtbl should be above KERNEL_BASE
 // Free the pagetable with pml4 table at `pgtbl`.

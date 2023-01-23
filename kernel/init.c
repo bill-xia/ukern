@@ -9,6 +9,7 @@
 #include "fs.h"
 #include "acpi.h"
 #include "pci.h"
+#include "fs/diskfmt.h"
 
 void init(void)
 {
@@ -27,5 +28,6 @@ void init(void)
     // init_ide();
     // init_fs();
     init_acpi();
+    ls_diskpart();
     // init_pci();
 }

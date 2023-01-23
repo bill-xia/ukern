@@ -13,10 +13,12 @@ KERNEL_OBJS := $(OBJ_DIR)/kernel/main.o \
 	$(OBJ_DIR)/kernel/ide.o \
 	$(OBJ_DIR)/kernel/fs.o \
 	$(OBJ_DIR)/kernel/acpi.o \
+	$(OBJ_DIR)/kernel/fs/diskfmt.o \
 	$(OBJ_DIR)/kernel/pcie/pcie.o \
 	$(OBJ_DIR)/kernel/pcie/nvme.o \
 	$(OBJ_DIR)/kernel/pcie/sata.o \
 	$(OBJ_DIR)/kernel/lib/printfmt.o \
+	$(OBJ_DIR)/kernel/lib/string.o \
 
 KERNEL_HDRS := kernel/init.h \
 	kernel/intr.h \
@@ -34,6 +36,7 @@ KERNEL_HDRS := kernel/init.h \
 	kernel/fs.h \
 	kernel/pcie/pcie.h \
 	kernel/pcie/nvme.h \
+	kernel/fs/diskfmt.h \
 	kernel/acpi.h \
 
 KERNEL_BINS := $(OBJ_DIR)/user/divzero \

@@ -15,6 +15,7 @@ pre-qemu: image
 pre-build:
 	mkdir -p obj/kernel/lib
 	mkdir -p obj/kernel/pcie
+	mkdir -p obj/kernel/fs
 	mkdir -p obj/user/lib
 	mkdir -p obj/boot
 
@@ -37,7 +38,7 @@ image: pre-build $(OBJ_DIR)/boot/boot $(OBJ_DIR)/kernel/kernel fsimg
 	truncate -s515585 image # to work on q35, weird... see https://stackoverflow.com/questions/68746570/how-to-make-simple-bootloader-for-q35-machine
 
 qemu: pre-qemu
-	qemu-system-x86_64 $(QEMU_FLAGS) -machine q35 -drive file=image,format=raw #-device qemu-xhci
+	qemu-system-x86_64 $(QEMU_FLAGS) -machine q35 -drive file=image,format=raw -drive file=gptimg,format=raw #-device qemu-xhci
 	# -drive file=fsimg,if=none,id=nvm,format=raw -device nvme,serial=deadbeef,drive=nvm 
 
 qemu-gdb: pre-qemu

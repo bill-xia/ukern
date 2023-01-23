@@ -1,6 +1,7 @@
 #include "pcie/pcie.h"
 #include "pcie/sata.h"
 #include "pcie/ata_cmd.h"
+#include "fs/diskfmt.h"
 #include "mem.h"
 #include "printk.h"
 #include "errno.h"
@@ -9,9 +10,8 @@
 uint32_t *sata_regs;
 static struct sata_cmd_hdr *cmd_list[32];
 volatile struct sata_port_regs *ports;
-int working_port;
 
-int sata_read_block(uint64_t block);
+int sata_read_block(int port, uint64_t block);
 
 void
 pcie_sata_register(void)
@@ -23,7 +23,8 @@ pcie_sata_register(void)
     dev_type->dev_init = pcie_sata_ahci_init;
 }
 
-int check_port(int port)
+int
+check_port(int port)
 {
     uint32_t ssts = ports[port].ssts;
     uint8_t ipm = ((ssts >> 8) & 0x0F), det = (ssts & 0xF);
@@ -85,7 +86,9 @@ pcie_sata_ahci_init(volatile struct pci_config_device *cfg)
         uint32_t cmd = ports[i].cmd;
         if (!check_port(i))
             continue;
-        working_port = i;
+        disk[n_disk].disk_ind = i;
+        disk[n_disk++].driver_type = DISK_SATA;
+        
         // printk("port %d cmd: %x\n", i, cmd);
         if (cmd & (CMD_ST | CMD_CR | CMD_FRE | CMD_FR)) {
             // 1) place into idle state with patience
@@ -157,35 +160,13 @@ pcie_sata_ahci_init(volatile struct pci_config_device *cfg)
     int ncs = ((sata_regs[SATA_CAP] & CAP_NCS) >> 8) + 1;
 
     printk("ACHI nports: %d, ports implemented: %x, ncs: %d\n", nports, ports_mask, ncs);
-
-    walk_pgtbl(k_pgtbl, KDISK | 0x0000, NULL, 1);
-    lcr3(rcr3());
-
-    sata_regs[SATA_GHC] |= GHC_IE;
-
-    sata_read_block(0);
-    for (i = 0; i < 1000000; ++i) ;
-    uint8_t *buf = (uint8_t *)(KDISK | 0x0000);
-    char *hex = "0123456789ABCDEF";
-    for (i = 0; i < 64; ++i) {
-        uint8_t lo = buf[i] & 0xf, hi = buf[i] >> 4;
-        printk("%c%c ", hex[hi], hex[lo]);
-        if (i % 16 == 15)
-            printk("\n");
-    }
-}
-
-static uint64_t
-blk2kaddr(int blk)
-{
-    return KDISK | (blk << PGSHIFT);
 }
 
 int
-sata_read_block(uint64_t block)
+sata_read_block(int port, uint64_t block)
 {
     // AHCI Spec 1.3.1 Section 5.5
-    int i, port = working_port, slot = 0;
+    int i, slot = 0;
     ports[port].is = 0xFFFF;
     // printk("port is: %x\n", ports[port].is);
     for (slot = 0; slot < 32; ++slot) {
