@@ -129,7 +129,7 @@ vprintfmt(void (*putch)(char), const char *fmt, va_list ap)
                 printint(putch, num, 16, width, padc);
                 break;
             case 's':
-                num = va_arg(ap, char *);
+                num = (uint64_t)va_arg(ap, char *);
                 printstr(putch, (void *)num);
                 break;
             case '%':

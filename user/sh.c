@@ -1,4 +1,5 @@
 #include "usyscall.h"
+#include "stdio.h"
 
 char *argv[16];
 char argv_buf[16][256];

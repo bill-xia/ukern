@@ -8,6 +8,7 @@
 #include "types.h"
 
 #define PGSIZE 4096
+#define PGSHIFT 12
 #define PML4_LEN 512
 #define PDPT_LEN 512
 #define PD_LEN 512
@@ -71,6 +72,7 @@ struct MemInfo {
 #define UARGS    0x3FF000
 #define EXEC_IMG 0xFFFF900000000000
 #define KMMIO    0xFFFFA00000000000
+#define KDISK    0xFFFFC00000000000
 
 #define K2P(x) ((uint64_t)(x) & MASK(47))
 #define P2K(x) ((uint64_t)(x) | KERNBASE)

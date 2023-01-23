@@ -196,7 +196,7 @@ sys_exec(struct ProcContext *tf)
         strncpy(uarg_pg + i * ARGLEN, argv_buf[i], ARGLEN);
     }
     // mapping kernel space
-    pgtbl_t *pgtbl = (pgtbl_t)P2K(proc->pgtbl);
+    pgtbl_t pgtbl = (pgtbl_t)P2K(proc->pgtbl);
     for (int i = 256; i < 512; ++i) {
         pgtbl[i] = k_pgtbl[i];
     }

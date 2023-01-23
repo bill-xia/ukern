@@ -2,6 +2,7 @@
 #define PCIE_H
 
 #include "types.h"
+#include "printk.h"
 
 #define VENDORID    0x00
 #define DEVICEID    0x02
@@ -19,6 +20,11 @@
 #define PRIBUS      0x18
 #define SECBUS      0x19
 #define SUBBUS      0x1A
+
+#define PCI_CMD_ID  0x400
+#define PCI_CMD_BME 0x04
+#define PCI_CMD_MSE 0x02
+#define PCI_CMD_IOSE    0x01
 
 extern uint64_t pcie_base;
 
@@ -70,23 +76,23 @@ struct pci_config_device {
 } __attribute__((packed));
 
 static inline uint32_t
-pcie_read(void *_base, int offset)
+pcie_read(volatile void *_base, int offset)
 {
-    uint32_t *base = _base;
+    volatile uint32_t *base = _base;
     return base[offset / 4];
 }
 
 static inline void
-pcie_write(void *_base, int offset, uint32_t value)
+pcie_write(volatile void *_base, int offset, uint32_t value)
 {
-    uint32_t *base = _base;
+    volatile uint32_t *base = _base;
     base[offset / 4] = value;
 }
 
 static inline uint16_t
-pcie_readw(void *_base, int offset)
+pcie_readw(volatile void *_base, int offset)
 {
-    uint32_t r = pcie_read(_base, offset);
+    volatile uint32_t r = pcie_read(_base, offset);
     offset &= 3;
     if (offset & 1) { // odd offset is not permitted
         panic("pcie_readw: odd offset %d.\n", offset);
@@ -97,16 +103,44 @@ pcie_readw(void *_base, int offset)
 }
 
 static inline uint8_t
-pcie_readb(void *_base, int offset)
+pcie_readb(volatile void *_base, int offset)
 {
-    uint32_t r = pcie_read(_base, offset);
+    volatile uint32_t r = pcie_read(_base, offset);
     r >>= 8 * (offset & 3);
     return (uint8_t)r;
 }
 
+static inline uint16_t
+pcie_writew(volatile void *_base, int offset, uint16_t value)
+{
+    volatile uint32_t r = pcie_read(_base, offset);
+    offset &= 3;
+    if (offset & 1) { // odd offset is not permitted
+        panic("pcie_writew: odd offset %d.\n", offset);
+    } else {
+        r &= ~(0xffff << (8 * offset));
+        r |= value << (8 * offset);
+    }
+    return (uint16_t)r;
+}
+
+// static inline uint16_t
+// pcie_writeb(void *_base, int offset, uint8_t value)
+// {
+//     uint32_t r = pcie_read(_base, offset);
+//     offset &= 3;
+//     if (offset & 1) { // odd offset is not permitted
+//         panic("pcie_writeb: odd offset %d.\n", offset);
+//     } else {
+//         r &= 0xffff << (8 * (2 - offset));
+//         r |= value << (8 * (2 - offset));
+//     }
+//     return (uint16_t)r;
+// }
+
 void init_pcie(void);
 
-typedef void (*dev_init_fn)(struct pci_config_device *pcie_dev);
+typedef void (*dev_init_fn)(volatile struct pci_config_device *pcie_dev);
 
 struct pcie_dev_type {
     uint8_t class, subclass, progif;
@@ -116,7 +150,7 @@ struct pcie_dev_type {
 struct pcie_dev {
     uint8_t class, subclass, progif;
     uint16_t vendor, devid;
-    struct pci_config_device *cfg;
+    volatile struct pci_config_device *cfg;
 };
 
 #define NPCIEDEVTYPE 1024
@@ -124,6 +158,6 @@ struct pcie_dev {
 
 extern int n_pcie_dev_type, n_pcie_dev;
 extern struct pcie_dev_type pcie_dev_type_list[NPCIEDEVTYPE];
-extern struct pcie_dev_type pcie_dev_list[NPCIEDEV];
+extern struct pcie_dev pcie_dev_list[NPCIEDEV];
 
 #endif

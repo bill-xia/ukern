@@ -6,7 +6,7 @@
 uint64_t pcie_base;
 int n_pcie_dev_type, n_pcie_dev;
 struct pcie_dev_type pcie_dev_type_list[NPCIEDEV];
-struct pcie_dev_type pcie_dev_list[NPCIEDEV];
+struct pcie_dev pcie_dev_list[NPCIEDEV];
 
 void scan_devfn(int bus, int devfn);
 void pcie_init_device(int bus, int devfn);
@@ -27,13 +27,13 @@ scan_bus(int bus)
 void
 scan_devfn(int bus, int devfn)
 {
-    volatile struct pci_config_hdr *hdr = (struct pci_config_hdr *)(pcie_base | (bus << 20) | (devfn << 12));
+    struct pci_config_hdr *hdr = (struct pci_config_hdr *)(pcie_base | (bus << 20) | (devfn << 12));
     if (pcie_readw(hdr, VENDORID) == 0xFFFF) // no device here
         return;
     if ((pcie_readb(hdr, HDRTYPE) & 0x7F) == 0x00) {
         pcie_init_device(bus, devfn);
     } else {
-        volatile struct pci_config_bridge *bridge = (struct pci_config_bridge *)hdr;
+        struct pci_config_bridge *bridge = (struct pci_config_bridge *)hdr;
         printk("bus found: bus %d, devfn %d, pri %d, sec %d, subord %d.\n",
             bus,
             devfn,
@@ -48,8 +48,8 @@ scan_devfn(int bus, int devfn)
 void
 pcie_init_device(int bus, int devfn)
 {
-    volatile struct pci_config_hdr *hdr = (struct pci_config_hdr *)(pcie_base | (bus << 20) | (devfn << 12));
-    volatile struct pci_config_device *dev = (struct pci_config_device *)hdr;
+    struct pci_config_hdr *hdr = (struct pci_config_hdr *)(pcie_base | (bus << 20) | (devfn << 12));
+    struct pci_config_device *dev = (struct pci_config_device *)hdr;
     // printk("dev [%d:%d]: vendor %x, dev_id %x, class %x, subclass %x, progif %x.\n",
     //     bus,
     //     devfn,

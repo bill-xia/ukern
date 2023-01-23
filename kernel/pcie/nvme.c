@@ -13,7 +13,7 @@ pcie_nvme_register(void)
 }
 
 void
-pcie_nvme_io_init(struct pci_config_device *cfg)
+pcie_nvme_io_init(volatile struct pci_config_device *cfg)
 {
     struct pcie_dev *dev = &pcie_dev_list[n_pcie_dev++];
     dev->class = 0x01;

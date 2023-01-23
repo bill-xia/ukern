@@ -5,6 +5,7 @@
 
 void init_rsdp2(struct RSDPDescriptor20 *rsdp);
 void init_rsdp(struct RSDPDescriptor *rsdp);
+void acpi_init_mcfg(struct DescHeader *tbl);
 
 struct RSDPDescriptor*
 detect_rsdp()
@@ -35,8 +36,7 @@ init_acpi()
 {
     struct RSDPDescriptor *rsdp = detect_rsdp();
     if (rsdp == NULL) {
-        printk("rsdp is NULL\n");
-        return;
+        panic("rsdp is NULL\n");
     }
     if (rsdp->Revision == 2) {
         // XSDP
@@ -47,6 +47,7 @@ init_acpi()
     } else {
         panic("RSDP revision unknown.\n");
     }
+    return 0;
 }
 
 void
@@ -55,7 +56,7 @@ init_rsdp2(struct RSDPDescriptor20 *rsdp)
     int i, j;
 
     printk("RSDP 2.0\n");
-    uint8_t chksum = 0, *cursor = rsdp;
+    uint8_t chksum = 0, *cursor = (uint8_t *)rsdp;
     for (i = 0; i < sizeof(struct RSDPDescriptor20); ++i) {
         chksum += cursor[i];
     }
@@ -67,7 +68,7 @@ init_rsdp2(struct RSDPDescriptor20 *rsdp)
     printk("rsdp addr: %p\n", rsdp->XsdtAddress);
     struct DescHeader *xsdt_desc = (struct DescHeader *)P2K(rsdp->XsdtAddress);
     int n_xsdt_entries = (xsdt_desc->Length - sizeof(struct DescHeader)) / 8;
-    uint64_t *xsdt = (struct DescHeader **)P2K(xsdt_desc + 1);
+    uint64_t *xsdt = (uint64_t *)P2K(xsdt_desc + 1);
     printk("# of xsdt entries: %d\n", n_xsdt_entries);
     for (i = 0; i < n_xsdt_entries; ++i) {
         struct DescHeader *tbl = (struct DescHeader *)P2K(xsdt[i]);
@@ -94,7 +95,7 @@ init_rsdp(struct RSDPDescriptor *rsdp)
     int i, j;
 
     printk("RSDP 1.0\n");
-    uint8_t chksum = 0, *cursor = rsdp;
+    uint8_t chksum = 0, *cursor = (uint8_t *)rsdp;
     for (i = 0; i < sizeof(struct RSDPDescriptor); ++i) {
         chksum += cursor[i];
     }
@@ -106,7 +107,7 @@ init_rsdp(struct RSDPDescriptor *rsdp)
     printk("rsdp addr: %p\n", rsdp->RsdtAddress);
     struct DescHeader *rsdt_desc = (struct DescHeader *)P2K(rsdp->RsdtAddress);
     int n_rsdt_entries = (rsdt_desc->Length - sizeof(struct DescHeader)) / 4;
-    uint32_t *rsdt = P2K(rsdt_desc + 1);
+    uint32_t *rsdt = (uint32_t *)P2K(rsdt_desc + 1);
     printk("# of rsdt entries: %d\n", n_rsdt_entries);
     for (i = 0; i < n_rsdt_entries; ++i) {
         struct DescHeader *tbl = (struct DescHeader *)P2K(rsdt[i]);
