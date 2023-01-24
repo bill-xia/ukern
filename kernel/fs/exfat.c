@@ -1,7 +1,6 @@
 #include "fs/exfat.h"
 #include "fs/fs.h"
 #include "mem.h"
-#include "fs/ide.h"
 #include "printk.h"
 
 uint32_t *fat;

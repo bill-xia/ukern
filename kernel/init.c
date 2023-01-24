@@ -26,7 +26,6 @@ void init(void)
     init_mp();
     init_pic();
     init_ioapic();
-    // init_ide();
     // init_fs();
     init_acpi();
     ls_diskpart();

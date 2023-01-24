@@ -67,4 +67,6 @@ struct GPTPAR {
     uint16_t    part_name[36]; // UTF-16
 } __attribute__((packed));
 
+int ls_diskpart(void);
+
 #endif
