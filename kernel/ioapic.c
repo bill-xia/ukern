@@ -38,7 +38,7 @@ init_ioapic()
     walk_pgtbl(k_pgtbl, PAGEADDR((uint64_t)ioregsel), &pte, 1);
     *pte = 0xFEC00000 | PTE_P | PTE_W | PTE_PWT | PTE_PCD;
 	lcr3(rcr3());
-    wioreg(0x0, 0x9 << 24); // IOAPIC's ID is 9
+    wioreg(0x0, 0x2 << 24); // IOAPIC's ID is 9
     // log some info
     // printk("IOAPICID: %x\n", rioreg(0x0) >> 24);
     // printk("IOAPICVER: %x\n", rioreg(0x1));

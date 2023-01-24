@@ -17,7 +17,7 @@ scan_bus(int bus)
     // static vis = 0;
     // if (bus == 0 && vis) return;
     // if (bus == 0) vis = 1;
-    printk("scanning bus: %d\n", bus);
+    // printk("scanning bus: %d\n", bus);
     int devfn = 0;
     for (devfn = 0; devfn < 0x100; devfn ++) {
         scan_devfn(bus, devfn);
@@ -34,13 +34,13 @@ scan_devfn(int bus, int devfn)
         pcie_init_device(bus, devfn);
     } else {
         struct pci_config_bridge *bridge = (struct pci_config_bridge *)hdr;
-        printk("bus found: bus %d, devfn %d, pri %d, sec %d, subord %d.\n",
-            bus,
-            devfn,
-            (int)pcie_readb(bridge, PRIBUS),
-            (int)pcie_readb(bridge, SECBUS),
-            (int)pcie_readb(bridge, SUBBUS)
-        );
+        // printk("bus found: bus %d, devfn %d, pri %d, sec %d, subord %d.\n",
+        //     bus,
+        //     devfn,
+        //     (int)pcie_readb(bridge, PRIBUS),
+        //     (int)pcie_readb(bridge, SECBUS),
+        //     (int)pcie_readb(bridge, SUBBUS)
+        // );
         scan_bus(pcie_readb(bridge, SECBUS));
     }
 }

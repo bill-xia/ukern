@@ -171,13 +171,21 @@ void trap_handler(struct ProcContext *trapframe, uint64_t vecnum, uint64_t errno
         break;
     case 36: ;
         int c = keyboard_handler();
-        if (c > 0) {
+        if (c > 0 && kbd_buf_siz < 4096) {
+            kbd_buffer[(kbd_buf_beg + kbd_buf_siz) % 4096] = c;
+            kbd_buf_siz++;
             if (kbd_proc != NULL) {
-                kbd_proc->context.rax = c;
+                kbd_proc->context.rax = kbd_buffer[kbd_buf_beg++];
+                if (kbd_buf_beg == 4096)
+                    kbd_buf_beg = 0;
+                kbd_buf_siz--;
                 kbd_proc->state = READY;
                 kbd_proc = NULL;
-                // do not sched() now, because we're interrupting
-                // in someone else's process
+                // sched
+                curproc->context = *trapframe;
+                curproc->state = READY;
+                lapic_eoi();
+                sched();
             }
         }
         lapic_eoi();
@@ -244,6 +252,7 @@ keyboard_handler(void)
 	static uint32_t shift;
 
 	stat = inb(KBSTATP);
+    printk("stat: %x ", (uint32_t)stat);
 	if ((stat & KBS_DIB) == 0)
 		return -1;
 	// Ignore data from mouse.
@@ -251,6 +260,7 @@ keyboard_handler(void)
 		return -1;
 
 	data = inb(KBDATAP);
+    printk("data: %x ", (uint32_t)data);
 
 	if (data == 0xE0) {
 		// E0 escape character
@@ -285,5 +295,6 @@ keyboard_handler(void)
 		outb(0x92, 0x3); // courtesy of Chris Frost
 	}
 
+    printk("char: %x\n", (uint32_t)c);
 	return c;
 }

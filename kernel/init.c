@@ -9,6 +9,7 @@
 #include "fs.h"
 #include "acpi.h"
 #include "pci.h"
+#include "pic.h"
 #include "fs/diskfmt.h"
 
 void init(void)
@@ -24,6 +25,7 @@ void init(void)
     // *(int*)0x7FFFFFFF0000 = 0;
     // from now on, anyone needing a new page have to call kalloc()
     init_mp();
+    init_pic();
     init_ioapic();
     // init_ide();
     // init_fs();

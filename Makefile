@@ -1,6 +1,6 @@
 AS := /usr/bin/nasm
 CC := /usr/bin/gcc
-CFLAGS := -nostdinc -fno-builtin -g -fno-stack-protector
+CFLAGS := -nostdinc -fno-builtin -g -fno-stack-protector -Wno-error=address-of-packed-member
 # QEMU_FLAGS := -d cpu_reset
 OBJ_DIR := obj
 

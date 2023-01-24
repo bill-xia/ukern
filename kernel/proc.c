@@ -7,11 +7,15 @@
 #include "errno.h"
 
 struct Proc *procs, *curproc, *kbd_proc;
+struct ProcContext empty_context;
 
 void
 init_pcb(void)
 {
     procs = (struct Proc *)ROUNDUP((uint64_t)end_kmem, sizeof(struct Proc));
+    for (int i = 0; i < NPROCS; ++i) {
+        procs[i].state = 0;
+    }
     end_kmem = (char *)(procs + NPROCS);
 }
 
@@ -27,6 +31,8 @@ alloc_proc(void)
             procs[i].p_pgtbl = (pgtbl_t)page->paddr;
             procs[i].state = PENDING;
             procs[i].pid = i + 1;
+            procs[i].exec_time = 0;
+            procs[i].context = empty_context;
             return procs + i;
         }
     }

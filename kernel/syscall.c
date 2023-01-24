@@ -8,6 +8,7 @@
 #include "sched.h"
 #include "ide.h"
 #include "fs.h"
+#include "kbd.h"
 
 int
 check_umem_mapping(uint64_t addr, uint64_t siz)
@@ -220,6 +221,13 @@ sys_exec(struct ProcContext *tf)
 void
 sys_getch(struct ProcContext *tf)
 {
+    if (kbd_buf_siz > 0) {
+        tf->rax = kbd_buffer[kbd_buf_beg++];
+        if (kbd_buf_beg == 4096)
+            kbd_buf_beg = 0;
+        kbd_buf_siz--;
+        return;
+    }
     if (kbd_proc == NULL) {
         kbd_proc = curproc;
     } else {

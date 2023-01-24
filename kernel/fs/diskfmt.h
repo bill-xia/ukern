@@ -68,7 +68,10 @@ struct GPTPAR {
 
 struct diskpart_t {
     char name[32];
-    uint8_t part_type;
+    uint8_t part_type,
+            fs_type;
+    uint32_t    lba_beg,
+                n_sec;
 };
 
 enum driver_type {
@@ -91,5 +94,13 @@ extern struct disk_t disk[32];
 
 int ls_diskpart(void);
 int print_guid(char *guid);
+
+enum fs_type {
+    FS_UNKNOWN,
+    FS_EXFAT,
+    N_KNOWN_FS
+};
+
+int detect_fs(int did, int pid);
 
 #endif

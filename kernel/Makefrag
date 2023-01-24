@@ -13,6 +13,8 @@ KERNEL_OBJS := $(OBJ_DIR)/kernel/main.o \
 	$(OBJ_DIR)/kernel/ide.o \
 	$(OBJ_DIR)/kernel/fs.o \
 	$(OBJ_DIR)/kernel/acpi.o \
+	$(OBJ_DIR)/kernel/pic.o \
+	$(OBJ_DIR)/kernel/kbd.o \
 	$(OBJ_DIR)/kernel/fs/diskfmt.o \
 	$(OBJ_DIR)/kernel/pcie/pcie.o \
 	$(OBJ_DIR)/kernel/pcie/nvme.o \
@@ -34,6 +36,7 @@ KERNEL_HDRS := kernel/init.h \
 	kernel/ioapic.h \
 	kernel/ide.h \
 	kernel/fs.h \
+	kernel/pic.h \
 	kernel/pcie/pcie.h \
 	kernel/pcie/nvme.h \
 	kernel/fs/diskfmt.h \

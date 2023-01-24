@@ -178,14 +178,16 @@ struct sata_cmd_tbl {
     struct sata_prdt prdt[0];
 } __attribute__ ((packed));
 
+#define DSKSHIFT 40
+
 static uint64_t
-blk2kaddr(int blk)
+blk2kaddr(int did, int blk)
 {
-    return KDISK | (blk << PGSHIFT);
+    return KDISK | ((uint64_t)did << DSKSHIFT) | ((uint64_t)blk << PGSHIFT);
 }
 
 void pcie_sata_register(void);
 void pcie_sata_ahci_init(volatile struct pci_config_device *cfg);
-int sata_read_block(int port, uint64_t block);
+int sata_read_block(int did, uint64_t block);
 
 #endif

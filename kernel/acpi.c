@@ -6,6 +6,7 @@
 void init_rsdp2(struct RSDPDescriptor20 *rsdp);
 void init_rsdp(struct RSDPDescriptor *rsdp);
 void acpi_init_mcfg(struct DescHeader *tbl);
+void acpi_init_apic(struct DescHeader *tbl);
 
 struct RSDPDescriptor*
 detect_rsdp()
@@ -47,6 +48,7 @@ init_acpi()
     } else {
         panic("RSDP revision unknown.\n");
     }
+    // printk("init_acpi done.\n");
     return 0;
 }
 
@@ -63,27 +65,28 @@ init_rsdp2(struct RSDPDescriptor20 *rsdp)
     if (chksum != 0) {
         panic("checksum neq 0\n");
     }
-    printk("rsdp descriptor: %p\n", rsdp);
-    printk("rsdp revision: %d\n", rsdp->firstPart.Revision);
-    printk("rsdp addr: %p\n", rsdp->XsdtAddress);
+    // printk("rsdp descriptor: %p\n", rsdp);
+    // printk("rsdp revision: %d\n", rsdp->firstPart.Revision);
+    // printk("rsdp addr: %p\n", rsdp->XsdtAddress);
     struct DescHeader *xsdt_desc = (struct DescHeader *)P2K(rsdp->XsdtAddress);
     int n_xsdt_entries = (xsdt_desc->Length - sizeof(struct DescHeader)) / 8;
     uint64_t *xsdt = (uint64_t *)P2K(xsdt_desc + 1);
-    printk("# of xsdt entries: %d\n", n_xsdt_entries);
+    // printk("# of xsdt entries: %d\n", n_xsdt_entries);
     for (i = 0; i < n_xsdt_entries; ++i) {
         struct DescHeader *tbl = (struct DescHeader *)P2K(xsdt[i]);
-        // printk("tbl: %p\n", tbl);
-        // printk("signature: %s\n", tbl->Signature);
         uint32_t sign = 0;
         for (j = 3; j >= 0; --j) {
             sign = (sign << 8) + tbl->Signature[j];
         }
+        // printk("signature: %c%c%c%c\n", sign>>24, (sign>>16)&255, (sign>>8)&255, sign & 255);
         switch (sign) {
         case 0x4746434d: ; // MCFG
             acpi_init_mcfg(tbl);
             break;
+        case 0x43495041: ; // APIC
+            acpi_init_apic(tbl);
+            break;
         default:
-            // printk("signature: %c%c%c%c\n", sign>>24, (sign>>16)&255, (sign>>8)&255, sign & 255);
             break;
         }
     }
@@ -102,27 +105,28 @@ init_rsdp(struct RSDPDescriptor *rsdp)
     if (chksum != 0) {
         panic("RSDP hecksum neq 0\n");
     }
-    printk("rsdp descriptor: %p\n", rsdp);
-    printk("rsdp revision: %d\n", rsdp->Revision);
-    printk("rsdp addr: %p\n", rsdp->RsdtAddress);
+    // printk("rsdp descriptor: %p\n", rsdp);
+    // printk("rsdp revision: %d\n", rsdp->Revision);
+    // printk("rsdp addr: %p\n", rsdp->RsdtAddress);
     struct DescHeader *rsdt_desc = (struct DescHeader *)P2K(rsdp->RsdtAddress);
     int n_rsdt_entries = (rsdt_desc->Length - sizeof(struct DescHeader)) / 4;
     uint32_t *rsdt = (uint32_t *)P2K(rsdt_desc + 1);
-    printk("# of rsdt entries: %d\n", n_rsdt_entries);
+    // printk("# of rsdt entries: %d\n", n_rsdt_entries);
     for (i = 0; i < n_rsdt_entries; ++i) {
         struct DescHeader *tbl = (struct DescHeader *)P2K(rsdt[i]);
-        // printk("tbl: %p\n", tbl);
-        // printk("signature: %s\n", tbl->Signature);
         uint32_t sign = 0;
         for (j = 3; j >= 0; --j) {
             sign = (sign << 8) + tbl->Signature[j];
         }
+        // printk("signature: %c%c%c%c\n", sign>>24, (sign>>16)&255, (sign>>8)&255, sign & 255);
         switch (sign) {
         case 0x4746434d: ; // MCFG
             acpi_init_mcfg(tbl);
             break;
+        case 0x43495041: ; // APIC
+            acpi_init_apic(tbl);
+            break;
         default:
-            // printk("signature: %c%c%c%c\n", sign>>24, (sign>>16)&255, (sign>>8)&255, sign & 255);
             break;
         }
     }
@@ -132,11 +136,11 @@ void
 acpi_init_mcfg(struct DescHeader *tbl)
 {
     int i, j;
-    printk("found mcfg entry\n");
+    printk("ACPI: Found MCFG entry. Initializing PCIe.\n");
     struct MCFG_entry *mcfg_ent = (struct MCFG_entry *)((uint64_t)tbl + sizeof(struct DescHeader) + 8);
-    printk("tbl->Length: %d\n", tbl->Length);
+    // printk("tbl->Length: %d\n", tbl->Length);
     int n_mcfg_ent = (tbl->Length - sizeof(struct DescHeader) - 8) / sizeof(struct MCFG_entry), group = 1 << 16;
-    printk("n_mcfg_ent: %d\n", n_mcfg_ent);
+    // printk("n_mcfg_ent: %d\n", n_mcfg_ent);
     pte_t *pte;
     for (i = 0; i < n_mcfg_ent; ++i) {
         if (group == (1 << 16)) {
@@ -152,7 +156,7 @@ acpi_init_mcfg(struct DescHeader *tbl)
         // }
         pcie_base = KMMIO | mcfg_ent[i].ECAMBase;
         // Setup PCIe ECAM MMIO
-        printk("start bus: %d, end bus: %d, base: %x\n", mcfg_ent[i].StartPCIBusNum, mcfg_ent[i].EndPCIBusNum, mcfg_ent[i].ECAMBase);
+        // printk("start bus: %d, end bus: %d, base: %x\n", mcfg_ent[i].StartPCIBusNum, mcfg_ent[i].EndPCIBusNum, mcfg_ent[i].ECAMBase);
         int bus;
         for (bus = 0; bus <= mcfg_ent[i].EndPCIBusNum - mcfg_ent[i].StartPCIBusNum; ++bus) {
             uint64_t base = mcfg_ent[i].ECAMBase + (bus << 20);
@@ -162,4 +166,38 @@ acpi_init_mcfg(struct DescHeader *tbl)
         }
     }
     init_pcie();
+}
+
+void
+acpi_init_apic(struct DescHeader *tbl)
+{
+    int i, j;
+    printk("ACPI: Found MADT entry. Initializing IOAPIC.\n");
+    struct MADT_entry_hdr *madt_ent_hdr;
+    uint8_t *ptr = (uint8_t *)((uint64_t)tbl + sizeof(struct DescHeader) + 8),
+            *end = (uint8_t *)tbl + tbl->Length;
+    while (ptr < end) {
+        madt_ent_hdr = (struct MADT_entry_hdr *)ptr;
+        
+        switch (madt_ent_hdr->type) {
+        case MADT_LAPIC: ;
+            struct madt_lapic *lapic = (struct madt_lapic *)ptr;
+            // printk("LAPIC: puid %d, lapicid %d, flags %x\n",
+            //     lapic->puid, lapic->lapicid, lapic->flags);
+            break;
+        case MADT_IOAPIC: ;
+            struct madt_ioapic *ioapic = (struct madt_ioapic *)ptr;
+            // printk("IOAPIC: ioapicid %x, addr %x, intr_base %x\n",
+            //     (uint32_t)ioapic->ioapicid, ioapic->addr, ioapic->GSI_base);
+            break;
+        case MADT_ISO: ;
+            struct madt_iso *iso = (struct madt_iso *)ptr;
+            // printk("ISO: source %d, GSI %d, flags %x\n",
+            //     (uint32_t)iso->source, iso->GSI, (uint32_t)iso->flags);
+            break;
+        default:
+            break;
+        }
+        ptr += madt_ent_hdr->length;
+    }
 }

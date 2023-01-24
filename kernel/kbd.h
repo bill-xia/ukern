@@ -1,6 +1,8 @@
 #ifndef JOS_KBDREG_H
 #define JOS_KBDREG_H
 
+#include "types.h"
+
 // Special keycodes
 #define KEY_HOME	0xE0
 #define KEY_END		0xE1
@@ -177,5 +179,8 @@ static uint8_t *charcode[4] = {
 	ctlmap,
 	ctlmap
 };
+
+extern char kbd_buffer[4096];
+extern int kbd_buf_beg, kbd_buf_siz;
 
 #endif /* !JOS_KBDREG_H */

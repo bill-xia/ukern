@@ -50,7 +50,10 @@ int load_img(char *img, struct Proc *proc);
 #define IMAGE_SYMBOL(x) _binary_obj_user_ ## x ## _start
 #define CREATE_PROC(x) do { \
     extern char IMAGE_SYMBOL(x); \
-    create_proc(&IMAGE_SYMBOL(x)); \
+    int r; \
+    if ((r = create_proc(&IMAGE_SYMBOL(x))) < 0) { \
+        panic("create_proc failed: %d\n", r); \
+    } \
 } while (0)
 
 #endif

@@ -6,12 +6,11 @@
 #include "printk.h"
 #include "errno.h"
 #include "x86.h"
+#include "fs/diskfmt.h"
 
 uint32_t *sata_regs;
 static struct sata_cmd_hdr *cmd_list[32];
 volatile struct sata_port_regs *ports;
-
-int sata_read_block(int port, uint64_t block);
 
 void
 pcie_sata_register(void)
@@ -32,7 +31,7 @@ check_port(int port)
         return 0;
     }
     uint32_t sig = ports[port].sig;
-    printk("port %d sig %x\n", port, sig);
+    // printk("port %d sig %x\n", port, sig);
     return sig != 0xeb140101 && sig != 0xc33c0101 && sig != 0x96690101;
 }
 
@@ -48,13 +47,12 @@ pcie_sata_ahci_init(volatile struct pci_config_device *cfg)
     dev->cfg = cfg;
     dev->vendor = pcie_readw(cfg, VENDORID);
     dev->devid = pcie_readw(cfg, DEVICEID);
-    // printk("found sata controller. cmd: %x, abar: %x\n",
-    //     cfg->hdr.cmd_status);
+    printk("Found sata controller.\n");
 
     cfg->hdr.cmd_status |= PCI_CMD_BME | PCI_CMD_MSE |
         PCI_CMD_IOSE;
 
-    // printk("ACHI Base Address: %x, cmd: %x\n", cfg->BAR5, cfg->hdr.cmd_status);
+    // printk("AHCI Base Address: %x, cmd: %x\n", cfg->BAR5, cfg->hdr.cmd_status);
     map_mmio(k_pgtbl, KMMIO | cfg->BAR5, cfg->BAR5, NULL);
     lcr3(rcr3());
     sata_regs = (uint32_t *)(KMMIO | cfg->BAR5);
@@ -86,6 +84,7 @@ pcie_sata_ahci_init(volatile struct pci_config_device *cfg)
         uint32_t cmd = ports[i].cmd;
         if (!check_port(i))
             continue;
+        printk("SATA port %d functional.\n", i);
         disk[n_disk].disk_ind = i;
         disk[n_disk++].driver_type = DISK_SATA;
         
@@ -141,7 +140,7 @@ pcie_sata_ahci_init(volatile struct pci_config_device *cfg)
         ports[i].ie = 0;
 
         // alloc memory for cmd_tbl
-        // printk("achi port functional: %d, err: %x\n", i, ports[i].serr);
+        // printk("AHCI port functional: %d, err: %x\n", i, ports[i].serr);
 
         ports[i].ci = 0;
 
@@ -159,13 +158,14 @@ pcie_sata_ahci_init(volatile struct pci_config_device *cfg)
     // 4. get ncs
     int ncs = ((sata_regs[SATA_CAP] & CAP_NCS) >> 8) + 1;
 
-    printk("ACHI nports: %d, ports implemented: %x, ncs: %d\n", nports, ports_mask, ncs);
+    // printk("AHCI nports: %d, ports implemented: %x, ncs: %d\n", nports, ports_mask, ncs);
 }
 
 int
-sata_read_block(int port, uint64_t block)
+sata_read_block(int did, uint64_t block)
 {
     // AHCI Spec 1.3.1 Section 5.5
+    int port = disk[did].disk_ind;
     int i, slot = 0;
     ports[port].is = 0xFFFF;
     // printk("port is: %x\n", ports[port].is);
@@ -210,11 +210,11 @@ sata_read_block(int port, uint64_t block)
     // cmd_tbl->acmd
     // cmd_tbl->prdt
     for (i = 0; i < prdtl; ++i) {
-        uint64_t vaddr = blk2kaddr(block);
+        uint64_t vaddr = blk2kaddr(did, block);
         pte_t *pte;
-        walk_pgtbl(k_pgtbl, vaddr, &pte, 0);
+        walk_pgtbl(k_pgtbl, vaddr, &pte, 1);
         uint64_t paddr = PAGEADDR(*pte);
-        // printk("tbl: %p, prdt: %p\n", cmd_tbl, cmd_tbl->prdt);
+        printk("read disk vaddr %lx, paddr: %lx\n", vaddr, paddr);
         cmd_tbl->prdt[i].dba = (uint32_t)paddr;
         cmd_tbl->prdt[i].dbau = paddr >> 32;
         cmd_tbl->prdt[i].dw3 = (PGSIZE - 1);
@@ -241,7 +241,7 @@ sata_read_block(int port, uint64_t block)
     while (ports[port].ci != 0) {
         printk("[R]");
     }
-    printk("sata_read(): port: %d, slot: %d, prdbc: %d\n", port, slot, cmd_hdr[slot].dw1);
+    // printk("sata_read(): port: %d, slot: %d, prdbc: %d\n", port, slot, cmd_hdr[slot].dw1);
     return 0;
 }
 
