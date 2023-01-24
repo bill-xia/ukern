@@ -106,6 +106,19 @@ init_kpageinfo(void)
                  end_addr = ROUNDDOWN(k_meminfo[ind].paddr + k_meminfo[ind].length, PGSIZE);
         printk("beg_addr: %lx, end_addr: %lx\n", beg_addr, end_addr);
         max_addr = max(max_addr, end_addr);
+        ++ind;
+    }
+    for (uint64_t addr = 0; addr < max_addr; addr += PGSIZE) {
+        PA2PGINFO(addr)->paddr = 0;
+    }
+    ind = 0;
+    while (k_meminfo[ind].type != 0) {
+        if (k_meminfo[ind].type != 1) {
+            ++ind;
+            continue;
+        }
+        uint64_t beg_addr = ROUNDUP(k_meminfo[ind].paddr, PGSIZE),
+                 end_addr = ROUNDDOWN(k_meminfo[ind].paddr + k_meminfo[ind].length, PGSIZE);
         while (beg_addr < end_addr) {
             PA2PGINFO(beg_addr)->paddr = beg_addr;
             beg_addr += PGSIZE;
@@ -161,17 +174,22 @@ init_kpgtbl(void)
 void
 init_freepages(void)
 {
-    struct PageInfo *pginfo_end = PA2PGINFO(max_addr);
+    struct PageInfo *last_page = NULL, *pginfo_end = PA2PGINFO(max_addr);
     for (struct PageInfo *pginfo = k_pageinfo; pginfo < pginfo_end; ++pginfo) {
         if (pginfo->paddr >= K2P((uint64_t)end_kmem)) {
             // for unavailable page, paddr is 0x0
-            pginfo->u.next = freepages;
-            freepages = pginfo;
+            if (last_page) {
+                last_page->u.next = pginfo;
+            } else {
+                freepages = pginfo;
+            }
+            last_page = pginfo;
             nfreepages++;
         } else {
             pginfo->u.ref++; // used by kernel
         }
     }
+    last_page->u.next = NULL;
 }
 
 //

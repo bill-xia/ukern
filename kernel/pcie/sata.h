@@ -181,9 +181,15 @@ struct sata_cmd_tbl {
 #define DSKSHIFT 40
 
 static uint64_t
-blk2kaddr(int did, int blk)
+blk2kaddr(int did, uint64_t blk)
 {
-    return KDISK | ((uint64_t)did << DSKSHIFT) | ((uint64_t)blk << PGSHIFT);
+    return KDISK | ((uint64_t)did << DSKSHIFT) | (blk << PGSHIFT);
+}
+
+static uint64_t
+lba2kaddr(int did, uint64_t lba)
+{
+    return KDISK | ((uint64_t)did << DSKSHIFT) | (lba << (PGSHIFT + 8));
 }
 
 void pcie_sata_register(void);

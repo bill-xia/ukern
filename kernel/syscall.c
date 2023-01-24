@@ -6,8 +6,7 @@
 #include "elf64.h"
 #include "x86.h"
 #include "sched.h"
-#include "ide.h"
-#include "fs.h"
+#include "fs/fs.h"
 #include "kbd.h"
 
 int

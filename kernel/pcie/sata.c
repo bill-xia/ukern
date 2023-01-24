@@ -181,10 +181,15 @@ sata_read_block(int did, uint64_t block)
     struct sata_cmd_hdr *cmd_hdr = &cmd_list[port][slot];
     int prdtl = 1, cfl = sizeof(struct reg_h2d_fis) / 4, isatapi = 0;
     // build ATA command
-    struct PageInfo *pg = alloc_page(FLAG_ZERO);
-    struct sata_cmd_tbl *cmd_tbl = (struct sata_cmd_tbl *)P2K(pg->paddr);
-    cmd_hdr->dw2 = pg->paddr;
-    cmd_hdr->dw3 = pg->paddr >> 32;
+    struct PageInfo *pg;
+    static struct sata_cmd_tbl *cmd_tbl = NULL;
+    // this function always use _the_ page for cmd_tbl
+    if (cmd_tbl == NULL) {
+        pg = alloc_page(FLAG_ZERO);
+        cmd_tbl = (struct sata_cmd_tbl *)P2K(pg->paddr);
+    }
+    cmd_hdr->dw2 = (uint32_t)cmd_tbl;
+    cmd_hdr->dw3 = K2P(cmd_tbl) >> 32;
 
     // pte_t *ppte;
     // walk_pgtbl(k_pgtbl, cmd_tbl, &ppte, 0);

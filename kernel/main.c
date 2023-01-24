@@ -4,7 +4,6 @@
 #include "proc.h"
 #include "sched.h"
 #include "errno.h"
-#include "ide.h"
 #include "mem.h"
 
 char buf[512];

@@ -2,7 +2,7 @@
 #include "mem.h"
 #include "pcie/sata.h"
 #include "printk.h"
-#include "fs.h"
+#include "fs/fs.h"
 
 int n_disk;
 struct disk_t disk[32];

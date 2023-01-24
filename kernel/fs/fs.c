@@ -1,6 +1,6 @@
-#include "fs.h"
+#include "fs/fs.h"
 #include "mem.h"
-#include "ide.h"
+#include "fs/ide.h"
 #include "printk.h"
 
 struct exFAT_hdr *fsinfo;

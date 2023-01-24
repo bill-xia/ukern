@@ -2,7 +2,7 @@
 #define PROC_H
 
 #include "types.h"
-#include "fs.h"
+#include "fs/fs.h"
 
 #define NPROCS 1024
 #define NARGS  16
