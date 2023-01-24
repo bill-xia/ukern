@@ -1,25 +1,25 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-typedef unsigned char uint8_t;
-typedef char int8_t;
-typedef unsigned short uint16_t;
-typedef short int16_t;
-typedef unsigned uint32_t;
-typedef int int32_t;
-typedef unsigned long uint64_t;
-typedef long int64_t;
-typedef uint32_t size_t;
+typedef unsigned char u8;
+typedef char i8;
+typedef unsigned short u16;
+typedef short i16;
+typedef unsigned u32;
+typedef int i32;
+typedef unsigned long u64;
+typedef long i64;
+typedef u32 size_t;
 
-typedef uint64_t pml4e_t;
-typedef uint64_t pdpte_t;
-typedef uint64_t pde_t;
-typedef uint64_t pte_t;
+typedef u64 pml4e_t;
+typedef u64 pdpte_t;
+typedef u64 pde_t;
+typedef u64 pte_t;
 
-typedef uint64_t* pgtbl_t;
-typedef uint64_t* pdpt_t;
-typedef uint64_t* pd_t;
-typedef uint64_t* pt_t;
+typedef u64* pgtbl_t;
+typedef u64* pdpt_t;
+typedef u64* pd_t;
+typedef u64* pt_t;
 
 #define NULL 0
 

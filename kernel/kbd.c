@@ -9,11 +9,10 @@ int
 kbd_getch(void)
 {
 	int c;
-	uint8_t stat, data;
-	static uint32_t shift;
+	u8 stat, data;
+	static u32 shift;
 
 	stat = inb(KBSTATP);
-    // printk("stat: %x ", (uint32_t)stat);
 	if ((stat & KBS_DIB) == 0)
 		return -1;
 	// Ignore data from mouse.
@@ -21,7 +20,6 @@ kbd_getch(void)
 		return -1;
 
 	data = inb(KBDATAP);
-    // printk("data: %x ", (uint32_t)data);
 
 	if (data == 0xE0) {
 		// E0 escape character
@@ -56,6 +54,5 @@ kbd_getch(void)
 		outb(0x92, 0x3); // courtesy of Chris Frost
 	}
 
-    // printk("char: %x\n", (uint32_t)c);
 	return c;
 }

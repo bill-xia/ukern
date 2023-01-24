@@ -4,42 +4,44 @@
 #include "types.h"
 
 struct RSDPDescriptor {
-    char Signature[8];
-    uint8_t Checksum;
-    char OEMID[6];
-    uint8_t Revision;
-    uint32_t RsdtAddress;
+	char	Signature[8];
+	u8	Checksum;
+	char	OEMID[6];
+	u8	Revision;
+	u32	RsdtAddress;
 } __attribute__ ((packed));
 
 struct RSDPDescriptor20 {
-    struct RSDPDescriptor firstPart;
-    uint32_t Length;
-    uint64_t XsdtAddress;
-    uint8_t ExtendedChecksum;
-    uint8_t reserved[3];
+	struct RSDPDescriptor	firstPart;
+	u32	Length;
+	u64	XsdtAddress;
+	u8	ExtendedChecksum;
+	u8	reserved[3];
 } __attribute__ ((packed));
 
 struct DescHeader {
-    char Signature[4];
-    uint32_t Length;
-    uint8_t Revision;
-    uint8_t Checksum;
-    char OEMID[6];
-    uint64_t OEMTableID;
-    uint32_t OEMRevision;
-    uint32_t CreatorID;
-    uint32_t CreatorRevision;
+	char	Signature[4];
+	u32	Length;
+	u8	Revision;
+	u8	Checksum;
+	char	OEMID[6];
+	u64	OEMTableID;
+	u32	OEMRevision;
+	u32	CreatorID;
+	u32	CreatorRevision;
 } __attribute__ ((packed));
 
 struct MCFG_entry {
-    uint64_t ECAMBase;
-    uint16_t PCISegGroupNum;
-    uint8_t  StartPCIBusNum, EndPCIBusNum, rsv[4];
+	u64	ECAMBase;
+	u16	PCISegGroupNum;
+	u8	StartPCIBusNum,
+		EndPCIBusNum,
+		rsv[4];
 } __attribute__ ((packed));
 
 struct MADT_entry_hdr {
-    uint8_t type,
-            length;
+	u8	type,
+		length;
 } __attribute__ ((packed));
 
 #define MADT_LAPIC  0x0
@@ -60,29 +62,29 @@ struct MADT_entry_hdr {
 #define MADT_ITS    0xF
 
 struct madt_lapic {
-    uint8_t type,
-            length,
-            puid,
-            lapicid;
-    uint32_t    flags;
+	u8	type,
+		length,
+		puid,
+		lapicid;
+	u32	flags;
 } __attribute__((packed));
 
 struct madt_ioapic {
-    uint8_t type,
-            length,
-            ioapicid,
-            rsv;
-    uint32_t    addr,
-                GSI_base;
+	u8	type,
+		length,
+		ioapicid,
+		rsv;
+	u32	addr,
+		GSI_base;
 } __attribute__((packed));
 
 struct madt_iso {
-    uint8_t type,
-            length,
-            bus,
-            source;
-    uint32_t    GSI;
-    uint16_t    flags;
+	u8	type,
+		length,
+		bus,
+		source;
+	u32	GSI;
+	u16	flags;
 } __attribute__((packed));
 
 int init_acpi();

@@ -6,19 +6,19 @@
 void
 printk(const char *fmt, ...)
 {
-    va_list ap;
+	va_list ap;
 	va_start(ap, fmt);
-    vprintfmt(console_putch, fmt, ap);
-    va_end(ap);
+	vprintfmt(console_putch, fmt, ap);
+	va_end(ap);
 }
 
 void
 panic(const char *fmt, ...)
 {
-    printk("panic: ");
-    va_list ap;
+	printk("panic: ");
+	va_list ap;
 	va_start(ap, fmt);
-    vprintfmt(console_putch, fmt, ap);
-    va_end(ap);
-    while (1);
+	vprintfmt(console_putch, fmt, ap);
+	va_end(ap);
+	while (1);
 }

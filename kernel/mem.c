@@ -15,158 +15,158 @@ pgtbl_t k_pgtbl;
 pdpt_t k_pdpt;
 char *end_kpgtbl;
 char *end_kmem; // end of used kernel memory, in absolute address
-uint64_t nfreepages;
+u64 nfreepages;
 struct SegDesc gdt[9];
 struct GdtDesc gdt_desc;
 struct TSS tss;
 
-static uint64_t n_pml4, n_pdpt;
-static uint64_t max_addr;
+static u64 n_pml4, n_pdpt;
+static u64 max_addr;
 
-uint64_t max(uint64_t a, uint64_t b) {
-    return a > b ? a : b;
+u64 max(u64 a, u64 b) {
+	return a > b ? a : b;
 }
 
 void
 init_gdt(void)
 {
-    {struct SegDesc tmp = { // KERNCODE
-        .type = 0x08,
-        .l = 1,
-        .dpl = 0,
-        .s = 1,
-        .p = 1
-    };
-    gdt[1] = tmp;}
-    {struct SegDesc tmp = { // KERNDATA
-        .type = 0x02,
-        .l = 0,
-        .dpl = 0,
-        .s = 1,
-        .p = 1
-    };
-    gdt[2] = tmp;}
-    {struct SegDesc tmp = { // USERCODE
-        .type = 0x08,
-        .l = 1,
-        .dpl = 3,
-        .s = 1,
-        .p = 1
-    };
-    gdt[3] = tmp;}
-    {struct SegDesc tmp = { // USERDATA
-        .type = 0x02,
-        .l = 0,
-        .dpl = 3,
-        .s = 1,
-        .p = 1
-    };
-    gdt[4] = tmp;}
-    {struct TSS tmp = {
-        .rsp0 = KSTACK,
-        .rsp1 = KSTACK,
-        .rsp2 = KSTACK,
-    }; tss = tmp;}
-    {struct TSSDesc tmp = {
-        .limit1 = 104,
-        .base1 = (uint64_t)&tss & 0xFFFF,
-        .base2 = ((uint64_t)&tss >> 16) & 0xFF,
-        .type = 9,
-        .s = 0,
-        .dpl = 3,
-        .p = 1,
-        .limit2 = 0,
-        .avl = 0,
-        .l = 0,
-        .d_b = 0,
-        .g = 0,
-        .base3 = ((uint64_t)&tss >> 24) & 0xFF,
-        .base4 = ((uint64_t)&tss >> 32) & 0xFFFFFFFF
-    }; *(struct TSSDesc *)(gdt + 6) = tmp;}
-    gdt_desc.limit = 8 * 8 - 1;
-    gdt_desc.base = (uint64_t)gdt;
-    lgdt(&gdt_desc);
-    ltr(0x33);
+	{struct SegDesc tmp = { // KERNCODE
+		.type = 0x08,
+		.l = 1,
+		.dpl = 0,
+		.s = 1,
+		.p = 1
+	};
+	gdt[1] = tmp;}
+	{struct SegDesc tmp = { // KERNDATA
+		.type = 0x02,
+		.l = 0,
+		.dpl = 0,
+		.s = 1,
+		.p = 1
+	};
+	gdt[2] = tmp;}
+	{struct SegDesc tmp = { // USERCODE
+		.type = 0x08,
+		.l = 1,
+		.dpl = 3,
+		.s = 1,
+		.p = 1
+	};
+	gdt[3] = tmp;}
+	{struct SegDesc tmp = { // USERDATA
+		.type = 0x02,
+		.l = 0,
+		.dpl = 3,
+		.s = 1,
+		.p = 1
+	};
+	gdt[4] = tmp;}
+	{struct TSS tmp = {
+		.rsp0 = KSTACK,
+		.rsp1 = KSTACK,
+		.rsp2 = KSTACK,
+	}; tss = tmp;}
+	{struct TSSDesc tmp = {
+		.limit1 = 104,
+		.base1 = (u64)&tss & 0xFFFF,
+		.base2 = ((u64)&tss >> 16) & 0xFF,
+		.type = 9,
+		.s = 0,
+		.dpl = 3,
+		.p = 1,
+		.limit2 = 0,
+		.avl = 0,
+		.l = 0,
+		.d_b = 0,
+		.g = 0,
+		.base3 = ((u64)&tss >> 24) & 0xFF,
+		.base4 = ((u64)&tss >> 32) & 0xFFFFFFFF
+	}; *(struct TSSDesc *)(gdt + 6) = tmp;}
+	gdt_desc.limit = 8 * 8 - 1;
+	gdt_desc.base = (u64)gdt;
+	lgdt(&gdt_desc);
+	ltr(0x33);
 }
 
 // initiating k_pageinfo array.
 void
 init_kpageinfo(void)
 {
-    k_meminfo = (struct MemInfo *)0x9000;
-    k_pageinfo = (struct PageInfo *)end_kmem;
+	k_meminfo = (struct MemInfo *)0x9000;
+	k_pageinfo = (struct PageInfo *)end_kmem;
 	int ind = 0;
-    max_addr = 0;
-    while (k_meminfo[ind].type != 0) {
-        if (k_meminfo[ind].type != 1) {
-            ++ind;
-            continue;
-        }
-        uint64_t beg_addr = ROUNDUP(k_meminfo[ind].paddr, PGSIZE),
-                 end_addr = ROUNDDOWN(k_meminfo[ind].paddr + k_meminfo[ind].length, PGSIZE);
-        printk("beg_addr: %lx, end_addr: %lx\n", beg_addr, end_addr);
-        max_addr = max(max_addr, end_addr);
-        ++ind;
-    }
-    for (uint64_t addr = 0; addr < max_addr; addr += PGSIZE) {
-        PA2PGINFO(addr)->paddr = 0;
-    }
-    ind = 0;
-    while (k_meminfo[ind].type != 0) {
-        if (k_meminfo[ind].type != 1) {
-            ++ind;
-            continue;
-        }
-        uint64_t beg_addr = ROUNDUP(k_meminfo[ind].paddr, PGSIZE),
-                 end_addr = ROUNDDOWN(k_meminfo[ind].paddr + k_meminfo[ind].length, PGSIZE);
-        while (beg_addr < end_addr) {
-            PA2PGINFO(beg_addr)->paddr = beg_addr;
-            beg_addr += PGSIZE;
-        }
-        ++ind;
-    }
-    end_kmem = (char *)(PA2PGINFO(max_addr));
+	max_addr = 0;
+	while (k_meminfo[ind].type != 0) {
+		if (k_meminfo[ind].type != 1) {
+			++ind;
+			continue;
+		}
+		u64 beg_addr = ROUNDUP(k_meminfo[ind].paddr, PGSIZE),
+				 end_addr = ROUNDDOWN(k_meminfo[ind].paddr + k_meminfo[ind].length, PGSIZE);
+		printk("beg_addr: %lx, end_addr: %lx\n", beg_addr, end_addr);
+		max_addr = max(max_addr, end_addr);
+		++ind;
+	}
+	for (u64 addr = 0; addr < max_addr; addr += PGSIZE) {
+		PA2PGINFO(addr)->paddr = 0;
+	}
+	ind = 0;
+	while (k_meminfo[ind].type != 0) {
+		if (k_meminfo[ind].type != 1) {
+			++ind;
+			continue;
+		}
+		u64 beg_addr = ROUNDUP(k_meminfo[ind].paddr, PGSIZE),
+				 end_addr = ROUNDDOWN(k_meminfo[ind].paddr + k_meminfo[ind].length, PGSIZE);
+		while (beg_addr < end_addr) {
+			PA2PGINFO(beg_addr)->paddr = beg_addr;
+			beg_addr += PGSIZE;
+		}
+		++ind;
+	}
+	end_kmem = (char *)(PA2PGINFO(max_addr));
 }
 
-uint64_t div_roundup(uint64_t a, uint64_t b) {
-    return (a - 1) / b + 1;
+u64 div_roundup(u64 a, u64 b) {
+	return (a - 1) / b + 1;
 }
 
 #define NENTRY(addr, offset) div_roundup(addr, 1ull << offset)
 
 // register an 1GB entry mapped to addr in kpgtbl
 void
-reg_kpgtbl_1Gpage(uint64_t addr)
+reg_kpgtbl_1Gpage(u64 addr)
 {
-    uint64_t pml4i = addr >> PML4_OFFSET;
-    uint64_t pdpti = addr >> PDPT_OFFSET;
-    k_pgtbl[pml4i] = K2P(&k_pdpt[pdpti & (~0x1FF)]) | PML4E_P;
-    k_pdpt[pdpti] = addr | PDPTE_P | PDPTE_PS;
+	u64 pml4i = addr >> PML4_OFFSET;
+	u64 pdpti = addr >> PDPT_OFFSET;
+	k_pgtbl[pml4i] = K2P(&k_pdpt[pdpti & (~0x1FF)]) | PML4E_P;
+	k_pdpt[pdpti] = addr | PDPTE_P | PDPTE_PS;
 }
 
 // initiating kernel page table.
 void
 init_kpgtbl(void)
 {
-    k_pgtbl = (pgtbl_t)ROUNDUP((uint64_t)(end_kmem), PGSIZE);
-    n_pml4 = NENTRY(max_addr, PML4_OFFSET);
-    k_pdpt = (pdpt_t)ROUNDUP((uint64_t)(k_pgtbl + n_pml4), PGSIZE);
-    n_pdpt = NENTRY(max_addr, PDPT_OFFSET);
-    end_kpgtbl = (char *)ROUNDUP((uint64_t)(k_pdpt + n_pdpt), PGSIZE);
-    uint64_t *ptr = (uint64_t *)k_pgtbl;
-    while (ptr < (uint64_t *)end_kpgtbl) {
-        *ptr = 0;
-        ptr++;
-    }
-    for (uint64_t i = 0; i < max_addr; i += 0x40000000) { // 1G pages
-        reg_kpgtbl_1Gpage(i);
-    }
-    for (int i = 0; i < 255; ++i) {
-        k_pgtbl[i + 256] = k_pgtbl[i];
-    }
-    k_pgtbl[511] = 0x12003; // kernel stack, see entry.S
-    lcr3(K2P(k_pgtbl));
-    end_kmem = end_kpgtbl;
+	k_pgtbl = (pgtbl_t)ROUNDUP((u64)(end_kmem), PGSIZE);
+	n_pml4 = NENTRY(max_addr, PML4_OFFSET);
+	k_pdpt = (pdpt_t)ROUNDUP((u64)(k_pgtbl + n_pml4), PGSIZE);
+	n_pdpt = NENTRY(max_addr, PDPT_OFFSET);
+	end_kpgtbl = (char *)ROUNDUP((u64)(k_pdpt + n_pdpt), PGSIZE);
+	u64 *ptr = (u64 *)k_pgtbl;
+	while (ptr < (u64 *)end_kpgtbl) {
+		*ptr = 0;
+		ptr++;
+	}
+	for (u64 i = 0; i < max_addr; i += 0x40000000) { // 1G pages
+		reg_kpgtbl_1Gpage(i);
+	}
+	for (int i = 0; i < 255; ++i) {
+		k_pgtbl[i + 256] = k_pgtbl[i];
+	}
+	k_pgtbl[511] = 0x12003; // kernel stack, see entry.S
+	lcr3(K2P(k_pgtbl));
+	end_kmem = end_kpgtbl;
 }
 
 // initiating free page list:
@@ -174,22 +174,22 @@ init_kpgtbl(void)
 void
 init_freepages(void)
 {
-    struct PageInfo *last_page = NULL, *pginfo_end = PA2PGINFO(max_addr);
-    for (struct PageInfo *pginfo = k_pageinfo; pginfo < pginfo_end; ++pginfo) {
-        if (pginfo->paddr >= K2P((uint64_t)end_kmem)) {
-            // for unavailable page, paddr is 0x0
-            if (last_page) {
-                last_page->u.next = pginfo;
-            } else {
-                freepages = pginfo;
-            }
-            last_page = pginfo;
-            nfreepages++;
-        } else {
-            pginfo->u.ref++; // used by kernel
-        }
-    }
-    last_page->u.next = NULL;
+	struct PageInfo *last_page = NULL, *pginfo_end = PA2PGINFO(max_addr);
+	for (struct PageInfo *pginfo = k_pageinfo; pginfo < pginfo_end; ++pginfo) {
+		if (pginfo->paddr >= K2P((u64)end_kmem)) {
+			// for unavailable page, paddr is 0x0
+			if (last_page) {
+				last_page->u.next = pginfo;
+			} else {
+				freepages = pginfo;
+			}
+			last_page = pginfo;
+			nfreepages++;
+		} else {
+			pginfo->u.ref++; // used by kernel
+		}
+	}
+	last_page->u.next = NULL;
 }
 
 //
@@ -205,17 +205,17 @@ init_freepages(void)
 // returns NULL on fail.
 //
 struct PageInfo *
-alloc_page(uint64_t flags)
+alloc_page(u64 flags)
 {
-    if (freepages == NULL) return NULL;
-    struct PageInfo *ret = freepages;
-    freepages = freepages->u.next;
-    uint64_t *mem = (uint64_t *)P2K(ret->paddr);
-    if (flags & FLAG_ZERO)
-        for (int i = 0; i < PGSIZE / sizeof(uint64_t); mem[i] = 0, ++i) ;
-    ret->u.ref = 1;
-    nfreepages--;
-    return ret;
+	if (freepages == NULL) return NULL;
+	struct PageInfo *ret = freepages;
+	freepages = freepages->u.next;
+	u64 *mem = (u64 *)P2K(ret->paddr);
+	if (flags & FLAG_ZERO)
+		for (int i = 0; i < PGSIZE / sizeof(u64); mem[i] = 0, ++i) ;
+	ret->u.ref = 1;
+	nfreepages--;
+	return ret;
 }
 
 //
@@ -226,14 +226,14 @@ alloc_page(uint64_t flags)
 void
 free_page(struct PageInfo *page)
 {
-    if (page->u.ref == 0) {
-        panic("free_page(): page with ref equals zero, paddr: %p\n", page->paddr);
-    }
-    if (--page->u.ref == 0) {
-        page->u.next = freepages;
-        freepages = page;
-        nfreepages++;
-    }
+	if (page->u.ref == 0) {
+		panic("free_page(): page with ref equals zero, paddr: %p\n", page->paddr);
+	}
+	if (--page->u.ref == 0) {
+		page->u.next = freepages;
+		freepages = page;
+		nfreepages++;
+	}
 }
 
 //
@@ -249,80 +249,80 @@ free_page(struct PageInfo *page)
 // Returns 0 on success, or -E_NOMEM if memory not enough.
 //
 int
-walk_pgtbl(pgtbl_t pgtbl, uint64_t vaddr, pte_t **pte, int create)
+walk_pgtbl(pgtbl_t pgtbl, u64 vaddr, pte_t **pte, int create)
 {
-    pgtbl = (pgtbl_t)PAGEKADDR((uint64_t)pgtbl);
-    struct PageInfo *alloced[4] = {NULL,NULL,NULL,NULL};
-    vaddr = PAGEADDR(vaddr);
+	pgtbl = (pgtbl_t)PAGEKADDR((u64)pgtbl);
+	struct PageInfo *alloced[4] = {NULL,NULL,NULL,NULL};
+	vaddr = PAGEADDR(vaddr);
 
-    int pml4i = PML4_INDEX(vaddr);
-    if (!(pgtbl[pml4i] & PML4E_P)) {
-        if (!create) goto unmapped;
-        alloced[0] = alloc_page(FLAG_ZERO); // unused entries must be zero
-        if (alloced[0] == NULL) goto no_mem;
-        // give all permission here, let caller control access rights
-        // by modifying pte.
-        pgtbl[pml4i] = alloced[0]->paddr | PML4E_P | PML4E_W | PML4E_U;
-    }
+	int pml4i = PML4_INDEX(vaddr);
+	if (!(pgtbl[pml4i] & PML4E_P)) {
+		if (!create) goto unmapped;
+		alloced[0] = alloc_page(FLAG_ZERO); // unused entries must be zero
+		if (alloced[0] == NULL) goto no_mem;
+		// give all permission here, let caller control access rights
+		// by modifying pte.
+		pgtbl[pml4i] = alloced[0]->paddr | PML4E_P | PML4E_W | PML4E_U;
+	}
 
-    pdpt_t pdpt = (pdpt_t)PAGEKADDR(pgtbl[pml4i]);
-    int pdpti = PDPT_INDEX(vaddr);
-    if (!(pdpt[pdpti] & PDPTE_P)) {
-        if (!create) goto unmapped;
-        alloced[1] = alloc_page(FLAG_ZERO);
-        if (alloced[1] == NULL) {
-            goto no_mem;
-        }
-        pdpt[pdpti] = alloced[1]->paddr | PDPTE_P | PDPTE_W | PDPTE_U;
-    }
+	pdpt_t pdpt = (pdpt_t)PAGEKADDR(pgtbl[pml4i]);
+	int pdpti = PDPT_INDEX(vaddr);
+	if (!(pdpt[pdpti] & PDPTE_P)) {
+		if (!create) goto unmapped;
+		alloced[1] = alloc_page(FLAG_ZERO);
+		if (alloced[1] == NULL) {
+			goto no_mem;
+		}
+		pdpt[pdpti] = alloced[1]->paddr | PDPTE_P | PDPTE_W | PDPTE_U;
+	}
 
-    pd_t pd = (pd_t)PAGEKADDR(pdpt[pdpti]);
-    int pdi = PD_INDEX(vaddr);
-    if (!(pd[pdi] & PDE_P)) {
-        if (!create) goto unmapped;
-        alloced[2] = alloc_page(FLAG_ZERO);
-        if (alloced[2] == NULL) {
-            goto no_mem;
-        }
-        pd[pdi] = alloced[2]->paddr | PDE_P | PDE_W | PDE_U;
-    }
+	pd_t pd = (pd_t)PAGEKADDR(pdpt[pdpti]);
+	int pdi = PD_INDEX(vaddr);
+	if (!(pd[pdi] & PDE_P)) {
+		if (!create) goto unmapped;
+		alloced[2] = alloc_page(FLAG_ZERO);
+		if (alloced[2] == NULL) {
+			goto no_mem;
+		}
+		pd[pdi] = alloced[2]->paddr | PDE_P | PDE_W | PDE_U;
+	}
 
-    pt_t pt = (pt_t)PAGEKADDR(pd[pdi]);
-    int pti = PT_INDEX(vaddr);
-    if (!(pt[pti] & PTE_P)) {
-        if (!create) goto unmapped;
-        alloced[3] = alloc_page(FLAG_ZERO);
-        if (alloced[3] == NULL) {
-            goto no_mem;
-        }
-        // no permission given: let the caller do if needed
-        pt[pti] = alloced[3]->paddr | PTE_P;
-    }
-    if (pte != NULL)
-        *pte = (pte_t *)P2K(pt + pti);
-    return 0;
+	pt_t pt = (pt_t)PAGEKADDR(pd[pdi]);
+	int pti = PT_INDEX(vaddr);
+	if (!(pt[pti] & PTE_P)) {
+		if (!create) goto unmapped;
+		alloced[3] = alloc_page(FLAG_ZERO);
+		if (alloced[3] == NULL) {
+			goto no_mem;
+		}
+		// no permission given: let the caller do if needed
+		pt[pti] = alloced[3]->paddr | PTE_P;
+	}
+	if (pte != NULL)
+		*pte = (pte_t *)P2K(pt + pti);
+	return 0;
 unmapped:
-    if (pte != NULL)
-        *pte = NULL;
+	if (pte != NULL)
+		*pte = NULL;
 no_mem:
-    for (int i = 0; i < 4 && alloced[i] != NULL; ++i) free_page(alloced[i]);
-    return -E_NOMEM;
+	for (int i = 0; i < 4 && alloced[i] != NULL; ++i) free_page(alloced[i]);
+	return -E_NOMEM;
 }
 
 int
-map_mmio(pgtbl_t pgtbl, uint64_t vaddr, uint64_t mmioaddr, pte_t **_pte)
+map_mmio(pgtbl_t pgtbl, u64 vaddr, u64 mmioaddr, pte_t **_pte)
 {
-    int r;
-    pte_t *pte;
-    if (r = walk_pgtbl(pgtbl, vaddr, &pte, 1)) {
-        return r;
-    }
-    free_page(PA2PGINFO(PAGEADDR(*pte)));
-    *pte = mmioaddr | PTE_P | PTE_PWT | PTE_PCD;
-    if (_pte != NULL) {
-        *_pte = pte;
-    }
-    return 0;
+	int r;
+	pte_t *pte;
+	if (r = walk_pgtbl(pgtbl, vaddr, &pte, 1)) {
+		return r;
+	}
+	free_page(PA2PGINFO(PAGEADDR(*pte)));
+	*pte = mmioaddr | PTE_P | PTE_PWT | PTE_PCD;
+	if (_pte != NULL) {
+		*_pte = pte;
+	}
+	return 0;
 }
 
 //
@@ -331,35 +331,35 @@ map_mmio(pgtbl_t pgtbl, uint64_t vaddr, uint64_t mmioaddr, pte_t **_pte)
 // Also frees the page at pgtbl.
 //
 void
-free_pgtbl(pgtbl_t pgtbl, uint64_t flags)
+free_pgtbl(pgtbl_t pgtbl, u64 flags)
 {
-    pgtbl = (pgtbl_t)P2K(pgtbl);
-    for (int pml4i = 0; pml4i < 256; ++pml4i) { // never touches kernel space
-        if (!(pgtbl[pml4i] & PML4E_P))
-            continue;
-        pdpt_t pdpt = (pdpt_t)PAGEKADDR(pgtbl[pml4i]);
-        for (int pdpti = 0; pdpti < 512; ++pdpti) {
-            if (!(pdpt[pdpti] & PDPTE_P))
-                continue;
-            pd_t pd = (pd_t)PAGEKADDR(pdpt[pdpti]);
-            for (int pdi = 0; pdi < 512; ++pdi) {
-                if (!(pd[pdi] & PDE_P))
-                    continue;
-                pt_t pt = (pt_t)PAGEKADDR(pd[pdi]);
-                for (int pti = 0; pti < 512; ++pti) {
-                    if (!(pt[pti] & PTE_P))
-                        continue;
-                    uint64_t paddr = PAGEKADDR(pt[pti]);
-                    if (flags & FREE_PGTBL_DECREF)
-                        free_page(KA2PGINFO(paddr));
-                }
-                free_page(KA2PGINFO(pt));
-            }
-            free_page(KA2PGINFO(pd));
-        }
-        free_page(KA2PGINFO(pdpt));
-    }
-    free_page(KA2PGINFO(pgtbl));
+	pgtbl = (pgtbl_t)P2K(pgtbl);
+	for (int pml4i = 0; pml4i < 256; ++pml4i) { // never touches kernel space
+		if (!(pgtbl[pml4i] & PML4E_P))
+			continue;
+		pdpt_t pdpt = (pdpt_t)PAGEKADDR(pgtbl[pml4i]);
+		for (int pdpti = 0; pdpti < 512; ++pdpti) {
+			if (!(pdpt[pdpti] & PDPTE_P))
+				continue;
+			pd_t pd = (pd_t)PAGEKADDR(pdpt[pdpti]);
+			for (int pdi = 0; pdi < 512; ++pdi) {
+				if (!(pd[pdi] & PDE_P))
+					continue;
+				pt_t pt = (pt_t)PAGEKADDR(pd[pdi]);
+				for (int pti = 0; pti < 512; ++pti) {
+					if (!(pt[pti] & PTE_P))
+						continue;
+					u64 paddr = PAGEKADDR(pt[pti]);
+					if (flags & FREE_PGTBL_DECREF)
+						free_page(KA2PGINFO(paddr));
+				}
+				free_page(KA2PGINFO(pt));
+			}
+			free_page(KA2PGINFO(pd));
+		}
+		free_page(KA2PGINFO(pdpt));
+	}
+	free_page(KA2PGINFO(pgtbl));
 }
 
 /************************************************
@@ -367,77 +367,77 @@ free_pgtbl(pgtbl_t pgtbl, uint64_t flags)
  ************************************************/
 
 int
-copy_pgtbl(pgtbl_t dst, pgtbl_t src, uint64_t flags)
+copy_pgtbl(pgtbl_t dst, pgtbl_t src, u64 flags)
 {
-    src = (pgtbl_t)P2K(src);
-    dst = (pgtbl_t)P2K(dst);
-    struct PageInfo *pg;
-    // copy user space
-    for (int pml4i = 0; pml4i < 256; ++pml4i) {
-        if (!(src[pml4i] & PML4E_P))
-            continue;
-        pg = alloc_page(FLAG_ZERO);
-        dst[pml4i] = pg->paddr | PML4E_P | PML4E_W | PML4E_U;
-        pdpt_t pdpt_s = (pdpt_t)PAGEKADDR(src[pml4i]);
-        pdpt_t pdpt_d = (pdpt_t)PAGEKADDR(dst[pml4i]);
-        for (int pdpti = 0; pdpti < 512; ++pdpti) {
-            if (!(pdpt_s[pdpti] & PDPTE_P))
-                continue;
-            pg = alloc_page(FLAG_ZERO);
-            pdpt_d[pdpti] = pg->paddr | PDPTE_P | PDPTE_W | PDPTE_U;
-            pd_t pd_s = (pd_t)PAGEKADDR(pdpt_s[pdpti]);
-            pd_t pd_d = (pd_t)PAGEKADDR(pdpt_d[pdpti]);
-            for (int pdi = 0; pdi < 512; ++pdi) {
-                if (!(pd_s[pdi] & PDE_P))
-                    continue;
-                pg = alloc_page(FLAG_ZERO);
-                pd_d[pdi] = pg->paddr | PDE_P | PDE_W | PDE_U;
-                pt_t pt_s = (pt_t)PAGEKADDR(pd_s[pdi]);
-                pt_t pt_d = (pt_t)PAGEKADDR(pd_d[pdi]);
-                for (int pti = 0; pti < 512; ++pti) {
-                    if (!(pt_s[pti] & PTE_P))
-                        continue;
-                    pt_d[pti] = pt_s[pti];
-                    if (flags & CPY_PGTBL_CNTREF)
-                        PA2PGINFO(pt_s[pti])->u.ref++;
-                }
-            }
-        }
-    }
-    // copy kernel space
-    if (flags & CPY_PGTBL_WITHKSPACE) {
-        for (int i = 256; i < 512; ++i) {
-            dst[i] = src[i];
-        }
-    }
-    return 0;
+	src = (pgtbl_t)P2K(src);
+	dst = (pgtbl_t)P2K(dst);
+	struct PageInfo *pg;
+	// copy user space
+	for (int pml4i = 0; pml4i < 256; ++pml4i) {
+		if (!(src[pml4i] & PML4E_P))
+			continue;
+		pg = alloc_page(FLAG_ZERO);
+		dst[pml4i] = pg->paddr | PML4E_P | PML4E_W | PML4E_U;
+		pdpt_t pdpt_s = (pdpt_t)PAGEKADDR(src[pml4i]);
+		pdpt_t pdpt_d = (pdpt_t)PAGEKADDR(dst[pml4i]);
+		for (int pdpti = 0; pdpti < 512; ++pdpti) {
+			if (!(pdpt_s[pdpti] & PDPTE_P))
+				continue;
+			pg = alloc_page(FLAG_ZERO);
+			pdpt_d[pdpti] = pg->paddr | PDPTE_P | PDPTE_W | PDPTE_U;
+			pd_t pd_s = (pd_t)PAGEKADDR(pdpt_s[pdpti]);
+			pd_t pd_d = (pd_t)PAGEKADDR(pdpt_d[pdpti]);
+			for (int pdi = 0; pdi < 512; ++pdi) {
+				if (!(pd_s[pdi] & PDE_P))
+					continue;
+				pg = alloc_page(FLAG_ZERO);
+				pd_d[pdi] = pg->paddr | PDE_P | PDE_W | PDE_U;
+				pt_t pt_s = (pt_t)PAGEKADDR(pd_s[pdi]);
+				pt_t pt_d = (pt_t)PAGEKADDR(pd_d[pdi]);
+				for (int pti = 0; pti < 512; ++pti) {
+					if (!(pt_s[pti] & PTE_P))
+						continue;
+					pt_d[pti] = pt_s[pti];
+					if (flags & CPY_PGTBL_CNTREF)
+						PA2PGINFO(pt_s[pti])->u.ref++;
+				}
+			}
+		}
+	}
+	// copy kernel space
+	if (flags & CPY_PGTBL_WITHKSPACE) {
+		for (int i = 256; i < 512; ++i) {
+			dst[i] = src[i];
+		}
+	}
+	return 0;
 }
 
 void
-pgtbl_clearflags(pgtbl_t pgtbl, uint64_t flags)
+pgtbl_clearflags(pgtbl_t pgtbl, u64 flags)
 {
-    pgtbl = (pgtbl_t)PAGEKADDR((uint64_t)pgtbl);
-    flags &= PTE_FLAGS;
-    uint64_t mask = ~flags;
-    for (int pml4i = 0; pml4i < 256; ++pml4i) {
-        // only operate in user space
-        if (!(pgtbl[pml4i] & PML4E_P))
-            continue;
-        pdpt_t pdpt = (pdpt_t)PAGEKADDR(pgtbl[pml4i]);
-        for (int pdpti = 0; pdpti < 512; ++pdpti) {
-            if (!(pdpt[pdpti] & PDPTE_P))
-                continue;
-            pd_t pd = (pd_t)PAGEKADDR(pdpt[pdpti]);
-            for (int pdi = 0; pdi < 512; ++pdi) {
-                if (!(pd[pdi] & PDE_P))
-                    continue;
-                pt_t pt = (pt_t)PAGEKADDR(pd[pdi]);
-                for (int pti = 0; pti < 512; ++pti) {
-                    if (!(pt[pti] & PTE_P))
-                        continue;
-                    pt[pti] &= mask;
-                }
-            }
-        }
-    }
+	pgtbl = (pgtbl_t)PAGEKADDR((u64)pgtbl);
+	flags &= PTE_FLAGS;
+	u64 mask = ~flags;
+	for (int pml4i = 0; pml4i < 256; ++pml4i) {
+		// only operate in user space
+		if (!(pgtbl[pml4i] & PML4E_P))
+			continue;
+		pdpt_t pdpt = (pdpt_t)PAGEKADDR(pgtbl[pml4i]);
+		for (int pdpti = 0; pdpti < 512; ++pdpti) {
+			if (!(pdpt[pdpti] & PDPTE_P))
+				continue;
+			pd_t pd = (pd_t)PAGEKADDR(pdpt[pdpti]);
+			for (int pdi = 0; pdi < 512; ++pdi) {
+				if (!(pd[pdi] & PDE_P))
+					continue;
+				pt_t pt = (pt_t)PAGEKADDR(pd[pdi]);
+				for (int pti = 0; pti < 512; ++pti) {
+					if (!(pt[pti] & PTE_P))
+						continue;
+					pt[pti] &= mask;
+				}
+			}
+		}
+	}
 }

@@ -3,14 +3,14 @@
 
 #include "types.h"
 
-int syscall(int num, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, uint64_t a5, uint64_t a6);
+int syscall(int num, u64 a1, u64 a2, u64 a3, u64 a4, u64 a5, u64 a6);
 
 void sys_hello(void);
 void sys_putch(char);
 void sys_exit(void);
 int sys_fork(void);
 int sys_open(const char *fn);
-int sys_read(int fd, char *fn, uint32_t sz);
+int sys_read(int fd, char *fn, u32 sz);
 int sys_exec(const char *fn, int argc, char *argv[]);
 char sys_getch(void);
 

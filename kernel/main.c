@@ -10,17 +10,17 @@ char buf[512];
 
 int main()
 {
-    init();
-    // CREATE_PROC(hello);
-    // CREATE_PROC(sort);
-    // CREATE_PROC(divzero);
-    // // CREATE_PROC(fork);
-    CREATE_PROC(idle);
-    // CREATE_PROC(read);
-    // CREATE_PROC(mal_read);
-    // // CREATE_PROC(exec);
-    // CREATE_PROC(forkexec);
-    CREATE_PROC(sh);
-    sched();
-    while (1);
+	init();
+	// CREATE_PROC(hello);
+	// CREATE_PROC(sort);
+	// CREATE_PROC(divzero);
+	// // CREATE_PROC(fork);
+	CREATE_PROC(idle);
+	// CREATE_PROC(read);
+	// CREATE_PROC(mal_read);
+	// // CREATE_PROC(exec);
+	// CREATE_PROC(forkexec);
+	CREATE_PROC(sh);
+	sched();
+	while (1);
 }

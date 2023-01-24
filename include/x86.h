@@ -12,10 +12,10 @@ breakpoint(void)
 	asm volatile("int3");
 }
 
-static inline uint8_t
+static inline u8
 inb(int port)
 {
-	uint8_t data;
+	u8 data;
 	asm volatile("inb %w1,%0" : "=a" (data) : "d" (port));
 	return data;
 }
@@ -29,10 +29,10 @@ insb(int port, void *addr, int cnt)
 		     : "memory", "cc");
 }
 
-static inline uint16_t
+static inline u16
 inw(int port)
 {
-	uint16_t data;
+	u16 data;
 	asm volatile("inw %w1,%0" : "=a" (data) : "d" (port));
 	return data;
 }
@@ -46,10 +46,10 @@ insw(int port, void *addr, int cnt)
 		     : "memory", "cc");
 }
 
-static inline uint32_t
+static inline u32
 inl(int port)
 {
-	uint32_t data;
+	u32 data;
 	asm volatile("inl %w1,%0" : "=a" (data) : "d" (port));
 	return data;
 }
@@ -64,7 +64,7 @@ insl(int port, void *addr, int cnt)
 }
 
 static inline void
-outb(int port, uint8_t data)
+outb(int port, u8 data)
 {
 	asm volatile("outb %0,%w1" : : "a" (data), "d" (port));
 }
@@ -79,7 +79,7 @@ outsb(int port, const void *addr, int cnt)
 }
 
 static inline void
-outw(int port, uint16_t data)
+outw(int port, u16 data)
 {
 	asm volatile("outw %0,%w1" : : "a" (data), "d" (port));
 }
@@ -103,7 +103,7 @@ outsl(int port, const void *addr, int cnt)
 }
 
 static inline void
-outl(int port, uint32_t data)
+outl(int port, u32 data)
 {
 	asm volatile("outl %0,%w1" : : "a" (data), "d" (port));
 }
@@ -127,63 +127,63 @@ lgdt(void *p)
 }
 
 static inline void
-lldt(uint16_t sel)
+lldt(u16 sel)
 {
 	asm volatile("lldt %0" : : "r" (sel));
 }
 
 static inline void
-ltr(uint16_t sel)
+ltr(u16 sel)
 {
 	asm volatile("ltr %0" : : "r" (sel));
 }
 
 static inline void
-lcr0(uint64_t val)
+lcr0(u64 val)
 {
 	asm volatile("movq %0,%%cr0" : : "r" (val));
 }
 
-static inline uint64_t
+static inline u64
 rcr0(void)
 {
-	uint64_t val;
+	u64 val;
 	asm volatile("movq %%cr0,%0" : "=r" (val));
 	return val;
 }
 
-static inline uint64_t
+static inline u64
 rcr2(void)
 {
-	uint64_t val;
+	u64 val;
 	asm volatile("movq %%cr2,%0" : "=r" (val));
 	return val;
 }
 
 static inline void
-lcr3(uint64_t val)
+lcr3(u64 val)
 {
 	asm volatile("movq %0,%%cr3" : : "r" (val));
 }
 
-static inline uint64_t
+static inline u64
 rcr3(void)
 {
-	uint64_t val;
+	u64 val;
 	asm volatile("movq %%cr3,%0" : "=r" (val));
 	return val;
 }
 
 static inline void
-lcr4(uint64_t val)
+lcr4(u64 val)
 {
 	asm volatile("movq %0,%%cr4" : : "r" (val));
 }
 
-static inline uint64_t
+static inline u64
 rcr4(void)
 {
-	uint64_t cr4;
+	u64 cr4;
 	asm volatile("movq %%cr4,%0" : "=r" (cr4));
 	return cr4;
 }
@@ -191,45 +191,45 @@ rcr4(void)
 static inline void
 tlbflush(void)
 {
-	uint64_t cr3;
+	u64 cr3;
 	asm volatile("movq %%cr3,%0" : "=r" (cr3));
 	asm volatile("movq %0,%%cr3" : : "r" (cr3));
 }
 
-static inline uint64_t
+static inline u64
 read_eflags(void)
 {
-	uint64_t eflags;
+	u64 eflags;
 	asm volatile("pushfq; popq %0" : "=r" (eflags));
 	return eflags;
 }
 
 static inline void
-write_eflags(uint64_t eflags)
+write_eflags(u64 eflags)
 {
 	asm volatile("pushq %0; popfq" : : "r" (eflags));
 }
 
-static inline uint64_t
+static inline u64
 read_ebp(void)
 {
-	uint64_t ebp;
+	u64 ebp;
 	asm volatile("movq %%ebp,%0" : "=r" (ebp));
 	return ebp;
 }
 
-static inline uint64_t
+static inline u64
 read_esp(void)
 {
-	uint64_t esp;
+	u64 esp;
 	asm volatile("movq %%esp,%0" : "=r" (esp));
 	return esp;
 }
 
 static inline void
-cpuid(uint64_t info, uint64_t *raxp, uint64_t *rbxp, uint64_t *rcxp, uint64_t *rdxp)
+cpuid(u64 info, u64 *raxp, u64 *rbxp, u64 *rcxp, u64 *rdxp)
 {
-	uint64_t rax, rbx, rcx, rdx;
+	u64 rax, rbx, rcx, rdx;
 	asm volatile("cpuid"
 		     : "=a" (rax), "=b" (rbx), "=c" (rcx), "=d" (rdx)
 		     : "a" (info));
@@ -250,18 +250,18 @@ sti(void)
 }
 
 
-static inline uint64_t
+static inline u64
 read_tsc(void)
 {
-	uint64_t tsc;
+	u64 tsc;
 	asm volatile("rdtsc" : "=A" (tsc));
 	return tsc;
 }
 
-static inline uint64_t
-xchg(volatile uint64_t *addr, uint64_t newval)
+static inline u64
+xchg(volatile u64 *addr, u64 newval)
 {
-	uint64_t result;
+	u64 result;
 
 	// The + in "+m" denotes a read-modify-write operand.
 	asm volatile("lock; xchgl %0, %1"
@@ -271,10 +271,10 @@ xchg(volatile uint64_t *addr, uint64_t newval)
 	return result;
 }
 
-static inline uint64_t
-rdmsr(uint64_t addr)
+static inline u64
+rdmsr(u64 addr)
 {
-	uint64_t result;
+	u64 result;
 	asm volatile("mov %0, %%rcx; rdmsr;"
 			 : "=a" (result)
 			 : "r" (addr));

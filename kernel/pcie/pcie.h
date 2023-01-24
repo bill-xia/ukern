@@ -26,108 +26,108 @@
 #define PCI_CMD_MSE 0x02
 #define PCI_CMD_IOSE    0x01
 
-extern uint64_t pcie_base;
+extern u64 pcie_base;
 
 struct pci_config_hdr {
-    uint16_t    vendor_id;           /* 00 */
-    uint16_t    dev_id;
-    uint32_t    cmd_status;          /* 04 */
+	u16	vendor_id;           /* 00 */
+	u16	dev_id;
+	u32	cmd_status;          /* 04 */
 
-    uint8_t     rev_id;              /* 08 */
-    uint8_t     prog_if;
-    uint8_t     subclass;
-    uint8_t     class;
+	u8	rev_id;              /* 08 */
+	u8	prog_if;
+	u8	subclass;
+	u8	class;
 
-    uint8_t     cache_line;          /* 0C */
-    uint8_t     latency;
-    uint8_t     hdr_type : 7;
-    uint8_t     multi_func : 1;
-    uint8_t     bist;
+	u8	cache_line;          /* 0C */
+	u8	latency;
+	u8	hdr_type : 7;
+	u8	multi_func : 1;
+	u8	bist;
 } __attribute__((packed));
 
 struct pci_config_bridge {
-    struct pci_config_hdr hdr;  /* 00 */
-    uint32_t   BAR0;                /* 10 */
-    uint32_t   BAR1;                /* 14 */
-    uint8_t  primary_bus;         /* 18 */
-    uint8_t  secondary_bus;
-    uint8_t  subord_bus;
-    uint8_t  timer;
-    uint32_t   pad[8];              /* 1C..3C */
+	struct pci_config_hdr	hdr;  /* 00 */
+	u32	BAR0;                /* 10 */
+	u32	BAR1;                /* 14 */
+	u8	primary_bus;         /* 18 */
+	u8	secondary_bus;
+	u8	subord_bus;
+	u8	timer;
+	u32	pad[8];              /* 1C..3C */
 } __attribute__((packed));
 
 struct pci_config_device {
-    struct pci_config_hdr hdr;  /* 00 */
-    uint32_t   BAR0;                /* 10 */
-    uint32_t   BAR1;                /* 14 */
-    uint32_t   BAR2;                /* 18 */
-    uint32_t   BAR3;                /* 1C */
-    uint32_t   BAR4;                /* 20 */
-    uint32_t   BAR5;                /* 24 */
-    uint32_t   cardbus;             /* 28 */
-    uint16_t subsys_vendor_id;    /* 2C */
-    uint16_t subsys_id;
-    uint32_t   rom_addr;            /* 30 */
-    uint32_t   pad[2];              /* 34 */
-    uint8_t  irq;                 /* 3C */
-    uint8_t  irq_pin;
-    uint8_t  grant;
-    uint8_t  latency;
+	struct pci_config_hdr	hdr;  /* 00 */
+	u32	BAR0;                /* 10 */
+	u32	BAR1;                /* 14 */
+	u32	BAR2;                /* 18 */
+	u32	BAR3;                /* 1C */
+	u32	BAR4;                /* 20 */
+	u32	BAR5;                /* 24 */
+	u32	cardbus;             /* 28 */
+	u16	subsys_vendor_id;    /* 2C */
+	u16	subsys_id;
+	u32	rom_addr;            /* 30 */
+	u32	pad[2];              /* 34 */
+	u8	irq;                 /* 3C */
+	u8	irq_pin;
+	u8	grant;
+	u8	latency;
 } __attribute__((packed));
 
-static inline uint32_t
+static inline u32
 pcie_read(volatile void *_base, int offset)
 {
-    volatile uint32_t *base = _base;
-    return base[offset / 4];
+	volatile u32 *base = _base;
+	return base[offset / 4];
 }
 
 static inline void
-pcie_write(volatile void *_base, int offset, uint32_t value)
+pcie_write(volatile void *_base, int offset, u32 value)
 {
-    volatile uint32_t *base = _base;
-    base[offset / 4] = value;
+	volatile u32 *base = _base;
+	base[offset / 4] = value;
 }
 
-static inline uint16_t
+static inline u16
 pcie_readw(volatile void *_base, int offset)
 {
-    volatile uint32_t r = pcie_read(_base, offset);
-    offset &= 3;
-    if (offset & 1) { // odd offset is not permitted
-        panic("pcie_readw: odd offset %d.\n", offset);
-    } else {
-        r >>= 8 * (offset & 3);
-    }
-    return (uint16_t)r;
+	volatile u32 r = pcie_read(_base, offset);
+	offset &= 3;
+	if (offset & 1) { // odd offset is not permitted
+		panic("pcie_readw: odd offset %d.\n", offset);
+	} else {
+		r >>= 8 * (offset & 3);
+	}
+	return (u16)r;
 }
 
-static inline uint8_t
+static inline u8
 pcie_readb(volatile void *_base, int offset)
 {
-    volatile uint32_t r = pcie_read(_base, offset);
-    r >>= 8 * (offset & 3);
-    return (uint8_t)r;
+	volatile u32 r = pcie_read(_base, offset);
+	r >>= 8 * (offset & 3);
+	return (u8)r;
 }
 
-static inline uint16_t
-pcie_writew(volatile void *_base, int offset, uint16_t value)
+static inline u16
+pcie_writew(volatile void *_base, int offset, u16 value)
 {
-    volatile uint32_t r = pcie_read(_base, offset);
-    offset &= 3;
-    if (offset & 1) { // odd offset is not permitted
-        panic("pcie_writew: odd offset %d.\n", offset);
-    } else {
-        r &= ~(0xffff << (8 * offset));
-        r |= value << (8 * offset);
-    }
-    return (uint16_t)r;
+	volatile u32 r = pcie_read(_base, offset);
+	offset &= 3;
+	if (offset & 1) { // odd offset is not permitted
+		panic("pcie_writew: odd offset %d.\n", offset);
+	} else {
+		r &= ~(0xffff << (8 * offset));
+		r |= value << (8 * offset);
+	}
+	return (u16)r;
 }
 
-// static inline uint16_t
-// pcie_writeb(void *_base, int offset, uint8_t value)
+// static inline u16
+// pcie_writeb(void *_base, int offset, u8 value)
 // {
-//     uint32_t r = pcie_read(_base, offset);
+//     u32 r = pcie_read(_base, offset);
 //     offset &= 3;
 //     if (offset & 1) { // odd offset is not permitted
 //         panic("pcie_writeb: odd offset %d.\n", offset);
@@ -135,7 +135,7 @@ pcie_writew(volatile void *_base, int offset, uint16_t value)
 //         r &= 0xffff << (8 * (2 - offset));
 //         r |= value << (8 * (2 - offset));
 //     }
-//     return (uint16_t)r;
+//     return (u16)r;
 // }
 
 void init_pcie(void);
@@ -143,14 +143,19 @@ void init_pcie(void);
 typedef void (*dev_init_fn)(volatile struct pci_config_device *pcie_dev);
 
 struct pcie_dev_type {
-    uint8_t class, subclass, progif;
-    dev_init_fn dev_init;
+	u8		class,
+			subclass,
+			progif;
+	dev_init_fn 	dev_init;
 };
 
 struct pcie_dev {
-    uint8_t class, subclass, progif;
-    uint16_t vendor, devid;
-    volatile struct pci_config_device *cfg;
+	u8	class,
+		subclass,
+		progif;
+	u16	vendor,
+		devid;
+	volatile struct pci_config_device *cfg;
 };
 
 #define NPCIEDEVTYPE 1024

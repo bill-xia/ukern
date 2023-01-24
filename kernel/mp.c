@@ -4,7 +4,7 @@
 #include "mem.h"
 
 void init_timer(void);
-uint32_t *lapic;
+u32 *lapic;
 
 static void
 lapicw(int index, int value)
@@ -16,35 +16,35 @@ lapicw(int index, int value)
 void
 init_mp(void)
 {
-    lapic = (uint32_t *)LAPIC_BASE;
-    uint64_t rax, rbx, rcx, rdx;
-    cpuid(1, &rax, &rbx, &rcx, &rdx); // read APIC info
-    // printk("detect APIC: %lx\n", (rdx >> 9) & 1);
+	lapic = (u32 *)LAPIC_BASE;
+	u64 rax, rbx, rcx, rdx;
+	cpuid(1, &rax, &rbx, &rcx, &rdx); // read APIC info
+	// printk("detect APIC: %lx\n", (rdx >> 9) & 1);
 	// read MSR
-	uint64_t apic_base_msr = rdmsr(0x1B);
+	u64 apic_base_msr = rdmsr(0x1B);
 	// printk("apic_base_msr: %lx\n", apic_base_msr);
-    // set up APIC register mapping
-    pte_t *pte;
-    walk_pgtbl(k_pgtbl, LAPIC_BASE, &pte, 1);
-    *pte = 0xFEE00000 | PTE_P | PTE_W | PTE_PWT | PTE_PCD;
+	// set up APIC register mapping
+	pte_t *pte;
+	walk_pgtbl(k_pgtbl, LAPIC_BASE, &pte, 1);
+	*pte = 0xFEE00000 | PTE_P | PTE_W | PTE_PWT | PTE_PCD;
 	lcr3(rcr3());
 	// info
-	uint32_t lapicid = lapic[LAPICR_ID];
+	u32 lapicid = lapic[LAPICR_ID];
 	// printk("id: %x\n", lapicid);
-	uint32_t ver = lapic[LAPICR_VER];
+	u32 ver = lapic[LAPICR_VER];
 	// printk("ver: %x\n", ver);
-	uint32_t svr = lapic[LAPICR_SVR];
+	u32 svr = lapic[LAPICR_SVR];
 	// printk("svr: %x\n", svr);
 	lapicw(LAPICR_SVR, 0x100 | 35);
 	// Init LVT
-    init_timer();
-    // Disable performance counter overflow interrupts
+	init_timer();
+	// Disable performance counter overflow interrupts
 	// on machines that provide that interrupt entry.
 	if (((lapic[LAPICR_VER]>>16) & 0xFF) >= 4)
 		lapicw(LAPICR_PCINT, LAPIC_MASKED);
 	// TODO: LINT0 should be used to accept hardware interrupts, rather than masked.
 	lapicw(LAPICR_LINT0, LAPIC_MASKED);
-    lapicw(LAPICR_LINT1, LAPIC_MASKED);
+	lapicw(LAPICR_LINT1, LAPIC_MASKED);
 	// Map error interrupt to IRQ_ERROR.
 	lapicw(LAPICR_ERROR, 34);
 
@@ -63,15 +63,15 @@ init_mp(void)
 
 	// Enable interrupts on the APIC (but not on the processor).
 	lapicw(LAPICR_TPR, 0);
-    // sti();
+	// sti();
 }
 
 void
 init_timer(void)
 {
-    lapicw(LAPICR_TIMER, 33 | LAPIC_PERIODIC);
-    lapicw(LAPICR_TDCR, LAPIC_X1);
-    lapicw(LAPICR_TICR, 10000000);
+	lapicw(LAPICR_TIMER, 33 | LAPIC_PERIODIC);
+	lapicw(LAPICR_TDCR, LAPIC_X1);
+	lapicw(LAPICR_TICR, 10000000);
 }
 
 void

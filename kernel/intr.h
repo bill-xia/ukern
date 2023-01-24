@@ -3,25 +3,21 @@
 
 #include "types.h"
 
-#define NIDT 37
+#define NIDT	37
 
 struct IDTGateDesc {
-    uint16_t offset1;
-    uint16_t seg_sel;
-    uint8_t ist : 3;
-    uint8_t zeros : 5;
-    uint8_t type : 4; // present and DPL
-    uint8_t S : 1; // should be zero
-    uint8_t DPL: 2;
-    uint8_t P : 1; // present
-    uint16_t offset2;
-    uint32_t offset3;
-    uint32_t reserved;
+	u16	offset1;
+	u16	seg_sel;
+	u8	ist:3, zeros:5;
+	u8	type:4, S:1, DPL:2, P:1;
+	u16	offset2;
+	u32	offset3;
+	u32	reserved;
 };
 
 struct IDTDesc{
-    uint16_t limit;
-    uint64_t addr;
+	u16 limit;
+	u64 addr;
 } __attribute__ ((packed));
 
 void init_intr(void);
