@@ -183,4 +183,6 @@ static uint8_t *charcode[4] = {
 extern char kbd_buffer[4096];
 extern int kbd_buf_beg, kbd_buf_siz;
 
+int kbd_getch(void);
+
 #endif /* !JOS_KBDREG_H */
