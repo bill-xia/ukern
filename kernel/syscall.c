@@ -57,24 +57,20 @@ sys_open(struct ProcContext *tf)
 {
     uint32_t head_cluster, use_fat;
     uint64_t file_len;
-    int r = open_file((void *)(tf->rdx), &head_cluster, &file_len, &use_fat);
-    if (r == 0) {
-        for (int fd = 0; fd < 256; ++fd) {
-            if (curproc->fdesc[fd].head_cluster) continue;
-            curproc->fdesc[fd].head_cluster = head_cluster;
-            curproc->fdesc[fd].read_ptr = 0;
-            curproc->fdesc[fd].file_len = file_len;
-            curproc->fdesc[fd].use_fat = use_fat;
+    for (int fd = 0; fd < 256; ++fd) {
+        if (curproc->fdesc[fd].inuse) continue;
+        int r = open_file((void *)(tf->rdx), curproc->fdesc + fd);
+        if (r == 0) {
             tf->rax = fd;
-            return;
+            curproc->fdesc[fd].inuse = 1;
+        } else {
+            tf->rax = r;
         }
-        // no available file descriptor
-        tf->rax = -E_NO_AVAIL_FD;
-        return;
-    } else {
-        tf->rax = r;
         return;
     }
+    // no available file descriptor
+    tf->rax = -E_NO_AVAIL_FD;
+    return;
 }
 
 inline uint64_t
@@ -92,7 +88,7 @@ sys_read(struct ProcContext *tf)
         return;
     }
     struct file_desc *fdesc = &curproc->fdesc[fd];
-    if (fdesc->head_cluster == 0) {
+    if (fdesc->meta_exfat.head_cluster == 0) {
         tf->rax = -E_FD_NOT_OPENED;
         return;
     }
@@ -100,11 +96,11 @@ sys_read(struct ProcContext *tf)
         tf->rax = -E_INVALID_MEM;
         return;
     }
-    int r = read_file(fdesc->head_cluster, 
-        fdesc->read_ptr,
+    int r = read_file(
         (void *)tf->rcx,
-        min(tf->rbx, fdesc->file_len - fdesc->read_ptr),
-        fdesc->use_fat);
+        tf->rbx,
+        fdesc
+    );
     tf->rax = r;
     curproc->fdesc[fd].read_ptr += r;
 }
@@ -122,11 +118,11 @@ void
 sys_exec(struct ProcContext *tf)
 {
     static char argv_buf[16][256];
-    uint32_t head_cluster, use_fat;
-    uint64_t file_len;
+    struct file_desc fdesc;
     int ret = 0;
-    int r = open_file((void *)(tf->rdx), &head_cluster, &file_len, &use_fat);
+    int r = open_file((void *)(tf->rdx), &fdesc);
     if (r) { // open file failed
+        printk("exec: open file failed.\n");
         tf->rax = r;
         return;
     }
@@ -139,7 +135,7 @@ sys_exec(struct ProcContext *tf)
     }
     // read image
     char *img = (char *)EXEC_IMG;
-    uint64_t addr = EXEC_IMG, addr_end = EXEC_IMG + file_len;
+    uint64_t addr = EXEC_IMG, addr_end = EXEC_IMG + fdesc.file_len;
     lcr3(K2P(k_pgtbl));
     // if (img < img_end) {
         // file too large, seldom happen
@@ -155,7 +151,7 @@ sys_exec(struct ProcContext *tf)
         addr += PGSIZE;
     }
     lcr3(rcr3());
-    read_file(head_cluster, 0, img, file_len, use_fat);
+    read_file(img, fdesc.file_len, &fdesc);
     // TODO: check file format before destroying current enviroment,
     // return enough information if format error
     curproc->state = PENDING;

@@ -15,7 +15,7 @@ KERNEL_OBJS := $(OBJ_DIR)/kernel/main.o \
 	$(OBJ_DIR)/kernel/kbd.o \
 	$(OBJ_DIR)/kernel/fs/diskfmt.o \
 	$(OBJ_DIR)/kernel/fs/fs.o \
-	$(OBJ_DIR)/kernel/fs/ide.o \
+	$(OBJ_DIR)/kernel/fs/exfat.o \
 	$(OBJ_DIR)/kernel/pcie/pcie.o \
 	$(OBJ_DIR)/kernel/pcie/nvme.o \
 	$(OBJ_DIR)/kernel/pcie/sata.o \

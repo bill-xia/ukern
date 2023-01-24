@@ -252,7 +252,7 @@ keyboard_handler(void)
 	static uint32_t shift;
 
 	stat = inb(KBSTATP);
-    printk("stat: %x ", (uint32_t)stat);
+    // printk("stat: %x ", (uint32_t)stat);
 	if ((stat & KBS_DIB) == 0)
 		return -1;
 	// Ignore data from mouse.
@@ -260,7 +260,7 @@ keyboard_handler(void)
 		return -1;
 
 	data = inb(KBDATAP);
-    printk("data: %x ", (uint32_t)data);
+    // printk("data: %x ", (uint32_t)data);
 
 	if (data == 0xE0) {
 		// E0 escape character
@@ -295,6 +295,6 @@ keyboard_handler(void)
 		outb(0x92, 0x3); // courtesy of Chris Frost
 	}
 
-    printk("char: %x\n", (uint32_t)c);
+    // printk("char: %x\n", (uint32_t)c);
 	return c;
 }

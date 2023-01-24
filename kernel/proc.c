@@ -94,6 +94,8 @@ create_proc(char *img)
 void
 run_proc(struct Proc *proc)
 {
+    // if (proc != procs)
+    //     printk("run_proc: %d\n", proc - procs);
     curproc = proc;
     struct ProcContext *context = &proc->context;
     lcr3((uint64_t)proc->pgtbl);
@@ -129,8 +131,7 @@ kill_proc(struct Proc *proc)
     free_pgtbl((pgtbl_t)P2K(proc->p_pgtbl), 0);
     proc->state = CLOSE;
     for (int i = 0; i < 64; ++i) {
-        proc->fdesc[i].head_cluster = 0;
-        proc->fdesc[i].read_ptr = 0;
+        proc->fdesc[i].inuse = 0;
     }
     // printk("proc[%d] exec time: %d timer periods.\n", proc - procs, proc->exec_time);
     proc->exec_time = 0;

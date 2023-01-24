@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "string.h"
+#include "fs.h"
 
 #define PARTTYPE_GPT 0x10000
 
@@ -65,42 +66,5 @@ struct GPTPAR {
                 attr_flags;
     uint16_t    part_name[36]; // UTF-16
 } __attribute__((packed));
-
-struct diskpart_t {
-    char name[32];
-    uint8_t part_type,
-            fs_type;
-    uint32_t    lba_beg,
-                n_sec;
-};
-
-enum driver_type {
-    DISK_UNKNOWN,
-    DISK_SATA
-};
-
-struct disk_t {
-    char name[32];
-    uint8_t driver_type,
-            disk_ind,   // index among the driver type
-                        // e.g. sata port 0 has disk_ind 0,
-                        // an nvme disk may also has disk_ind 0
-            n_part;
-    struct diskpart_t part[128];
-};
-
-extern int n_disk;
-extern struct disk_t disk[32];
-
-int ls_diskpart(void);
-int print_guid(char *guid);
-
-enum fs_type {
-    FS_UNKNOWN,
-    FS_EXFAT,
-    N_KNOWN_FS
-};
-
-int detect_fs(int did, int pid);
 
 #endif

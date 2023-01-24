@@ -1,8 +1,6 @@
 #ifndef FS_H
 #define FS_H
 
-#include "types.h"
-
 #define E_TRAVEL_INTO_FILE      1
 #define E_FILE_NOT_EXIST        2
 #define E_FILE_NAME_TOO_LONG    3
@@ -12,85 +10,76 @@
 #define E_FD_NOT_OPENED 2
 #define E_INVALID_MEM   3
 
-#define NO_FAT_CHAIN 0x02
+#include "mem.h"
 
-struct exFAT_hdr {
-    uint8_t jmp_boot[3];
-    uint8_t fs_name[8];
-    uint8_t zero[53];
-    uint64_t partition_offset;
-    uint64_t volume_length;
-    uint32_t fat_offset;
-    uint32_t fat_length;
-    uint32_t cluster_heap_offset;
-    uint32_t cluster_count;
-    uint32_t rtdir_cluster;
-    uint32_t vol_serial_num;
-    uint16_t fs_rev;
-    uint16_t vol_flags;
-    uint8_t byte_per_sec_shift;
-    uint8_t sec_per_clus_shift;
-    uint8_t num_of_fats;
-    uint8_t drive_select;
-    uint8_t percent_in_use;
-    uint8_t reserved[7];
-    uint8_t code[390];
-    uint16_t sign;
+struct file_meta_exfat {
+    uint32_t head_cluster, // 0/1 means empty file desc, otherwise in use
+             use_fat;
+};
+
+struct file_meta_ext2 {
+    uint32_t rsv;
 };
 
 struct file_desc {
-    uint32_t head_cluster, // 0/1 means empty file desc, otherwise in use
-             use_fat;
     uint64_t file_len, read_ptr;
+    union {
+        struct file_meta_exfat meta_exfat;
+        struct file_meta_ext2 meta_ext2;
+    };
+    uint8_t inuse;
 };
 
-struct dir_entry {
-    uint8_t entry_type;
-    uint8_t custom[19];
-    uint32_t first_clus;
-    uint64_t data_len;
+struct diskpart_t {
+    char name[32];
+    uint8_t part_type,
+            fs_type;
+    uint64_t    lba_beg,
+                n_sec;
 };
 
-struct file_dir_entry {
-    uint8_t entry_type;
-    uint8_t secondary_count;
-    uint16_t set_checksum;
-    uint16_t file_attr;
-    uint16_t res1;
-    uint32_t create_ts;
-    uint32_t last_mod_ts;
-    uint8_t create_10ms;
-    uint8_t last_mod_10ms;
-    uint8_t create_utf_offset;
-    uint8_t last_mod_utf_offset;
-    uint8_t last_acc_utf_offset;
-    uint8_t res2[7];
+enum driver_type {
+    DISK_UNKNOWN,
+    DISK_SATA
 };
 
-struct stream_ext_entry {
-    uint8_t entry_type;
-    uint8_t secondary_flags;
-    uint8_t res1;
-    uint8_t name_len;
-    uint16_t name_hash;
-    uint16_t res2;
-    uint64_t valid_data_len;
-    uint32_t res3;
-    uint32_t first_clus;
-    uint64_t data_len;
+struct disk_t {
+    char name[32];
+    uint8_t driver_type,
+            disk_ind,   // index among the driver type
+                        // e.g. sata port 0 has disk_ind 0,
+                        // an nvme disk may also has disk_ind 0
+            n_part;
+    struct diskpart_t part[128];
 };
 
-struct file_name_entry {
-    uint8_t entry_type;
-    uint8_t secondary_flags;
-    uint16_t file_name[15];
+extern int n_disk;
+extern struct disk_t disk[32];
+
+enum fs_type {
+    FS_UNKNOWN,
+    FS_EXFAT,
+    N_KNOWN_FS
 };
 
-void init_fs();
-uint32_t get_fat_at(uint32_t id);
-int open_file(const char *filename, uint32_t *head_cluster, uint64_t *file_len, uint32_t *use_fat);
-int read_file(uint32_t clus_id, uint64_t ptr, char *dst, uint32_t sz, uint32_t use_fat);
+int detect_fs(int did, int pid);
+int disk_read(int did, uint64_t lba, int n_sec);
 
-extern struct exFAT_hdr *fsinfo;
+int read_file(char *dst, size_t sz, struct file_desc *fdesc);
+int open_file(const char *filename, struct file_desc *fdesc);
+
+#define DSKSHIFT 40
+
+static uint64_t
+blk2kaddr(int did, uint64_t blk)
+{
+    return KDISK | ((uint64_t)did << DSKSHIFT) | (blk << PGSHIFT);
+}
+
+static uint64_t
+lba2kaddr(int did, uint64_t lba)
+{
+    return KDISK | ((uint64_t)did << DSKSHIFT) | (lba << (PGSHIFT - 3));
+}
 
 #endif

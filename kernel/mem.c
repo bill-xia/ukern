@@ -227,9 +227,7 @@ void
 free_page(struct PageInfo *page)
 {
     if (page->u.ref == 0) {
-        // TODO: should be panic() here, to be implemented
-        printk("free_page(): page with ref equals zero, paddr: %p\n", page->paddr);
-        while (1);
+        panic("free_page(): page with ref equals zero, paddr: %p\n", page->paddr);
     }
     if (--page->u.ref == 0) {
         page->u.next = freepages;

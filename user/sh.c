@@ -54,8 +54,9 @@ main()
                 // TODO: sys_wait()
                 for (int i = 0; i < 100000000; ++i) ;
             } else {
-                // printf("exec(\"%s\", %d, %p)\n", argv[0], argc, argv);
-                sys_exec(argv[0], argc, argv);
+                printf("exec(\"%s\", %d, %p)\n", argv[0], argc, argv);
+                int r = sys_exec(argv[0], argc, argv);
+                printf("exec() failed: %d\n", r);
                 sys_exit();
             }
         clear_buf:

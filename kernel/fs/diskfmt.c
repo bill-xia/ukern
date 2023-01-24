@@ -4,8 +4,6 @@
 #include "printk.h"
 #include "fs/fs.h"
 
-int n_disk;
-struct disk_t disk[32];
 struct guid known_guid[] = {
     {0, 0, 0, {0}}, // Empty
 
@@ -24,27 +22,33 @@ struct guid known_guid[] = {
 
 const char *guid_name[] = {
     "Empty partition",
+
     "MBR partition scheme",
     "BIOS boot partition",
     "EFI partition",
+
     "MSR partition",
     "LDM meta partition",
     "LDM data partition",
     "Windows Recovery partition",
     "Windows Basic Data partition",
+
     "Linux FS partition"
 };
 
 enum guid_type {
     GUID_EMPTY,
+
     GUID_MBR,
     GUID_BIOS,
     GUID_EFI,
+
     GUID_MSR,
     GUID_LDM_META,
     GUID_LDM_DATA,
     GUID_WIN_RECOVERY,
     GUID_WIN_DATA,
+
     GUID_LINUX_FS,
     N_KNOWN_GUID
 };
@@ -93,9 +97,9 @@ init_gpt(int did)
                 disk[did].part[pid].part_type = PARTTYPE_GPT | j;
                 disk[did].part[pid].lba_beg = par->lba_beg;
                 disk[did].part[pid].n_sec = par->lba_end - par->lba_beg + 1;
-                printk("GPT (sd%d,p%d) type: %s\n", did, i, guid_name[j]);
-                if (j == GUID_WIN_DATA) {
-                    r = detect_fs(did, disk[did].n_part - 1);
+                printk("GPT (sd%d,p%d) type(%d): %s\n", did, i, j, guid_name[j]);
+                if (j == GUID_WIN_DATA || j == GUID_LINUX_FS) {
+                    r = detect_fs(did, pid);
                     if (r == FS_EXFAT) {
                         printk("-----------------\nexFAT partition found.\n-----------------\n");
                     }
@@ -182,16 +186,4 @@ print_guid(char *guid)
         printk("%c%c ", "0123456789ABCDEF"[hi], "0123456789ABCDEF"[lo]);
     }
     return 0;
-}
-
-int
-detect_fs(int did, int pid)
-{
-    sata_read_block(did, disk[did].part[pid].lba_beg / 8);
-    struct exFAT_hdr *fat_hdr = (struct exFAT_hdr *)blk2kaddr(did, disk[did].part[pid].lba_beg / 8);
-    if (strcmp(fat_hdr->fs_name, "EXFAT   ", 8) == 0) {
-        return FS_EXFAT;
-    } else {
-        return FS_UNKNOWN;
-    }
 }

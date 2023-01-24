@@ -3,6 +3,7 @@
 
 #include "mem.h"
 #include "pcie/pcie.h"
+#include "fs/fs.h"
 
 extern uint32_t *sata_regs;
 
@@ -177,20 +178,6 @@ struct sata_cmd_tbl {
     uint8_t rsv[0x30];
     struct sata_prdt prdt[0];
 } __attribute__ ((packed));
-
-#define DSKSHIFT 40
-
-static uint64_t
-blk2kaddr(int did, uint64_t blk)
-{
-    return KDISK | ((uint64_t)did << DSKSHIFT) | (blk << PGSHIFT);
-}
-
-static uint64_t
-lba2kaddr(int did, uint64_t lba)
-{
-    return KDISK | ((uint64_t)did << DSKSHIFT) | (lba << (PGSHIFT + 8));
-}
 
 void pcie_sata_register(void);
 void pcie_sata_ahci_init(volatile struct pci_config_device *cfg);

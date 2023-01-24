@@ -6,7 +6,7 @@
 #include "printk.h"
 #include "errno.h"
 #include "x86.h"
-#include "fs/diskfmt.h"
+#include "fs/fs.h"
 
 uint32_t *sata_regs;
 static struct sata_cmd_hdr *cmd_list[32];
@@ -219,7 +219,7 @@ sata_read_block(int did, uint64_t block)
         pte_t *pte;
         walk_pgtbl(k_pgtbl, vaddr, &pte, 1);
         uint64_t paddr = PAGEADDR(*pte);
-        printk("read disk vaddr %lx, paddr: %lx\n", vaddr, paddr);
+        // printk("read disk vaddr %lx, paddr: %lx\n", vaddr, paddr);
         cmd_tbl->prdt[i].dba = (uint32_t)paddr;
         cmd_tbl->prdt[i].dbau = paddr >> 32;
         cmd_tbl->prdt[i].dw3 = (PGSIZE - 1);
