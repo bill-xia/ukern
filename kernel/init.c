@@ -7,7 +7,6 @@
 #include "ioapic.h"
 #include "fs/fs.h"
 #include "acpi.h"
-#include "pci.h"
 #include "pic.h"
 #include "fs/diskfmt.h"
 
@@ -29,5 +28,4 @@ void init(void)
     // init_fs();
     init_acpi();
     ls_diskpart();
-    // init_pci();
 }
