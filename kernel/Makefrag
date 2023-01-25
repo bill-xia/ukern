@@ -39,6 +39,7 @@ KERNEL_HDRS := kernel/init.h \
 	kernel/pcie/nvme.h \
 	kernel/fs/disk.h \
 	kernel/fs/fs.h \
+	kernel/fs/exfat.h \
 	kernel/acpi.h \
 
 KERNEL_BINS := $(OBJ_DIR)/user/divzero \

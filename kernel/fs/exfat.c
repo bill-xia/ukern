@@ -67,15 +67,8 @@ exfat_walk_dir(struct FS_exFAT *fs, const char *name, int name_len, struct exfat
 		if (i % entry_perclus == 0) {
 			if (cur_dir->clus_id == 0xFFFFFFFF)
 				break;
-			disk_read(
-				fs->did,
-				fs->part->lba_beg + fs->hdr->cluster_heap_offset + ((cur_dir->clus_id - 2) << fs->hdr->sec_per_clus_shift),
-				1
-			);
-			memcpy(_dir,
-				(void *)lba2kaddr(fs->did, fs->part->lba_beg + fs->hdr->cluster_heap_offset + ((cur_dir->clus_id - 2) << fs->hdr->sec_per_clus_shift)),
-				(512 << (fs->hdr->sec_per_clus_shift))
-			);
+			disk_read(fs->did, EXFAT_CLUS2LBA(fs, cur_dir->clus_id), 1);
+			memcpy(_dir, (void *)lba2kaddr(fs->did, EXFAT_CLUS2LBA(fs, cur_dir->clus_id)), (512 << (fs->hdr->sec_per_clus_shift)));
 			// printk("dir_clus_id: %x\n", dir_clus_id);
 			if (cur_dir->use_fat) {
 				// printk("open(): ");
@@ -124,7 +117,6 @@ exfat_walk_dir(struct FS_exFAT *fs, const char *name, int name_len, struct exfat
 }
 
 // open file identified by `filename`
-// pass the head cluster id to *head_cluster
 // return status: 0 if success, < 0 if error
 int
 exfat_open_file(struct FS_exFAT *fs, const char *filename, struct file_desc *fdesc)
@@ -195,12 +187,8 @@ exfat_read_file(struct FS_exFAT *fs, char *dst, size_t sz, struct file_desc *fde
 	}
 	sz = min(sz, fdesc->file_len - fdesc->read_ptr);
 	while (sz) {
-		disk_read(
-			fs->did,
-			fs->part->lba_beg + fs->hdr->cluster_heap_offset + ((clus_id - 2) << fs->hdr->sec_per_clus_shift),
-			1
-		);
-		u64 src = lba2kaddr(fs->did, fs->part->lba_beg + fs->hdr->cluster_heap_offset + ((clus_id - 2) << fs->hdr->sec_per_clus_shift)) + ptr;
+		disk_read(fs->did, EXFAT_CLUS2LBA(fs, clus_id), 1);
+		u64 src = lba2kaddr(fs->did, EXFAT_CLUS2LBA(fs, clus_id)) + ptr;
 		int n = min(sz, PGSIZE - (src % PGSIZE));
 		// printk("dst %p, src %p, sz %d, sz2 %d\n", dst, src, sz, PGSIZE - (src % PGSIZE));
 		memcpy(dst, (void *)src, n);
