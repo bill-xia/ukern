@@ -1,5 +1,13 @@
 image
 fsimg
-.vscode/
+efiimg
+
+.efi_dev
+
 *.pdf
+*.efi
+*.o
+*.a
+
+.vscode/
 obj/
