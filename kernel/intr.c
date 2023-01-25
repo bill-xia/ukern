@@ -6,7 +6,7 @@
 #include "proc.h"
 #include "syscall.h"
 #include "sched.h"
-#include "mp.h"
+#include "lapic.h"
 #include "kbd.h"
 
 struct IDTGateDesc *idt;

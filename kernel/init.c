@@ -3,7 +3,7 @@
 #include "intr.h"
 #include "sched.h"
 #include "console.h"
-#include "mp.h"
+#include "lapic.h"
 #include "ioapic.h"
 #include "fs/fs.h"
 #include "acpi.h"

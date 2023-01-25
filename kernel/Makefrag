@@ -8,7 +8,7 @@ KERNEL_OBJS := $(OBJ_DIR)/kernel/main.o \
 	$(OBJ_DIR)/kernel/sched.o \
 	$(OBJ_DIR)/kernel/syscall.o \
 	$(OBJ_DIR)/kernel/errno.o \
-	$(OBJ_DIR)/kernel/mp.o \
+	$(OBJ_DIR)/kernel/lapic.o \
 	$(OBJ_DIR)/kernel/ioapic.o \
 	$(OBJ_DIR)/kernel/acpi.o \
 	$(OBJ_DIR)/kernel/pic.o \
@@ -32,7 +32,7 @@ KERNEL_HDRS := kernel/init.h \
 	kernel/console.h \
 	kernel/printk.h \
 	kernel/errno.h \
-	kernel/mp.h \
+	kernel/lapic.h \
 	kernel/ioapic.h \
 	kernel/pic.h \
 	kernel/pcie/pcie.h \

@@ -1,5 +1,5 @@
-#ifndef MP_H
-#define MP_H
+#ifndef LAPIC_H
+#define LAPIC_H
 
 // Local APIC registers, divided by 4 for use as u32[] indices.
 #define LAPIC_BASE      0xFFFFFFFFFFFFD000 // Base kernel address for lapic registers

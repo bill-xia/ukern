@@ -1,4 +1,4 @@
-#include "mp.h"
+#include "lapic.h"
 #include "x86.h"
 #include "printk.h"
 #include "mem.h"
