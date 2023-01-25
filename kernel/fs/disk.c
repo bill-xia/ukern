@@ -69,6 +69,30 @@ init_disk()
 }
 
 int
+detect_guid(int did, int gpt_pid, struct GPTPAR *par)
+{
+	int i, r;
+	for (i = 0; i < N_KNOWN_GUID; ++i) {
+		if (!guid_eq(&par->type_guid, &known_guid[i])) 
+			continue;
+		if (i == GUID_EMPTY)
+			break;
+		int pid = disk[did].n_part++;
+		disk[did].part[pid].part_type = PARTTYPE_GPT | i;
+		disk[did].part[pid].lba_beg = par->lba_beg;
+		disk[did].part[pid].n_sec = par->lba_end - par->lba_beg + 1;
+		printk("GPT (sd%d,p%d) type(%d): %s\n", did, pid, i, guid_name[i]);
+		if (i == GUID_WIN_DATA || i == GUID_LINUX_FS) {
+			r = detect_fs(did, pid);
+		}
+		break;
+	}
+	if (i == N_KNOWN_GUID) {
+		panic("GPT (sd%d,p%d): unknown guid.\n", did, i);
+	}
+}
+
+int
 init_gpt(int did)
 {
 	int i, blk, r;
@@ -90,29 +114,7 @@ init_gpt(int did)
 	int n_part = gpt->n_pararr, par_entry_siz = gpt->par_entry_siz;
 	printk("GPT partition number: %d\n", n_part);
 	for (i = 0; i < n_part; ++i, ptr += par_entry_siz) {
-		struct GPTPAR *par = (struct GPTPAR *)ptr;
-		int j;
-		for (j = 0; j < N_KNOWN_GUID; ++j) {
-			if (guid_eq(&par->type_guid, &known_guid[j])) {
-				if (j == 0)
-					break;
-				int pid = disk[did].n_part++;
-				disk[did].part[pid].part_type = PARTTYPE_GPT | j;
-				disk[did].part[pid].lba_beg = par->lba_beg;
-				disk[did].part[pid].n_sec = par->lba_end - par->lba_beg + 1;
-				printk("GPT (sd%d,p%d) type(%d): %s\n", did, i, j, guid_name[j]);
-				if (j == GUID_WIN_DATA || j == GUID_LINUX_FS) {
-					r = detect_fs(did, pid);
-					if (r == FS_EXFAT) {
-						printk("-----------------\nexFAT partition found.\n-----------------\n");
-					}
-				}
-				break;
-			}
-		}
-		if (j == N_KNOWN_GUID) {
-			printk("GPT (sd%d,p%d): unknown guid.\n", did, i);
-		}
+		detect_guid(did, i, (struct GPTPAR *)ptr);
 	}
 }
 

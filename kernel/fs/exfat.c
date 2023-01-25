@@ -3,8 +3,6 @@
 #include "mem.h"
 #include "printk.h"
 
-u8 fs_buf[4096];
-
 void
 init_fs_exfat(struct FS_exFAT *fs)
 {
@@ -36,110 +34,139 @@ cmp_fn(u8 c1, u16 c2) {
 	return to_upper_case(c1) != to_upper_case(c2);
 }
 
+struct exfat_dir_file {
+	u32	clus_id,
+		use_fat:1, is_dir:1;
+	u64	file_len;
+};
+
+/**
+ * exfat_walk_dir() - find dir/file with `name` inside cur_dir, and walk into it
+ * 	(i.e. change cur_dir to point to the dir/file found)
+ * 
+ * return 0 on success, -1 if `name` doesn't exist
+ */
+int
+exfat_walk_dir(struct FS_exFAT *fs, const char *name, int name_len, struct exfat_dir_file *cur_dir)
+{
+	static struct dir_entry _dir[128]; // 4K
+	// TODO: what if cluster size > 4K?
+
+	int	i,
+		name_ptr,
+		secondary_count,
+		name_dismatch,
+		entry_perclus = (512 << (fs->hdr->sec_per_clus_shift)) / sizeof(struct dir_entry),
+		clus_id,
+		use_fat,
+		fn_len,
+		is_dir,
+		matched = 0;
+	u64	data_len;
+	for (i = 0;; ++i) {
+		if (i % entry_perclus == 0) {
+			if (cur_dir->clus_id == 0xFFFFFFFF)
+				break;
+			disk_read(
+				fs->did,
+				fs->part->lba_beg + fs->hdr->cluster_heap_offset + ((cur_dir->clus_id - 2) << fs->hdr->sec_per_clus_shift),
+				1
+			);
+			memcpy(_dir,
+				(void *)lba2kaddr(fs->did, fs->part->lba_beg + fs->hdr->cluster_heap_offset + ((cur_dir->clus_id - 2) << fs->hdr->sec_per_clus_shift)),
+				(512 << (fs->hdr->sec_per_clus_shift))
+			);
+			// printk("dir_clus_id: %x\n", dir_clus_id);
+			if (cur_dir->use_fat) {
+				// printk("open(): ");
+				cur_dir->clus_id = get_fat_at(fs, cur_dir->clus_id);
+			} else
+				cur_dir->clus_id++;
+		}
+		switch (_dir[i % entry_perclus].entry_type) {
+		case 0x85: ;// file_dir
+			struct file_dir_entry *fd_dir = (struct file_dir_entry *)&_dir[i % entry_perclus];
+			secondary_count = fd_dir->secondary_count;
+			name_dismatch = 0;
+			name_ptr = 0;
+			is_dir = (fd_dir->file_attr & 0x10) >> 4; // Directory
+			break;
+		case 0xC0: ;// stream_ext
+			struct stream_ext_entry *str_ext_dir = (struct stream_ext_entry *)&_dir[i % entry_perclus];
+			clus_id = str_ext_dir->first_clus;
+			fn_len = str_ext_dir->name_len;
+			data_len = str_ext_dir->valid_data_len;
+			use_fat = !(str_ext_dir->secondary_flags & NO_FAT_CHAIN); 
+			break;
+		case 0xC1: ;// file_name
+			struct file_name_entry *fn_dir = (struct file_name_entry *)&_dir[i % entry_perclus];
+			for (int k = 0; !name_dismatch && k < 15 && name_ptr < fn_len && name_ptr < name_len; k++) {
+				if (cmp_fn(name[name_ptr++], fn_dir->file_name[k])) {
+					name_dismatch = 1;
+				}
+			}
+			if (!name_dismatch && name_ptr == fn_len && name_ptr == name_len) {
+				// matched!
+				cur_dir->clus_id = clus_id;
+				cur_dir->use_fat = use_fat;
+				cur_dir->is_dir = is_dir;
+				cur_dir->file_len = data_len;
+				matched = 1;
+			}
+			break;
+		default:
+			break;
+		}
+		if (matched)
+			break;
+	}
+	return matched ? 0 : -1;
+}
+
 // open file identified by `filename`
 // pass the head cluster id to *head_cluster
 // return status: 0 if success, < 0 if error
 int
 exfat_open_file(struct FS_exFAT *fs, const char *filename, struct file_desc *fdesc)
 {
-	u32    dir_clus_id,
-				clus_id = 0,
-				nxt_level_clus_id = fs->hdr->rtdir_cluster,
-				isdir = 1,
-				secondary_count,
-				fn_len,
-				data_len,
-				ptr,
-				keep_cmp_fn,
-				matched,
-				cur_use_fat,
-				nxt_use_fat = 1;
+	struct exfat_dir_file cur_dir = {
+		.clus_id = fs->hdr->rtdir_cluster,
+		.file_len = 0,
+		.is_dir = 1,
+		.use_fat = 1
+	};
 	static char name[256];
-	static struct dir_entry _dir[128]; // 4K
-	// TODO: what if cluster size > 4K?
-	int entry_perclus = (512 << (fs->hdr->sec_per_clus_shift)) / sizeof(struct dir_entry);
+	int 	i,
+		r,
+		ind;
 	// printk("%d, entry_perclus: %d\n", (512 << (fs->hdr->sec_per_clus_shift)), entry_perclus);
-	for (int i = 0, ind = 0; i < 256; ++i, ++ind) {
+	for (i = 0, ind = 0; i < 256; ++i, ++ind) {
 		if (filename[i] != '/' && filename[i] != '\0') {
 			name[ind] = filename[i];
-		} else {
-			if (ind == 0) {
-				goto match_end;
-			}
-			if (!isdir) {
-				// travel into a file, like "/a/b" where "/a" is a file
-				return -E_TRAVEL_INTO_FILE;
-			}
-			dir_clus_id = nxt_level_clus_id;
-			nxt_level_clus_id = 0;
-			cur_use_fat = nxt_use_fat;
-			nxt_use_fat = 0;
-			// start matching the name
-			matched = 0;
-			for (int j = 0;; ++j) {
-				if (j % entry_perclus == 0) {
-					if (dir_clus_id == 0xFFFFFFFF) break;
-					disk_read(
-						fs->did,
-						fs->part->lba_beg + fs->hdr->cluster_heap_offset + ((dir_clus_id - 2) << fs->hdr->sec_per_clus_shift),
-						1
-					);
-					memcpy(_dir, (void *)lba2kaddr(fs->did, fs->part->lba_beg + fs->hdr->cluster_heap_offset + ((dir_clus_id - 2) << fs->hdr->sec_per_clus_shift)), (512 << (fs->hdr->sec_per_clus_shift)));
-					// printk("dir_clus_id: %x\n", dir_clus_id);
-					if (cur_use_fat) {
-						// printk("open(): ");
-						dir_clus_id = get_fat_at(fs, dir_clus_id);
-					} else
-						dir_clus_id++;
-				}
-				switch (_dir[j % entry_perclus].entry_type) {
-				case 0x85: ;// file_dir
-					struct file_dir_entry *fd_dir = (struct file_dir_entry *)&_dir[j % entry_perclus];
-					secondary_count = fd_dir->secondary_count;
-					keep_cmp_fn = 1;
-					ptr = 0;
-					isdir = (fd_dir->file_attr & 0x10) >> 4; // Directory
-					break;
-				case 0xC0: ;// stream_ext
-					struct stream_ext_entry *str_ext_dir = (struct stream_ext_entry *)&_dir[j % entry_perclus];
-					clus_id = str_ext_dir->first_clus;
-					fn_len = str_ext_dir->name_len;
-					data_len = str_ext_dir->valid_data_len;
-					nxt_use_fat = !(str_ext_dir->secondary_flags & NO_FAT_CHAIN); 
-					break;
-				case 0xC1: ;// file_name
-					struct file_name_entry *fn_dir = (struct file_name_entry *)&_dir[j % entry_perclus];
-					for (int k = 0; keep_cmp_fn && k < 15 && ptr < fn_len && ptr < ind; k++) {
-						if (cmp_fn(name[ptr++], fn_dir->file_name[k])) {
-							keep_cmp_fn = 0;
-						}
-					}
-					if (keep_cmp_fn && ptr == fn_len && ptr == ind) {
-						// matched!
-						matched = 1;
-						nxt_level_clus_id = clus_id;
-					}
-					break;
-				default:
-					break;
-				}
-				if (matched) {
-					break;
-				}
-			}
-		match_end:
-			if (filename[i] == '\0') {
-				if (nxt_level_clus_id == 0) {
-					return -E_FILE_NOT_EXIST; // file not exist
-				}
-				fdesc->meta_exfat.head_cluster = clus_id;
-				fdesc->meta_exfat.use_fat = nxt_use_fat;
-				fdesc->file_len = data_len;
-				fdesc->read_ptr = 0;
-				return 0;
-			}
-			ind = -1;
+			continue;
 		}
+		if (ind == 0) {
+			// name is empty, skip
+			ind = -1;
+			continue;
+		}
+		// `name` is complete.
+		if (!cur_dir.is_dir) {
+			// travel into a file, like `filename is` "/a/b" and "/a" is a file
+			return -E_TRAVEL_INTO_FILE;
+		}
+		if ((r = exfat_walk_dir(fs, name, ind, &cur_dir)) < 0) {
+			return -E_FILE_NOT_EXIST;
+		}
+		// check if filename comes to end
+		if (filename[i] == '\0') {
+			fdesc->meta_exfat.head_cluster = cur_dir.clus_id;
+			fdesc->meta_exfat.use_fat = cur_dir.use_fat;
+			fdesc->file_len = cur_dir.file_len;
+			fdesc->read_ptr = 0;
+			return 0;
+		}
+		ind = -1;
 	}
 	return -E_FILE_NAME_TOO_LONG;
 }
@@ -153,7 +180,7 @@ min(u64 a, u64 b)
 int
 exfat_read_file(struct FS_exFAT *fs, char *dst, size_t sz, struct file_desc *fdesc)
 {
-	int r = 0,
+	int	r = 0,
 		ptr = fdesc->read_ptr,
 		clus_id = fdesc->meta_exfat.head_cluster,
 		use_fat = fdesc->meta_exfat.use_fat;
@@ -176,11 +203,7 @@ exfat_read_file(struct FS_exFAT *fs, char *dst, size_t sz, struct file_desc *fde
 		u64 src = lba2kaddr(fs->did, fs->part->lba_beg + fs->hdr->cluster_heap_offset + ((clus_id - 2) << fs->hdr->sec_per_clus_shift)) + ptr;
 		int n = min(sz, PGSIZE - (src % PGSIZE));
 		// printk("dst %p, src %p, sz %d, sz2 %d\n", dst, src, sz, PGSIZE - (src % PGSIZE));
-		memcpy(
-			dst,
-			(void *)src,
-			n
-		);
+		memcpy(dst, (void *)src, n);
 		sz -= n;
 		dst += n;
 		ptr = 0;
