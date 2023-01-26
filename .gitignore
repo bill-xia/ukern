@@ -1,8 +1,9 @@
 image
 fsimg
-efiimg
+diskimg
+OVMF_VARS.fd
 
-.efi_dev
+.disk_dev
 
 *.pdf
 *.efi

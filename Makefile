@@ -38,24 +38,32 @@ image: pre-build $(OBJ_DIR)/boot/boot $(OBJ_DIR)/kernel/kernel fsimg
 	dd oflag=append conv=notrunc if=$(OBJ_DIR)/kernel/kernel of=image
 	truncate -s515585 image # to work on q35, weird... see https://stackoverflow.com/questions/68746570/how-to-make-simple-bootloader-for-q35-machine
 
-ukernbl.efi: gnu-efi/apps/ukernbl.c
+gnu-efi/x86_64/apps/ukernbl.efi: gnu-efi/apps/ukernbl.c
 	make -C gnu-efi -f Makefile
 	cp gnu-efi/x86_64/apps/ukernbl.efi obj/efi
 
-efiimg: pre-build $(OBJ_DIR)/kernel/kernel fsimg ukernbl.efi
-	dd if=/dev/zero of=efiimg bs=1024 count=200000
-	(echo g; echo n; echo; echo; echo +100M; echo t; echo EFI System; echo n; echo; echo; echo; echo w) | fdisk efiimg
-	sudo kpartx -l efiimg | cut -d " " -f 1 | head -n 1 > .efi_dev
-	sudo kpartx -a efiimg
-	sudo mkfs.fat /dev/mapper/$$(cat .efi_dev) -F 32
-	sudo mount /dev/mapper/$$(cat .efi_dev) efifs
-	sudo cp gnu-efi/x86_64/apps/ukernbl.efi efifs/BOOTX64.EFI
-	sudo cp obj/kernel/kernel efifs/KERNEL
-	sudo umount efifs
-	sudo kpartx -d efiimg
+diskimg:
+	dd if=/dev/zero of=diskimg bs=1024 count=200000
+	(echo g; echo n; echo; echo; echo +100M; echo t; echo EFI System; echo n; echo; echo; echo; echo w) | fdisk diskimg
+	sudo kpartx -l diskimg | cut -d " " -f 1 | head -n 1 > .disk_dev
+	sudo kpartx -a diskimg
+	sudo mkfs.fat /dev/mapper/$$(cat .disk_dev) -F 32
+	sudo kpartx -d diskimg
 
-qemu: pre-qemu efiimg
-	qemu-system-x86_64 -machine q35 -drive file=efiimg,format=raw -bios /usr/share/ovmf/OVMF.fd -nodefaults -vga std
+efi: pre-build $(OBJ_DIR)/kernel/kernel fsimg gnu-efi/x86_64/apps/ukernbl.efi diskimg
+	sudo kpartx -l diskimg | cut -d " " -f 1 | head -n 1 > .efi_dev
+	sudo kpartx -a diskimg
+	mkdir diskfs
+	sudo mount /dev/mapper/$$(cat .efi_dev) diskfs
+	sudo rm -rf diskfs/*
+	sudo cp gnu-efi/x86_64/apps/ukernbl.efi diskfs/BOOTX64.EFI
+	sudo cp obj/kernel/kernel diskfs/KERNEL
+	sudo umount diskfs
+	rm -rd diskfs
+	sudo kpartx -d diskimg
+
+qemu: pre-qemu efi
+	qemu-system-x86_64 -machine q35 -drive file=diskimg,format=raw -drive if=pflash,format=raw,unit=0,readonly=on,file=/usr/share/OVMF/OVMF_CODE.fd -drive if=pflash,format=raw,unit=1,file=./OVMF_VARS.fd -nodefaults -vga std
 
 qemu-bios: pre-qemu
 	qemu-system-x86_64 $(QEMU_FLAGS) -machine q35 -drive file=image,format=raw -drive file=gptimg,format=raw #-device qemu-xhci
@@ -68,4 +76,4 @@ gdb: pre-qemu
 	gdb -n -x .gdbinit
 
 clean:
-	rm -rf obj/ image fsdir/ fsimg efiimg
+	rm -rf obj/ image fsdir/ fsimg
