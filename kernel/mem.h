@@ -54,15 +54,25 @@ struct PageInfo {
 	u64	paddr;
 	union {
 		struct PageInfo	*next;
-		u64 	ref;
+		u64 		ref;
 	} u;
 };
 
-struct MemInfo {
-	u64 paddr;
-	u64 length;
-	u32 type;
-	u32 ext_attr; // we ignore it
+struct mem_map_desc {
+	u32	type;           // Field size is 32 bits followed by 32 bit pad
+	u32	pad;
+	u64	phys_start;  // Field size is 64 bits
+	u64	virt_start;   // Field size is 64 bits
+	u64	num_of_pages;  // Field size is 64 bits
+	u64	attr;      // Field size is 64 bits
+};
+
+struct mem_map {
+	u8	*list;
+	u64	map_size,
+		map_key,
+		desc_size,
+		desc_ver;
 };
 
 #define KERNBASE	0xFFFF800000000000
@@ -171,7 +181,7 @@ extern u64	nfreepages;
 extern char	*end_kmem;
 extern struct PageInfo	*k_pageinfo;
 
-void init_kpageinfo(void);
+void init_kpageinfo(struct mem_map *mem_map);
 void init_kpgtbl(void);
 void init_freepages(void);
 int walk_pgtbl(pgtbl_t pgtbl, u64 vaddr, pte_t **pte, int create);

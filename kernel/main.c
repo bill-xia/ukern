@@ -6,9 +6,9 @@
 #include "errno.h"
 #include "mem.h"
 
-int main(struct screen *screen)
+int main(struct boot_args *args)
 {
-	init(screen);
+	init(args);
 	// CREATE_PROC(hello);
 	// CREATE_PROC(sort);
 	// CREATE_PROC(divzero);

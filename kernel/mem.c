@@ -8,7 +8,6 @@
 #include "x86.h"
 #include "errno.h"
 
-struct MemInfo *k_meminfo; // read from NVRAM at boot time
 struct PageInfo *k_pageinfo; // info for every available 4K-page
 struct PageInfo *freepages = NULL;
 pgtbl_t k_pgtbl;
@@ -25,6 +24,12 @@ static u64 max_addr;
 
 u64 max(u64 a, u64 b) {
 	return a > b ? a : b;
+}
+
+static inline
+void lcs(u64 cs)
+{
+	asm volatile("push %0\n\tcall long_ret\n\t jmp lcs_end\n\tlong_ret: lretq\n\tlcs_end:" : : "r" (cs));
 }
 
 void
@@ -84,46 +89,44 @@ init_gdt(void)
 		.base4 = ((u64)&tss >> 32) & 0xFFFFFFFF
 	}; *(struct TSSDesc *)(gdt + 6) = tmp;}
 	gdt_desc.limit = 8 * 8 - 1;
-	gdt_desc.base = (u64)gdt;
-	lgdt(&gdt_desc);
+	gdt_desc.base = K2P(gdt);
+	lgdt((void *)K2P(&gdt_desc));
+	lcs(KERN_CODE_SEL);
 	ltr(0x33);
 }
 
 // initiating k_pageinfo array.
 void
-init_kpageinfo(void)
+init_kpageinfo(struct mem_map *mem_map)
 {
-	k_meminfo = (struct MemInfo *)0x9000;
+	struct mem_map_desc *desc;
+
 	k_pageinfo = (struct PageInfo *)end_kmem;
-	int ind = 0;
+	int	ind = 0,
+		n_desc = mem_map->map_size / mem_map->desc_size;
 	max_addr = 0;
-	while (k_meminfo[ind].type != 0) {
-		if (k_meminfo[ind].type != 1) {
-			++ind;
-			continue;
-		}
-		u64 beg_addr = ROUNDUP(k_meminfo[ind].paddr, PGSIZE),
-				 end_addr = ROUNDDOWN(k_meminfo[ind].paddr + k_meminfo[ind].length, PGSIZE);
-		printk("beg_addr: %lx, end_addr: %lx\n", beg_addr, end_addr);
-		max_addr = max(max_addr, end_addr);
-		++ind;
+	// printk("ndesc: %d\n", n_desc);
+	for (ind = 0; ind < n_desc; ++ind) {
+		desc = (struct mem_map_desc *)(mem_map->list + ind * mem_map->desc_size);
+		max_addr = max(max_addr, desc->phys_start + desc->num_of_pages * PGSIZE);
+		// printk("addr: [%lx, %lx] %d ", desc->phys_start, desc->phys_start + desc->num_of_pages * PGSIZE, desc->type);
+		// if (ind % 5 == 4) {
+		// 	printk("\n");
+		// }
 	}
 	for (u64 addr = 0; addr < max_addr; addr += PGSIZE) {
 		PA2PGINFO(addr)->paddr = 0;
 	}
-	ind = 0;
-	while (k_meminfo[ind].type != 0) {
-		if (k_meminfo[ind].type != 1) {
-			++ind;
-			continue;
-		}
-		u64 beg_addr = ROUNDUP(k_meminfo[ind].paddr, PGSIZE),
-				 end_addr = ROUNDDOWN(k_meminfo[ind].paddr + k_meminfo[ind].length, PGSIZE);
+	for (ind = 0; ind < n_desc; ++ind) {
+		desc = (struct mem_map_desc *)(mem_map->list + ind * mem_map->desc_size);
+		// According to UEFI Spec 7.2.3 Release 2.10, phys_start must be aligned
+		// on a 4KiB boundary, and num_of_pages is number of *4KiB* pages.
+		u64	beg_addr = desc->phys_start,
+			end_addr = desc->phys_start + desc->num_of_pages * PGSIZE;
 		while (beg_addr < end_addr) {
 			PA2PGINFO(beg_addr)->paddr = beg_addr;
 			beg_addr += PGSIZE;
 		}
-		++ind;
 	}
 	end_kmem = (char *)(PA2PGINFO(max_addr));
 }
@@ -140,31 +143,40 @@ reg_kpgtbl_1Gpage(u64 addr)
 {
 	u64 pml4i = addr >> PML4_OFFSET;
 	u64 pdpti = addr >> PDPT_OFFSET;
-	k_pgtbl[pml4i] = K2P(&k_pdpt[pdpti & (~0x1FF)]) | PML4E_P;
-	k_pdpt[pdpti] = addr | PDPTE_P | PDPTE_PS;
+	k_pgtbl[pml4i] = K2P(&k_pdpt[pdpti & (~0x1FF)]) | PML4E_P | PML4E_W;
+	k_pdpt[pdpti] = addr | PDPTE_P | PDPTE_PS | PDPTE_W;
 }
+
+u8 kstack[4096] __attribute__ (( aligned(4096)));
 
 // initiating kernel page table.
 void
 init_kpgtbl(void)
 {
+	printk("end_kmem: %lx\n", end_kmem);
 	k_pgtbl = (pgtbl_t)ROUNDUP((u64)(end_kmem), PGSIZE);
 	n_pml4 = NENTRY(max_addr, PML4_OFFSET);
 	k_pdpt = (pdpt_t)ROUNDUP((u64)(k_pgtbl + n_pml4), PGSIZE);
 	n_pdpt = NENTRY(max_addr, PDPT_OFFSET);
-	end_kpgtbl = (char *)ROUNDUP((u64)(k_pdpt + n_pdpt), PGSIZE);
+	pdpt_t kstack_pdpt = (pdpt_t)ROUNDUP((u64)(k_pdpt + n_pdpt), PGSIZE);
+	pd_t kstack_pd = kstack_pdpt + PGSIZE / sizeof(u64*);
+	pt_t kstack_pt = kstack_pd + PGSIZE / sizeof(u64*);
+	end_kpgtbl = (char *)(kstack_pt + PGSIZE / sizeof(u64*));
 	u64 *ptr = (u64 *)k_pgtbl;
 	while (ptr < (u64 *)end_kpgtbl) {
 		*ptr = 0;
 		ptr++;
 	}
-	for (u64 i = 0; i < max_addr; i += 0x40000000) { // 1G pages
+	for (u64 i = 0; i < max_addr; i += 0x40000000ul) { // 1G pages
 		reg_kpgtbl_1Gpage(i);
 	}
 	for (int i = 0; i < 255; ++i) {
 		k_pgtbl[i + 256] = k_pgtbl[i];
 	}
-	k_pgtbl[511] = 0x12003; // kernel stack, see entry.S
+	k_pgtbl[511] = (u64)K2P(kstack_pdpt) | PML4E_P | PML4E_W; // kernel stack
+	kstack_pdpt[511] = (u64)K2P(kstack_pd) | PDPTE_P | PDPTE_W; // kernel stack
+	kstack_pd[511] = (u64)K2P(kstack_pt) | PDE_P | PDE_W; // kernel stack
+	kstack_pt[510] = (u64)K2P(kstack) | PTE_P | PTE_W; // kernel stack
 	lcr3(K2P(k_pgtbl));
 	end_kmem = end_kpgtbl;
 }

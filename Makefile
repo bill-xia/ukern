@@ -1,7 +1,7 @@
 AS := /usr/bin/nasm
 CC := /usr/bin/gcc
 CFLAGS := -nostdinc -fno-builtin -g -fno-stack-protector -Wno-error=address-of-packed-member
-# QEMU_FLAGS := -d cpu_reset
+QEMU_FLAGS := -d cpu_reset
 OBJ_DIR := obj
 
 all: image
@@ -64,14 +64,14 @@ efi: pre-build $(OBJ_DIR)/kernel/kernel fsimg gnu-efi/x86_64/apps/ukernbl.efi di
 	sudo kpartx -d diskimg
 
 qemu: pre-qemu efi
-	qemu-system-x86_64 -machine q35 -drive file=diskimg,format=raw -drive if=pflash,format=raw,unit=0,readonly=on,file=/usr/share/OVMF/OVMF_CODE.fd -drive if=pflash,format=raw,unit=1,file=./OVMF_VARS.fd
+	qemu-system-x86_64 $(QEMU_FLAGS) -machine q35 -drive file=diskimg,format=raw -drive if=pflash,format=raw,unit=0,readonly=on,file=/usr/share/OVMF/OVMF_CODE.fd -drive if=pflash,format=raw,unit=1,file=./OVMF_VARS.fd
 
 qemu-bios: pre-qemu
 	qemu-system-x86_64 $(QEMU_FLAGS) -machine q35 -drive file=image,format=raw -drive file=gptimg,format=raw #-device qemu-xhci
 	# -drive file=fsimg,if=none,id=nvm,format=raw -device nvme,serial=deadbeef,drive=nvm 
 
 qemu-gdb: pre-qemu efi
-	qemu-system-x86_64 -machine q35 -drive file=diskimg,format=raw -drive if=pflash,format=raw,unit=0,readonly=on,file=/usr/share/OVMF/OVMF_CODE.fd -drive if=pflash,format=raw,unit=1,file=./OVMF_VARS.fd -s -S
+	qemu-system-x86_64 $(QEMU_FLAGS) -machine q35 -drive file=diskimg,format=raw -drive if=pflash,format=raw,unit=0,readonly=on,file=/usr/share/OVMF/OVMF_CODE.fd -drive if=pflash,format=raw,unit=1,file=./OVMF_VARS.fd -s -S
 
 qemu-bios-gdb: pre-qemu
 	qemu-system-x86_64 $(QEMU_FLAGS) -machine q35 -drive file=image,format=raw -drive file=gptimg,format=raw -s -S

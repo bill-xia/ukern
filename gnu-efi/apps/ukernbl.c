@@ -14,6 +14,19 @@ struct SCREEN {
 		BytesPerGlyph;
 } Screen;
 
+struct MEM_MAP {
+	UINT64	List,
+		MapSize,
+		MapKey,
+		DescSize,
+		DescVer;
+} MemMap;
+
+struct BOOT_ARGS {
+        struct SCREEN *screen;
+        struct MEM_MAP *mem_map;
+} BootArgs;
+
 #define PSF_FONT_MAGIC 0x864ab572
  
 typedef struct {
@@ -27,20 +40,20 @@ typedef struct {
 	uint32_t width;         /* width in pixels */
 } PSF_HEADER;
 
-EFI_FILE* OpenFile(EFI_FILE* Directory, CHAR16* Path, EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable){
+EFI_FILE* OpenFile(EFI_FILE* Directory, CHAR16* Path, EFI_HANDLE ImageHandle){
 	EFI_FILE* LoadedFile;
 
 	EFI_LOADED_IMAGE_PROTOCOL* LoadedImage;
-	SystemTable->BootServices->HandleProtocol(ImageHandle, &gEfiLoadedImageProtocolGuid, (void**)&LoadedImage);
+	uefi_call_wrapper(BS->HandleProtocol, 3, ImageHandle, &gEfiLoadedImageProtocolGuid, (void**)&LoadedImage);
 
 	EFI_SIMPLE_FILE_SYSTEM_PROTOCOL* FileSystem;
-	SystemTable->BootServices->HandleProtocol(LoadedImage->DeviceHandle, &gEfiSimpleFileSystemProtocolGuid, (void**)&FileSystem);
+	uefi_call_wrapper(BS->HandleProtocol, 3, LoadedImage->DeviceHandle, &gEfiSimpleFileSystemProtocolGuid, (void**)&FileSystem);
 
 	if (Directory == NULL){
-		FileSystem->OpenVolume(FileSystem, &Directory);
+		uefi_call_wrapper(FileSystem->OpenVolume, 2, FileSystem, &Directory);
 	}
 
-	EFI_STATUS s = Directory->Open(Directory, &LoadedFile, Path, EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY);
+	EFI_STATUS s = uefi_call_wrapper(Directory->Open, 5, Directory, &LoadedFile, Path, EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY);
 	if (s != EFI_SUCCESS){
 		return NULL;
 	}
@@ -64,9 +77,10 @@ InitializeGOP() {
 	for (Mode = 0; Mode < GOP->Mode->MaxMode; ++Mode) {
 		UINTN SizeOfInfo;
 		EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info;
-		GOP->QueryMode(GOP, Mode, &SizeOfInfo, &Info);
+		uefi_call_wrapper(GOP->QueryMode, 4, GOP, Mode, &SizeOfInfo, &Info);
 		if (Info->HorizontalResolution == 1920 && Info->VerticalResolution == 1080) {
-			GOP->SetMode(GOP, Mode);
+			// Print(L"GOP Mode %d\n\r", Mode);
+			uefi_call_wrapper(GOP->SetMode, 2, GOP, Mode);
 			break;
 		}
 	}
@@ -131,33 +145,42 @@ memcmp(void *s1, void *s2, size_t siz)
 }
 
 EFI_STATUS
-PrintMemMap()
+GetMemMap()
 {
-	Print(L"==========\n");
+	// Print(L"==========\n");
 	UINTN	MMSize = 0,
 		MapKey,
 		DescSize;
-	UINT32	DescVer,
-		i;
+	UINT32	DescVer;
 
 	EFI_STATUS s;
 	EFI_MEMORY_DESCRIPTOR *MM = NULL;
 	s = uefi_call_wrapper(BS->GetMemoryMap, 5, &MMSize, MM, &MapKey, &DescSize, &DescVer);
-	Print(L"MM first call: %d, MMSize %d    ", s, MMSize);
+	// Print(L"MM first call: %d, MMSize %d    ", s, MMSize);
 	MMSize += 10 * DescSize;
 	s = uefi_call_wrapper(BS->AllocatePool, 3, EfiLoaderData, MMSize, (void **)&MM);
 	if (s != EFI_SUCCESS) {
 		Print(L"Allocate MM failed.\n");
 	}
 	s = uefi_call_wrapper(BS->GetMemoryMap, 5, &MMSize, MM, &MapKey, &DescSize, &DescVer);
+
+	MemMap.List = (UINT64)MM;
+	MemMap.DescSize = DescSize;
+	MemMap.DescVer = DescVer;
+	MemMap.MapKey = MapKey;
+	MemMap.MapSize = MMSize;
+
+	Print(L"MemMap List: %lx\n", MM);
+	// while (1);
+
 	UINTN	NEntry = (MMSize / DescSize);
 
 	Print(L"MM ptr %lx, MM: %d, Nentry %d\n", MM, s, NEntry);
-	// if (NEntry > 16)
-	// 	NEntry = 16;
+	if (NEntry > 16)
+		NEntry = 16;
 	
 	UINT64 Addr = (UINT64)MM;
-	UINT32 n = 0;
+	UINT32 n = 0, i;
 	for (i = 0; i < NEntry; ++i) {
 		EFI_MEMORY_DESCRIPTOR *Map = (EFI_MEMORY_DESCRIPTOR *)(Addr + i * DescSize);
 		// if (Map->PhysicalStart <= 0x100000 && Map->PhysicalStart + Map->NumberOfPages * EFI_PAGE_SIZE >= 0x101000 && Map->Type != EfiConventionalMemory) {
@@ -175,18 +198,21 @@ PrintMemMap()
 			Print(L"\n");
 		}
 	}
-	Print(L"Print MemoryMap Done.\n==========\n");
+	// while (1);
+	// Print(L"Print MemoryMap Done.\n==========\n");
 
 	return EFI_SUCCESS;
 }
 
+typedef __attribute__((sysv_abi)) int (*KERNEL_ENTRY)(struct BOOT_ARGS *);
+
 EFI_STATUS
-LoadELF64Image(EFI_FILE *File)
+LoadELF64Image(EFI_FILE *File, KERNEL_ENTRY *KernelEntry)
 {
 	Elf64_Ehdr *ElfHdr;
 	uefi_call_wrapper(BS->AllocatePool, 3, EfiLoaderData, sizeof(Elf64_Ehdr), (void **)&ElfHdr);
 	UINTN Size = sizeof(Elf64_Ehdr);
-	File->Read(File, &Size, ElfHdr);
+	uefi_call_wrapper(File->Read, 3, File, &Size, ElfHdr);
 	if (
 		memcmp(&ElfHdr->e_ident[EI_MAG0], ELFMAG, SELFMAG) != 0 ||
 		ElfHdr->e_ident[EI_CLASS] != ELFCLASS64 ||
@@ -206,9 +232,9 @@ LoadELF64Image(EFI_FILE *File)
 	Elf64_Phdr *ProgHdr;
 	uefi_call_wrapper(BS->AllocatePool, 3, EfiLoaderData, sizeof(Elf64_Phdr), (void **)&ProgHdr);
 	for (NProgHdr = 0; NProgHdr < ElfHdr->e_phnum; NProgHdr++) {
-		File->SetPosition(File, ElfHdr->e_phoff + NProgHdr * ElfHdr->e_phentsize);
+		uefi_call_wrapper(File->SetPosition, 2, File, ElfHdr->e_phoff + NProgHdr * ElfHdr->e_phentsize);
 		Size = sizeof(Elf64_Phdr);
-		File->Read(File, &Size, ProgHdr);
+		uefi_call_wrapper(File->Read, 3, File, &Size, ProgHdr);
 
 		if (ProgHdr->p_type != PT_LOAD) {
 			continue;
@@ -233,10 +259,10 @@ LoadELF64Image(EFI_FILE *File)
 			}
 			if (ProgHdr->p_paddr + ProgHdr->p_filesz - Addr >= EFI_PAGE_SIZE) {
 				Size = EFI_PAGE_SIZE;
-				File->Read(File, &Size, (void *)Addr);
+				s = uefi_call_wrapper(File->Read, 3, File, &Size, (void *)Addr);
 			} else {
 				Size = ProgHdr->p_paddr + ProgHdr->p_filesz - Addr;
-				File->Read(File, &Size, (void *)Addr);
+				s = uefi_call_wrapper(File->Read, 3, File, &Size, (void *)Addr);
 				UINT8 *BSS;
 				for (BSS = (UINT8 *)(Addr + Size); (UINT64)BSS < (Addr + EFI_PAGE_SIZE); ++BSS) {
 					*BSS = 0;
@@ -266,15 +292,10 @@ LoadELF64Image(EFI_FILE *File)
 	// 	Buffer[i] = 0xFFFF00;
 	// }
 
-	int (*KernelEntry)(void *) = (int (*)(void *))(ElfHdr->e_entry);
-	Print(L"KernelEntry: %lx.\n\r", KernelEntry);
+	*KernelEntry = (KERNEL_ENTRY)(ElfHdr->e_entry);
+	Print(L"KernelEntry: %lx.\n\r", *KernelEntry);
 
 	uefi_call_wrapper(BS->FreePool, 1, (void *)ElfHdr);
-
-	// PrintMemMap();
-	
-	// while (1);
-	KernelEntry((void *)&Screen);
 
 	return EFI_SUCCESS;
 }
@@ -310,22 +331,21 @@ LoadFont(EFI_FILE *File)
 	return EFI_SUCCESS;
 }
 
+
 EFI_STATUS
 efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
 	InitializeLib(ImageHandle, SystemTable);
 
-	EFI_FILE* KernelFile = OpenFile(NULL, L"KERNEL", ImageHandle, SystemTable);
+	EFI_FILE* KernelFile = OpenFile(NULL, L"KERNEL", ImageHandle);
 	if (KernelFile == NULL){
 		Print(L"Could not open kernel file.\n\r");
 	} else{
 		Print(L"Open kernel file Successfully.\n\r");
 	}
 
-	// while (1);
-
 	InitializeGOP();
 
-	EFI_FILE* FontFile = OpenFile(NULL, L"TAMSYN.PSF", ImageHandle, SystemTable);
+	EFI_FILE* FontFile = OpenFile(NULL, L"TAMSYN.PSF", ImageHandle);
 	if (FontFile == NULL) {
 		Print(L"Could not open font file.\n\r");
 	} else{
@@ -333,8 +353,15 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
 	}
 	// PrintMemMap();
 	LoadFont(FontFile);
-	LoadELF64Image(KernelFile);
 
+	KERNEL_ENTRY KernelEntry;
+	LoadELF64Image(KernelFile, &KernelEntry);
+
+	GetMemMap();
+	// while (1);
+	BootArgs.screen = &Screen;
+	BootArgs.mem_map = &MemMap;
+	KernelEntry(&BootArgs);
 
 	return EFI_SUCCESS; // Exit the UEFI application
 }

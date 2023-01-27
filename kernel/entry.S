@@ -19,71 +19,55 @@
 %define PTE_P 0x1
 %define PTE_W 0x2
 
-%macro SEG_DESC_64 5
-; %1 base, %2 lim, %3 type, %4 L, %5 dpl
-	dw ((%2 >> 12) & 0xFFFF),(%1 & 0xFFFF)
-	db ((%1 >> 16) & (0xFF)),(0x90 | %3 | (%5 << 5)),(%4 | ((%2 >> 28) & 0xf)),(%1 >> 24)
-%endmacro
 
-section .text
+[BITS 64]
 
-[BITS 32]
+extern main
+extern kstack
+section .text64
 
-global prot_to_ia32e
-prot_to_ia32e:
+global ia32e
+ia32e:
 	cli
-	mov eax, cr0
-	and eax, ~CR0_PG
-	mov cr0, eax
-
-; getting into IA32e mode
-
-; preparing 4-level page tables
-	mov dword [pml4], pdpt0 + (PML4E_P | PML4E_W)
-	mov dword [pml4 + 0x800], pdpt0 + (PML4E_P | PML4E_W) ; map memory above KERNBASE
-	mov dword [pdpt0], 0x0 | PDPTE_P | PDPTE_W | PDPTE_PS
-	mov dword [pdpt0 + 0x08], 0x40000000 | PDPTE_P | PDPTE_W | PDPTE_PS
-	mov dword [pdpt0 + 0x10], 0x80000000 | PDPTE_P | PDPTE_W | PDPTE_PS
-	mov dword [pdpt0 + 0x18], 0xC0000000 | PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pml4], pdpt0 + (PML4E_P | PML4E_W)
+	mov qword [pml4 + 0x800], pdpt0 + (PML4E_P | PML4E_W) ; map memory above KERNBASE
+	mov qword [pdpt0], 0x0 | PDPTE_P | PDPTE_W | PDPTE_PS
+	mov rax, 0x40000000
+	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pdpt0 + 0x08], rax
+	mov rax, 0x80000000
+	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pdpt0 + 0x10], rax
+	mov rax, 0xC0000000
+	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pdpt0 + 0x18], rax
 ; kernel stack
-	mov dword [pml4 + 0xFF8], pdpt255 + (PML4E_P | PML4E_W)
-	mov dword [pdpt255 + 0xFF8], pd + (PDPTE_P | PDPTE_W)
-	mov dword [pd + 0xFF8], pt + (PDE_P | PDE_W)
-	mov dword [pt + 0xFF0], kstack + (PTE_P | PTE_W)
+	mov rax, pdpt255 + (PML4E_P | PML4E_W)
+	mov qword [pml4 + 0xFF8], rax
+	mov rax, pd + (PDPTE_P | PDPTE_W)
+	mov qword [pdpt255 + 0xFF8], rax
+	mov rax, pt + (PDE_P | PDE_W)
+	mov qword [pd + 0xFF8], rax
+	mov rax, kstack
+	mov rbx, 0x00007FFFFFFFFFFF
+	and rax, rbx
+	or rax, (PTE_P | PTE_W)
+	mov qword [pt + 0xFF0], rax
 
-	mov eax, cr4
-	or eax, CR4_PAE
-	mov cr4, eax
+	mov rax, pml4
+	mov cr3, rax
 
-	mov eax, pml4
-	mov cr3, eax
+	;mov rax, 0xC0000000
+	;mov dword [rax], 0xFFFF00
+	;jmp $
+	; need to be canonical address, the high 4 bytes
+	; cannot be 0x0000, see "The Manual" vol.1 3.3.7.1
+	mov rax, 0xFFFFFFFFFFFFF000 ; kernel stack
+	mov rsp, rax
+	mov rax, main
+	call rax
 
-	mov ecx, 0xC0000080
-	rdmsr
-	or eax, IA32_EFER_LME
-	wrmsr
-
-	mov eax, cr0
-	or eax, CR0_PG | CR0_PE
-	mov cr0, eax
-
-here:
-	db 0x66
-	lgdt [gdt_64_desc]
-	jmp KERN_CODE:ia32e
-
-section .data
-
-gdt_64:
-dq 0
-SEG_DESC_64 0,0,0x08,0x20,0 ; KERN_CODE 0x08
-
-gdt_64_desc:
-dw 0x0F
-dq gdt_64
-
-align 16
-kargs: dq 0
+section .data64
 
 align 4096
 pml4:		times 512 dq 0
@@ -91,16 +75,3 @@ pdpt0:		times 512 dq 0
 pdpt255:	times 512 dq 0
 pd:		times 512 dq 0
 pt:		times 512 dq 0
-kstack:		times 512 dq 0
-
-[BITS 64]
-
-extern main
-section .text64
-ia32e:
-	; need to be canonical address, the high 4 bytes
-	; cannot be 0x0000, see "The Manual" vol.1 3.3.7.1
-	mov rax, 0xFFFFFFFFFFFFF000 ; kernel stack
-	mov rsp, rax
-	mov rax, main
-	call rax

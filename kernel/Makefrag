@@ -57,7 +57,7 @@ KERNEL_INC := -Iinclude -Ilib -Ikernel
 
 KERNEL_CFLAGS := -DKERNEL
 
-$(OBJ_DIR)/kernel/kernel: $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry $(OBJ_DIR)/kernel/intr_entry $(KERNEL_BINS)
+$(OBJ_DIR)/kernel/kernel: $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry $(OBJ_DIR)/kernel/intr_entry $(KERNEL_BINS) kernel/kernel.ld
 	ld -T kernel/kernel.ld $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry $(OBJ_DIR)/kernel/intr_entry -b binary $(KERNEL_BINS) -o $(OBJ_DIR)/kernel/kernel --no-relax
 
 $(OBJ_DIR)/kernel/entry: kernel/entry.S
