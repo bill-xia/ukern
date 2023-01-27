@@ -27,9 +27,7 @@ void init(struct boot_args *args)
 	init_mp();
 	init_pic();
 	init_ioapic();
-	printk("init is here.\n");
-	while (1);
 	// init_fs();
-	init_acpi();
+	init_acpi(args->rsdp);
 	init_disk();
 }

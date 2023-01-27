@@ -60,7 +60,13 @@ KERNEL_CFLAGS := -DKERNEL
 $(OBJ_DIR)/kernel/kernel: $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry $(OBJ_DIR)/kernel/intr_entry $(KERNEL_BINS) kernel/kernel.ld
 	ld -T kernel/kernel.ld $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry $(OBJ_DIR)/kernel/intr_entry -b binary $(KERNEL_BINS) -o $(OBJ_DIR)/kernel/kernel --no-relax
 
+$(OBJ_DIR)/kernel/kernel_bios: $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry_bios $(OBJ_DIR)/kernel/intr_entry $(KERNEL_BINS) kernel/kernel.ld
+	ld -T kernel/kernel.ld $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry_bios $(OBJ_DIR)/kernel/intr_entry -b binary $(KERNEL_BINS) -o $(OBJ_DIR)/kernel/kernel --no-relax
+
 $(OBJ_DIR)/kernel/entry: kernel/entry.S
+	$(AS) $< -f elf64 -o $@
+
+$(OBJ_DIR)/kernel/entry_bios: kernel/entry_bios.S
 	$(AS) $< -f elf64 -o $@
 
 $(OBJ_DIR)/kernel/intr_entry: kernel/intr_entry.S

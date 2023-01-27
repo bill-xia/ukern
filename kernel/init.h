@@ -7,6 +7,7 @@
 struct boot_args {
         struct screen *screen;
         struct mem_map *mem_map;
+        void *rsdp;
 };
 
 void init(struct boot_args *);

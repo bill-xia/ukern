@@ -33,9 +33,9 @@ detect_rsdp()
 }
 
 int
-init_acpi()
+init_acpi(struct RSDPDescriptor *rsdp)
 {
-	struct RSDPDescriptor *rsdp = detect_rsdp();
+	// struct RSDPDescriptor *rsdp = detect_rsdp();
 	if (rsdp == NULL) {
 		panic("rsdp is NULL\n");
 	}

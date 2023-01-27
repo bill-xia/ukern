@@ -3,7 +3,8 @@ fsimg
 diskimg
 OVMF_VARS.fd
 
-.disk_dev
+.disk_dev_efi
+.disk_dev_main
 
 *.pdf
 *.efi

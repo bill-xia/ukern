@@ -1,4 +1,5 @@
 #include "console.h"
+#include "mem.h"
 
 static u32 ind = 0, rows = 0, cols = 0,
 	height, width,
@@ -82,9 +83,9 @@ init_console(struct screen *screen)
 	hpixel = screen->hpixel;
 	width = screen->width;
 	cols = width / hpixel;
-	pixelbuf = screen->buf;
+	pixelbuf = P2K(screen->buf);
 	bytes_per_glyph = screen->bytes_per_glyph;
-	font = screen->glyph;
+	font = P2K(screen->glyph);
 	for (int i = 0; i < rows; ++i) {
 		console_putch('\n');
 	}

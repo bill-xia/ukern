@@ -27,9 +27,9 @@ u64 max(u64 a, u64 b) {
 }
 
 static inline
-void lcs(u64 cs)
+void load_segs(u64 cs)
 {
-	asm volatile("push %0\n\tcall long_ret\n\t jmp lcs_end\n\tlong_ret: lretq\n\tlcs_end:" : : "r" (cs));
+	asm volatile("push %0\n\tcall long_ret\n\t jmp lcs_end\n\tlong_ret: lretq\n\tlcs_end: mov $0x10, %0\n\tmov %0, %%ds\n\tmov %0, %%es\n\tmov %0, %%ss\n\tmov %0, %%fs\n\tmov %0, %%gs\n\t" : : "r" (cs));
 }
 
 void
@@ -89,9 +89,9 @@ init_gdt(void)
 		.base4 = ((u64)&tss >> 32) & 0xFFFFFFFF
 	}; *(struct TSSDesc *)(gdt + 6) = tmp;}
 	gdt_desc.limit = 8 * 8 - 1;
-	gdt_desc.base = K2P(gdt);
+	gdt_desc.base = (u64)gdt;
 	lgdt((void *)K2P(&gdt_desc));
-	lcs(KERN_CODE_SEL);
+	load_segs(KERN_CODE_SEL);
 	ltr(0x33);
 }
 
@@ -330,7 +330,7 @@ map_mmio(pgtbl_t pgtbl, u64 vaddr, u64 mmioaddr, pte_t **_pte)
 		return r;
 	}
 	free_page(PA2PGINFO(PAGEADDR(*pte)));
-	*pte = mmioaddr | PTE_P | PTE_PWT | PTE_PCD;
+	*pte = mmioaddr | PTE_P | PTE_PWT | PTE_PCD | PTE_W;
 	if (_pte != NULL) {
 		*_pte = pte;
 	}

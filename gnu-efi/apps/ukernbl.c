@@ -25,6 +25,7 @@ struct MEM_MAP {
 struct BOOT_ARGS {
         struct SCREEN *screen;
         struct MEM_MAP *mem_map;
+	void *RSDP;
 } BootArgs;
 
 #define PSF_FONT_MAGIC 0x864ab572
@@ -331,6 +332,21 @@ LoadFont(EFI_FILE *File)
 	return EFI_SUCCESS;
 }
 
+EFI_STATUS
+GetRSDP(EFI_SYSTEM_TABLE *SystemTable)
+{
+	EFI_GUID ACPI20Guid = ACPI_20_TABLE_GUID;
+	UINT64	i;
+	for (i = 0; i < SystemTable->NumberOfTableEntries; ++i) {
+		if (CompareGuid(&SystemTable->ConfigurationTable[i].VendorGuid, &ACPI20Guid) == 0) {
+			BootArgs.RSDP = SystemTable->ConfigurationTable[i].VendorTable;
+			return EFI_SUCCESS;
+		}
+	}
+	return EFI_UNSUPPORTED;
+}
+
+// 8868e871-e4f1-11d3-bc22-0080c73c8881.
 
 EFI_STATUS
 efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
@@ -358,6 +374,8 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
 	LoadELF64Image(KernelFile, &KernelEntry);
 
 	GetMemMap();
+
+	GetRSDP(SystemTable);
 	// while (1);
 	BootArgs.screen = &Screen;
 	BootArgs.mem_map = &MemMap;

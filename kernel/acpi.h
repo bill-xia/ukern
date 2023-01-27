@@ -87,6 +87,6 @@ struct madt_iso {
 	u16	flags;
 } __attribute__((packed));
 
-int init_acpi();
+int init_acpi(struct RSDPDescriptor *rsdp);
 
 #endif
