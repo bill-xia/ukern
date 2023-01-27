@@ -51,26 +51,30 @@ diskimg:
 	sudo kpartx -d diskimg
 
 efi: pre-build $(OBJ_DIR)/kernel/kernel fsimg gnu-efi/x86_64/apps/ukernbl.efi diskimg
-	sudo kpartx -l diskimg | cut -d " " -f 1 | head -n 1 > .efi_dev
+	sudo kpartx -l diskimg | cut -d " " -f 1 | head -n 1 > .disk_dev
 	sudo kpartx -a diskimg
 	mkdir diskfs
-	sudo mount /dev/mapper/$$(cat .efi_dev) diskfs
+	sudo mount /dev/mapper/$$(cat .disk_dev) diskfs
 	sudo rm -rf diskfs/*
 	sudo cp gnu-efi/x86_64/apps/ukernbl.efi diskfs/BOOTX64.EFI
 	sudo cp obj/kernel/kernel diskfs/KERNEL
+	sudo cp Tamsyn.psf diskfs/TAMSYN.PSF
 	sudo umount diskfs
 	rm -rd diskfs
 	sudo kpartx -d diskimg
 
 qemu: pre-qemu efi
-	qemu-system-x86_64 -machine q35 -drive file=diskimg,format=raw -drive if=pflash,format=raw,unit=0,readonly=on,file=/usr/share/OVMF/OVMF_CODE.fd -drive if=pflash,format=raw,unit=1,file=./OVMF_VARS.fd -nodefaults -vga std
+	qemu-system-x86_64 -machine q35 -drive file=diskimg,format=raw -drive if=pflash,format=raw,unit=0,readonly=on,file=/usr/share/OVMF/OVMF_CODE.fd -drive if=pflash,format=raw,unit=1,file=./OVMF_VARS.fd
 
 qemu-bios: pre-qemu
 	qemu-system-x86_64 $(QEMU_FLAGS) -machine q35 -drive file=image,format=raw -drive file=gptimg,format=raw #-device qemu-xhci
 	# -drive file=fsimg,if=none,id=nvm,format=raw -device nvme,serial=deadbeef,drive=nvm 
 
-qemu-gdb: pre-qemu
-	qemu-system-x86_64 $(QEMU_FLAGS) -machine q35 -drive file=image,format=raw -drive file=fsimg,format=raw -s -S
+qemu-gdb: pre-qemu efi
+	qemu-system-x86_64 -machine q35 -drive file=diskimg,format=raw -drive if=pflash,format=raw,unit=0,readonly=on,file=/usr/share/OVMF/OVMF_CODE.fd -drive if=pflash,format=raw,unit=1,file=./OVMF_VARS.fd -s -S
+
+qemu-bios-gdb: pre-qemu
+	qemu-system-x86_64 $(QEMU_FLAGS) -machine q35 -drive file=image,format=raw -drive file=gptimg,format=raw -s -S
 
 gdb: pre-qemu
 	gdb -n -x .gdbinit

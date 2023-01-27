@@ -10,10 +10,12 @@
 #include "pic.h"
 #include "fs/disk.h"
 
-void init(void)
+void init(struct screen *screen)
 {
 	end_kmem = end;
-	init_console();
+	init_console(screen);
+	printk("Hello, world!\n");
+	while (1);
 	init_gdt();
 	init_kpageinfo(); // after the kernel image, is the k_pageinfo array
 	init_kpgtbl(); // then comes kernel pagetable, which maps the whole physical memory space

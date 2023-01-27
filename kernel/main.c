@@ -6,11 +6,9 @@
 #include "errno.h"
 #include "mem.h"
 
-char buf[512];
-
-int main()
+int main(struct screen *screen)
 {
-	init();
+	init(screen);
 	// CREATE_PROC(hello);
 	// CREATE_PROC(sort);
 	// CREATE_PROC(divzero);
