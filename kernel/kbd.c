@@ -6,6 +6,26 @@ char kbd_buffer[4096];
 int kbd_buf_beg = 0, kbd_buf_siz = 0;
 
 int
+init_8042(void)
+{
+	while (inb(KBSTATP) & KBS_IBF)	// wait for 8042 to comsume command
+		;			// 	important on real machine
+	outb(KBCMDP, KBC_KBDDISABLE);
+
+	while (inb(KBSTATP) & KBS_IBF)
+		;
+	outb(KBCMDP, KBC_MOUSEDISABLE);
+
+	while (inb(KBSTATP) & KBS_DIB) // consume 8042's output buffer
+		inb(KBDATAP);
+
+	while (inb(KBSTATP) & KBS_IBF)
+		;
+	outb(KBCMDP, KBC_KBDENABLE);
+	return 0;
+}
+
+int
 kbd_getch(void)
 {
 	int c;

@@ -1,5 +1,6 @@
 #include "acpi.h"
 #include "mem.h"
+#include "kbd.h"
 #include "printk.h"
 #include "pcie/pcie.h"
 
@@ -174,6 +175,11 @@ acpi_init_apic(struct DescHeader *tbl)
 	int i, j;
 	printk("ACPI: Found MADT entry. Initializing IOAPIC.\n");
 	struct MADT_entry_hdr *madt_ent_hdr;
+	int ps2kbd_valid = (*(u32*)((u64)tbl + sizeof(struct DescHeader) + 4)) & 0x1;
+	if (ps2kbd_valid) {
+		printk("Found PS/2 Keyboard.\n");
+		init_8042();
+	}
 	u8 *ptr = (u8 *)((u64)tbl + sizeof(struct DescHeader) + 8),
 			*end = (u8 *)tbl + tbl->Length;
 	while (ptr < end) {
@@ -182,18 +188,79 @@ acpi_init_apic(struct DescHeader *tbl)
 		switch (madt_ent_hdr->type) {
 		case MADT_LAPIC: ;
 			struct madt_lapic *lapic = (struct madt_lapic *)ptr;
-			// printk("LAPIC: puid %d, lapicid %d, flags %x\n",
-			//     lapic->puid, lapic->lapicid, lapic->flags);
+			printk("LAPIC: puid %d, lapicid %d, flags %x\n",
+			    lapic->puid, lapic->lapicid, lapic->flags);
 			break;
 		case MADT_IOAPIC: ;
 			struct madt_ioapic *ioapic = (struct madt_ioapic *)ptr;
-			// printk("IOAPIC: ioapicid %x, addr %x, intr_base %x\n",
-			//     (u32)ioapic->ioapicid, ioapic->addr, ioapic->GSI_base);
+			printk("IOAPIC: ioapicid %x, addr %x, intr_base %x\n",
+			    (u32)ioapic->ioapicid, ioapic->addr, ioapic->GSI_base);
 			break;
 		case MADT_ISO: ;
 			struct madt_iso *iso = (struct madt_iso *)ptr;
-			// printk("ISO: source %d, GSI %d, flags %x\n",
-			//     (u32)iso->source, iso->GSI, (u32)iso->flags);
+			printk("ISO: source %d, GSI %d, flags %x\n",
+			    (u32)iso->source, iso->GSI, (u32)iso->flags);
+			break;
+		case MADT_NMI: ;
+			struct madt_nmi *nmi = (struct madt_nmi *)ptr;
+			printk("NMI: flags %x, GSI %d\n",
+				(u32)nmi->flags,
+				nmi->GSI);
+			break;
+		case MADT_LAPICNMI: ;
+			struct madt_lapicnmi *lnmi = (struct madt_lapicnmi *)ptr;
+			printk("LAPICNMI: PUID %x, flags %x, LINT %x\n",
+				(u32)lnmi->puid,
+				lnmi->flags,
+				lnmi->LINT);
+			break;
+		case MADT_LAPICAO: ;
+			struct madt_lapicao *lao = (struct madt_lapicao *)ptr;
+			printk("LAPICAO: LAPIC addr %lx\n",
+				lao->paddr);
+			break;
+		case MADT_IOSAPIC: ;
+			struct madt_iosapic *iosapic = (struct madt_iosapic *)ptr;
+			printk("IOAPIC: ioapicid %x, addr %x, intr_base %x\n",
+			    (u32)iosapic->ioapicid,
+			    iosapic->paddr,
+			    iosapic->GSI_base);
+			break;
+		case MADT_LSAPIC: ;
+			struct madt_lsapic *lsapic = (struct madt_lsapic *)ptr;
+			printk("LSAPIC: pid %d, lid %d, leid %d, flags %x, puid %d, puid_str %s",
+				(u32)lsapic->pid,
+				(u32)lsapic->lsapicid,
+				(u32)lsapic->lsapiceid,
+				lsapic->flags,
+				lsapic->puid,
+				lsapic->puid_str);
+			break;
+		case MADT_PIS: ;
+			struct madt_pis *pis = (struct madt_pis *)ptr;
+			printk("PIS: flags %x, intr_type %d, pid %d, peid %d, iosapic_vec %d,"
+				"GSI %d, PIS_Flags %x\n",
+				pis->flags,
+				pis->intr_type,
+				pis->pid,
+				pis->peid,
+				pis->iosapic_vec,
+				pis->GSI,
+				pis->pis_flags);
+			break;
+		case MADT_Lx2APIC: ;
+			struct madt_lx2apic *lx2apic = (struct madt_lx2apic *)ptr;
+			printk("Lx2APIC: lapicid %d, flags %x, puid %d\n",
+				lx2apic->x2apic_id,
+				lx2apic->flags,
+				lx2apic->puid);
+			break;
+		case MADT_Lx2APICNMI:
+			struct madt_lx2apicnmi *lx2apicnmi = (struct madt_lx2apicnmi *)ptr;
+			printk("Lx2APICNMI: flags %x, puid %d, LINT %d\n",
+				lx2apicnmi->flags,
+				lx2apicnmi->puid,
+				lx2apicnmi->LINT);
 			break;
 		default:
 			break;

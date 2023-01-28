@@ -39,6 +39,43 @@
 .global _apic_spurious_entry
 .global _apic_keyboard_entry
 
+.global _unused_intr_37_entry
+.global _unused_intr_38_entry
+.global _unused_intr_39_entry
+.global _unused_intr_40_entry
+.global _unused_intr_41_entry
+.global _unused_intr_42_entry
+.global _unused_intr_43_entry
+.global _unused_intr_44_entry
+.global _unused_intr_45_entry
+.global _unused_intr_46_entry
+.global _unused_intr_47_entry
+
+.global _ioapic_0_entry
+.global _ioapic_1_entry
+.global _ioapic_2_entry
+.global _ioapic_3_entry
+.global _ioapic_4_entry
+.global _ioapic_5_entry
+.global _ioapic_6_entry
+.global _ioapic_7_entry
+.global _ioapic_8_entry
+.global _ioapic_9_entry
+.global _ioapic_10_entry
+.global _ioapic_11_entry
+.global _ioapic_12_entry
+.global _ioapic_13_entry
+.global _ioapic_14_entry
+.global _ioapic_15_entry
+.global _ioapic_16_entry
+.global _ioapic_17_entry
+.global _ioapic_18_entry
+.global _ioapic_19_entry
+.global _ioapic_20_entry
+.global _ioapic_21_entry
+.global _ioapic_22_entry
+.global _ioapic_23_entry
+
 _divide_error_entry:
     pushq $0
     pushq $0
@@ -215,6 +252,181 @@ _apic_spurious_entry:
 _apic_keyboard_entry:
     pushq $0
     pushq $36
+    jmp call_trap_handler
+
+_unused_intr_37_entry:
+    pushq $0
+    pushq $37
+    jmp call_trap_handler
+
+_unused_intr_38_entry:
+    pushq $0
+    pushq $38
+    jmp call_trap_handler
+
+_unused_intr_39_entry:
+    pushq $0
+    pushq $39
+    jmp call_trap_handler
+
+_unused_intr_40_entry:
+    pushq $0
+    pushq $40
+    jmp call_trap_handler
+
+_unused_intr_41_entry:
+    pushq $0
+    pushq $41
+    jmp call_trap_handler
+
+_unused_intr_42_entry:
+    pushq $0
+    pushq $42
+    jmp call_trap_handler
+
+_unused_intr_43_entry:
+    pushq $0
+    pushq $43
+    jmp call_trap_handler
+
+_unused_intr_44_entry:
+    pushq $0
+    pushq $44
+    jmp call_trap_handler
+
+_unused_intr_45_entry:
+    pushq $0
+    pushq $45
+    jmp call_trap_handler
+
+_unused_intr_46_entry:
+    pushq $0
+    pushq $46
+    jmp call_trap_handler
+
+_unused_intr_47_entry:
+    pushq $0
+    pushq $47
+    jmp call_trap_handler
+
+_ioapic_0_entry:
+    pushq $0
+    pushq $48
+    jmp call_trap_handler
+
+_ioapic_1_entry:
+    pushq $0
+    pushq $49
+    jmp call_trap_handler
+
+_ioapic_2_entry:
+    pushq $0
+    pushq $50
+    jmp call_trap_handler
+
+_ioapic_3_entry:
+    pushq $0
+    pushq $51
+    jmp call_trap_handler
+
+_ioapic_4_entry:
+    pushq $0
+    pushq $52
+    jmp call_trap_handler
+
+_ioapic_5_entry:
+    pushq $0
+    pushq $53
+    jmp call_trap_handler
+
+_ioapic_6_entry:
+    pushq $0
+    pushq $54
+    jmp call_trap_handler
+
+_ioapic_7_entry:
+    pushq $0
+    pushq $55
+    jmp call_trap_handler
+
+_ioapic_8_entry:
+    pushq $0
+    pushq $56
+    jmp call_trap_handler
+
+_ioapic_9_entry:
+    pushq $0
+    pushq $57
+    jmp call_trap_handler
+
+_ioapic_10_entry:
+    pushq $0
+    pushq $58
+    jmp call_trap_handler
+
+_ioapic_11_entry:
+    pushq $0
+    pushq $59
+    jmp call_trap_handler
+
+_ioapic_12_entry:
+    pushq $0
+    pushq $60
+    jmp call_trap_handler
+
+_ioapic_13_entry:
+    pushq $0
+    pushq $61
+    jmp call_trap_handler
+
+_ioapic_14_entry:
+    pushq $0
+    pushq $62
+    jmp call_trap_handler
+
+_ioapic_15_entry:
+    pushq $0
+    pushq $63
+    jmp call_trap_handler
+
+_ioapic_16_entry:
+    pushq $0
+    pushq $64
+    jmp call_trap_handler
+
+_ioapic_17_entry:
+    pushq $0
+    pushq $65
+    jmp call_trap_handler
+
+_ioapic_18_entry:
+    pushq $0
+    pushq $66
+    jmp call_trap_handler
+
+_ioapic_19_entry:
+    pushq $0
+    pushq $67
+    jmp call_trap_handler
+
+_ioapic_20_entry:
+    pushq $0
+    pushq $68
+    jmp call_trap_handler
+
+_ioapic_21_entry:
+    pushq $0
+    pushq $69
+    jmp call_trap_handler
+
+_ioapic_22_entry:
+    pushq $0
+    pushq $70
+    jmp call_trap_handler
+
+_ioapic_23_entry:
+    pushq $0
+    pushq $71
     jmp call_trap_handler
 
 call_trap_handler:

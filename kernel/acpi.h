@@ -87,6 +87,79 @@ struct madt_iso {
 	u16	flags;
 } __attribute__((packed));
 
+struct madt_nmi {
+	u8	type,
+		length;
+	u16	flags;
+	u32	GSI;
+} __attribute__((packed));
+
+struct madt_lapicnmi {
+	u8	type,
+		length,
+		puid;
+	u16	flags;
+	u8	LINT;
+} __attribute__((packed));
+
+struct madt_lapicao {
+	u8	type,
+		length;
+	u16	rsv;
+	u64	paddr;
+} __attribute__((packed));
+
+struct madt_iosapic {
+	u8	type,
+		length,
+		ioapicid,
+		rsv;
+	u32	GSI_base;
+	u64	paddr;
+} __attribute__((packed));
+
+struct madt_lsapic {
+	u8	type,
+		length,
+		pid,
+		lsapicid,
+		lsapiceid,
+		rsv[3];
+	u32	flags,
+		puid;
+	char	puid_str[0];
+} __attribute__((packed));
+
+struct madt_pis {
+	u8	type,
+		length;
+	u16	flags;
+	u8	intr_type,
+		pid,
+		peid,
+		iosapic_vec;
+	u32	GSI,
+		pis_flags;
+} __attribute__((packed));
+
+struct madt_lx2apic {
+	u8	type,
+		length;
+	u16	rsv;
+	u32	x2apic_id,
+		flags,
+		puid;
+} __attribute__((packed));
+
+struct madt_lx2apicnmi {
+	u8	type,
+		length;
+	u16	flags,
+		puid;
+	u8	LINT,
+		rsv[3];
+};
+
 int init_acpi(struct RSDPDescriptor *rsdp);
 
 #endif

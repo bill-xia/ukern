@@ -281,4 +281,14 @@ rdmsr(u64 addr)
 	return result;
 }
 
+static inline void
+stmsr(u64 addr, u64 val)
+{
+	u32 lo = (u32)val, hi = (u32)(val >> 32);
+	asm volatile("wrmsr"
+			 :
+			 : "a" (lo), "d" (hi), "c" (addr));
+	return;
+}
+
 #endif /* !JOS_INC_X86_H */

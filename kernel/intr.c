@@ -50,6 +50,43 @@ void _apic_error_entry(void); // 34
 void _apic_spurious_entry(void); // 35
 void _apic_keyboard_entry(void); // 36
 
+void _unused_intr_37_entry(void);
+void _unused_intr_38_entry(void);
+void _unused_intr_39_entry(void);
+void _unused_intr_40_entry(void);
+void _unused_intr_41_entry(void);
+void _unused_intr_42_entry(void);
+void _unused_intr_43_entry(void);
+void _unused_intr_44_entry(void);
+void _unused_intr_45_entry(void);
+void _unused_intr_46_entry(void);
+void _unused_intr_47_entry(void);
+
+void _ioapic_0_entry(void);
+void _ioapic_1_entry(void);
+void _ioapic_2_entry(void);
+void _ioapic_3_entry(void);
+void _ioapic_4_entry(void);
+void _ioapic_5_entry(void);
+void _ioapic_6_entry(void);
+void _ioapic_7_entry(void);
+void _ioapic_8_entry(void);
+void _ioapic_9_entry(void);
+void _ioapic_10_entry(void);
+void _ioapic_11_entry(void);
+void _ioapic_12_entry(void);
+void _ioapic_13_entry(void);
+void _ioapic_14_entry(void);
+void _ioapic_15_entry(void);
+void _ioapic_16_entry(void);
+void _ioapic_17_entry(void);
+void _ioapic_18_entry(void);
+void _ioapic_19_entry(void);
+void _ioapic_20_entry(void);
+void _ioapic_21_entry(void);
+void _ioapic_22_entry(void);
+void _ioapic_23_entry(void);
+
 void (*intr_entry[])(void) = {
 	_divide_error_entry,
 	_debug_exception_entry,
@@ -83,11 +120,46 @@ void (*intr_entry[])(void) = {
 	_reserved_29_entry,
 	_reserved_30_entry,
 	_reserved_31_entry,
-	_syscall_entry,
+	_syscall_entry, //32
 	_timer_entry,
 	_apic_error_entry,
 	_apic_spurious_entry,
-	_apic_keyboard_entry
+	_apic_keyboard_entry, //36
+	_unused_intr_37_entry,
+	_unused_intr_38_entry,
+	_unused_intr_39_entry,
+	_unused_intr_40_entry,
+	_unused_intr_41_entry,
+	_unused_intr_42_entry,
+	_unused_intr_43_entry,
+	_unused_intr_44_entry,
+	_unused_intr_45_entry,
+	_unused_intr_46_entry,
+	_unused_intr_47_entry,
+	_ioapic_0_entry, //48
+	_ioapic_1_entry,
+	_ioapic_2_entry,
+	_ioapic_3_entry,
+	_ioapic_4_entry,
+	_ioapic_5_entry,
+	_ioapic_6_entry,
+	_ioapic_7_entry,
+	_ioapic_8_entry,
+	_ioapic_9_entry,
+	_ioapic_10_entry,
+	_ioapic_11_entry,
+	_ioapic_12_entry,
+	_ioapic_13_entry,
+	_ioapic_14_entry,
+	_ioapic_15_entry,
+	_ioapic_16_entry,
+	_ioapic_17_entry,
+	_ioapic_18_entry,
+	_ioapic_19_entry,
+	_ioapic_20_entry,
+	_ioapic_21_entry,
+	_ioapic_22_entry,
+	_ioapic_23_entry, // 71
 };
 
 void
@@ -95,7 +167,7 @@ init_intr(void)
 {
 	idt = (struct IDTGateDesc *)
 		ROUNDUP((u64)end_kmem, sizeof(struct IDTGateDesc));
-	end_kmem = (char *)(idt + NIDT);
+	end_kmem = (char *)(idt + 256);
 	for (int i = 0; i < NIDT; ++i) {
 		struct IDTGateDesc tmp = {
 			.offset1 = (u64)intr_entry[i] & MASK(16),

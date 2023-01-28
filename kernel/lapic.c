@@ -35,7 +35,7 @@ init_mp(void)
 	// printk("ver: %x\n", ver);
 	u32 svr = lapic[LAPICR_SVR];
 	// printk("svr: %x\n", svr);
-	lapicw(LAPICR_SVR, 0x100 | 35);
+	lapicw(LAPICR_SVR, 0x100 | 35); // spurious vector 35, APIC software enable
 	// Init LVT
 	init_timer();
 	// Disable performance counter overflow interrupts

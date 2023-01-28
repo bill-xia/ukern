@@ -40,7 +40,7 @@ console_putch(char c)
 	if (ind == rows * cols) {
 		// screen full
 		for (int i = 0; i < (rows - 1) * cols; ++i) {
-			print_font_at(cbuf[i + rows], i);
+			print_font_at(cbuf[i + cols], i);
 		}
 		for (int i = (rows - 1) * cols; i < rows * cols; ++i) {
 			print_font_at(' ', i);

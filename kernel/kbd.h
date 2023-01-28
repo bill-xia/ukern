@@ -21,8 +21,8 @@
 #define	KBSTATP		0x64	/* kbd controller status port(I) */
 #define	 KBS_DIB	0x01	/* kbd data in buffer */
 #define	 KBS_IBF	0x02	/* kbd input buffer low */
-#define	 KBS_WARM	0x04	/* kbd input buffer low */
-#define	 KBS_OCMD	0x08	/* kbd output buffer has command */
+#define	 KBS_WARM	0x04	/* kbd passed basic asurance test */
+#define	 KBS_OCMD	0x08	/* kbd output buffer has command(set) or data(off) */
 #define	 KBS_NOSEC	0x10	/* kbd security lock not engaged */
 #define	 KBS_TERR	0x20	/* kbd transmission error or from mouse */
 #define	 KBS_RERR	0x40	/* kbd receive error */
@@ -37,6 +37,8 @@
 #define	 KBC_KBDECHO	0xd2	/* echo to keyboard port */
 #define	 KBC_AUXECHO	0xd3	/* echo to auxiliary port */
 #define	 KBC_AUXWRITE	0xd4	/* write to auxiliary port */
+#define	 KBC_MOUSEDISABLE	0xa7	/* disable mouse port */
+#define	 KBC_MOUSEENABLE	0xa8	/* enable mouse port */
 #define	 KBC_SELFTEST	0xaa	/* start self-test */
 #define	 KBC_KBDTEST	0xab	/* test keyboard port */
 #define	 KBC_KBDDISABLE	0xad	/* disable keyboard port */
@@ -184,5 +186,6 @@ extern char kbd_buffer[4096];
 extern int kbd_buf_beg, kbd_buf_siz;
 
 int kbd_getch(void);
+int init_8042(void);
 
 #endif /* !JOS_KBDREG_H */
