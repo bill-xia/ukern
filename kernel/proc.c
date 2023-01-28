@@ -47,6 +47,11 @@ alloc_proc(void)
 		proc->prev_sibling = NULL;
 		proc->living_child = NULL;
 		proc->zombie_child = NULL;
+		proc->wait_status = NULL;
+		proc->waiting = 0;
+		for (int i = 0; i < 64; ++i) {
+			proc->fdesc[i].inuse = 0;
+		}
 		return proc;
 	}
 	return NULL;
