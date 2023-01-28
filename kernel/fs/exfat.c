@@ -56,7 +56,7 @@ exfat_walk_dir(struct FS_exFAT *fs, const char *name, int name_len, struct exfat
 		name_ptr,
 		secondary_count,
 		name_dismatch,
-		entry_perclus = (512 << (fs->hdr->sec_per_clus_shift)) / sizeof(struct dir_entry),
+		entry_perclus = (1ul << (fs->hdr->byte_per_sec_shift + fs->hdr->sec_per_clus_shift)) / sizeof(struct dir_entry),
 		clus_id,
 		use_fat,
 		fn_len,
@@ -68,7 +68,7 @@ exfat_walk_dir(struct FS_exFAT *fs, const char *name, int name_len, struct exfat
 			if (cur_dir->clus_id == 0xFFFFFFFF)
 				break;
 			disk_read(fs->did, EXFAT_CLUS2LBA(fs, cur_dir->clus_id), 1);
-			memcpy(_dir, (void *)lba2kaddr(fs->did, EXFAT_CLUS2LBA(fs, cur_dir->clus_id)), (512 << (fs->hdr->sec_per_clus_shift)));
+			memcpy(_dir, (void *)lba2kaddr(fs->did, EXFAT_CLUS2LBA(fs, cur_dir->clus_id)), (1ul << (fs->hdr->byte_per_sec_shift + fs->hdr->sec_per_clus_shift)));
 			// printk("dir_clus_id: %x\n", dir_clus_id);
 			if (cur_dir->use_fat) {
 				// printk("open(): ");
@@ -131,7 +131,6 @@ exfat_open_file(struct FS_exFAT *fs, const char *filename, struct file_desc *fde
 	int 	i,
 		r,
 		ind;
-	// printk("%d, entry_perclus: %d\n", (512 << (fs->hdr->sec_per_clus_shift)), entry_perclus);
 	for (i = 0, ind = 0; i < 256; ++i, ++ind) {
 		if (filename[i] != '/' && filename[i] != '\0') {
 			name[ind] = filename[i];
