@@ -7,9 +7,12 @@ int main()
 	int child;
 	if (child = sys_fork()) {
 		printf("parent after fork, child: %d\n", child);
+		for (int i = 0; i < 100000000; ++i)
+			;
+		printf("parent waiting...\n");
+		sys_wait(NULL);
 	} else {
 		printf("child after fork\n");
-		// while(1);
 	}
 	sys_exit();
 }

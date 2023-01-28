@@ -51,8 +51,7 @@ main()
 			int child;
 			if (child = sys_fork()) {
 				// parent
-				// TODO: sys_wait()
-				for (int i = 0; i < 100000000; ++i) ;
+				sys_wait(NULL);
 			} else {
 				printf("exec(\"%s\", %d, %p)\n", argv[0], argc, argv);
 				int r = sys_exec(argv[0], argc, argv);

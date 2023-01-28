@@ -36,6 +36,19 @@ void
 sys_fork(struct ProcContext *tf)
 {
 	struct Proc *nproc = alloc_proc();
+
+	// add to living_child
+	if (curproc->living_child == NULL) {
+		curproc->living_child = nproc;
+		nproc->prev_sibling = nproc->next_sibling = NULL;
+	} else {
+		struct Proc *ohead = curproc->living_child;
+		ohead->prev_sibling = nproc;
+		nproc->next_sibling = ohead;
+		curproc->living_child = nproc;
+	}
+	nproc->parent = curproc;
+
 	copy_pgtbl(nproc->pgtbl, curproc->p_pgtbl, CPY_PGTBL_CNTREF | CPY_PGTBL_WITHKSPACE);
 	// save the "real" page table
 	copy_pgtbl(nproc->p_pgtbl, curproc->p_pgtbl, CPY_PGTBL_WITHKSPACE);
@@ -236,14 +249,114 @@ sys_getch(struct ProcContext *tf)
 }
 
 void
+exit_as_parent()
+{
+	struct Proc	*living_child = curproc->living_child,
+			*zombie_child = curproc->zombie_child,
+			*nxt;
+	while (living_child != NULL) {
+		living_child->parent = NULL;
+		living_child = living_child->next_sibling;
+	}
+	while (zombie_child != NULL) {
+		nxt = zombie_child->next_sibling;
+		kill_proc(zombie_child);
+		zombie_child = nxt;
+	}
+}
+
+void
+exit_as_child()
+{
+	struct Proc *parent = curproc->parent;
+	if (parent == NULL) {
+		// parent is dead
+		kill_proc(curproc);
+		return;
+	}
+	if (!parent->waiting) {
+		// zombie
+		// add to zombie_child
+		if (parent->zombie_child == NULL) {
+			parent->zombie_child = curproc;
+			curproc->prev_sibling = curproc->next_sibling = NULL;
+		} else {
+			struct Proc *ohead = parent->zombie_child;
+			ohead->prev_sibling = curproc;
+			curproc->next_sibling = ohead;
+			parent->zombie_child = curproc;
+		}
+
+		curproc->state = ZOMBIE;
+		return;
+	}
+	// wait()ed by parent
+	parent->waiting = 0;
+	if (parent->wait_status != NULL) {
+		*parent->wait_status = 0;
+	}
+	// invoke parent
+	parent->context.rax = curproc->pid;
+	parent->state = READY;
+	// detach from the sibling chain
+	if (curproc->prev_sibling) {
+		curproc->prev_sibling->next_sibling = curproc->next_sibling;
+	}
+	if (curproc->next_sibling) {
+		curproc->next_sibling->prev_sibling = curproc->prev_sibling;
+	}
+	// hand over sibling chain head
+	if (parent->living_child == curproc) {
+		parent->living_child = curproc->next_sibling;
+	}
+	if (parent->zombie_child == curproc) {
+		parent->zombie_child = curproc->next_sibling;
+	}
+	kill_proc(curproc);
+}
+
+void
+sys_exit()
+{
+	exit_as_parent();
+	exit_as_child();
+	sched();
+}
+
+void
+sys_wait(struct ProcContext *tf)
+{
+	// TODO: check whether wait_status is user-writable
+	if (curproc->zombie_child != NULL) {
+		// have zombie child, wait() it
+		if (tf->rdx != 0)
+			*(int *)(tf->rdx) = 0; // TODO: more wait status
+		struct Proc	*ohead = curproc->zombie_child,
+				*nhead = curproc->zombie_child->next_sibling;
+		// return child's pid
+		tf->rax = ohead->pid;
+		curproc->zombie_child = nhead;
+		if (nhead)
+			nhead->prev_sibling = NULL;
+		kill_proc(ohead);
+		return;
+	}
+	// no zombie child, sleep
+	curproc->waiting = 1;
+	curproc->wait_status = tf->rdx;
+	curproc->context = *tf;
+	curproc->state = PENDING;
+	sched();
+}
+
+void
 syscall(struct ProcContext *tf)
 {
 	int num = tf->rax;
 	switch (num) {
 	case 1:
-		curproc->state = PENDING;
-		kill_proc(curproc);
-		sched();
+		sys_exit();
+		break;
 	case 2:
 		sys_hello();
 		tf->rax = 0;
@@ -265,6 +378,9 @@ syscall(struct ProcContext *tf)
 		break;
 	case 8:
 		sys_getch(tf);
+		break;
+	case 9:
+		sys_wait(tf);
 		break;
 	default:
 		printk("unknown syscall\n");

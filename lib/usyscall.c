@@ -64,3 +64,9 @@ sys_getch(void)
 {
 	return syscall(8, 0,0,0,0,0,0);
 }
+
+int
+sys_wait(int *wstatus)
+{
+	return syscall(9, (u64)wstatus,0,0,0,0,0);
+}

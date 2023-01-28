@@ -12,6 +12,7 @@ int main()
 	int child;
 	if (child = sys_fork()) {
 		printf("parent after fork, child: %d\n", child);
+		sys_wait(NULL);
 	} else {
 		printf("child after fork\n");
 		printf("before exec\n");

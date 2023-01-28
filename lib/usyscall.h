@@ -13,5 +13,6 @@ int sys_open(const char *fn);
 int sys_read(int fd, char *fn, u32 sz);
 int sys_exec(const char *fn, int argc, char *argv[]);
 char sys_getch(void);
+int sys_wait(int *wstatus);
 
 #endif

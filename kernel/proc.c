@@ -28,19 +28,26 @@ init_pcb(void)
 struct Proc *
 alloc_proc(void)
 {
-	for (int i = 0; i < NPROCS; ++i) {
-		if (procs[i].state == CLOSE) {
-			// TODO: add lock here when multi-core is up
-			struct PageInfo *page = alloc_page(FLAG_ZERO);
-			procs[i].pgtbl = (pgtbl_t)page->paddr;
-			page = alloc_page(FLAG_ZERO);
-			procs[i].p_pgtbl = (pgtbl_t)page->paddr;
-			procs[i].state = PENDING;
-			procs[i].pid = i + 1;
-			procs[i].exec_time = 0;
-			clear_proc_context(&procs[i].context);
-			return procs + i;
+	struct Proc *proc;
+	for (proc = procs; proc < procs + NPROCS; ++proc) {
+		if (proc->state != CLOSE) {
+			continue;
 		}
+		// TODO: add lock here when multi-core is up
+		struct PageInfo *page = alloc_page(FLAG_ZERO);
+		proc->pgtbl = (pgtbl_t)page->paddr;
+		page = alloc_page(FLAG_ZERO);
+		proc->p_pgtbl = (pgtbl_t)page->paddr;
+		proc->state = PENDING;
+		proc->pid = (proc - procs) + 1;
+		proc->exec_time = 0;
+		clear_proc_context(&proc->context);
+		proc->parent = NULL;
+		proc->next_sibling = NULL;
+		proc->prev_sibling = NULL;
+		proc->living_child = NULL;
+		proc->zombie_child = NULL;
+		return proc;
 	}
 	return NULL;
 }
