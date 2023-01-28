@@ -81,7 +81,7 @@ detect_guid(int did, int gpt_pid, struct GPTPAR *par)
 		disk[did].part[pid].part_type = PARTTYPE_GPT | i;
 		disk[did].part[pid].lba_beg = par->lba_beg;
 		disk[did].part[pid].n_sec = par->lba_end - par->lba_beg + 1;
-		printk("GPT (sd%d,p%d) type(%d): %s\n", did, pid, i, guid_name[i]);
+		// printk("GPT (sd%d,p%d) type(%d): %s\n", did, pid, i, guid_name[i]);
 		if (i == GUID_WIN_DATA || i == GUID_LINUX_FS) {
 			r = detect_fs(did, pid);
 		}

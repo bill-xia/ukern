@@ -8,7 +8,12 @@ init_fs_exfat(struct FS_exFAT *fs)
 {
 	fs->hdr = (struct exFAT_hdr *)lba2kaddr(fs->did, fs->part->lba_beg);
 	fs->fat = (u32 *)lba2kaddr(fs->did, fs->part->lba_beg + fs->hdr->fat_offset);
-	// printk("init fs exfat, fat %p, sec_per_clus_shift %d\n", fat, fs->hdr->sec_per_clus_shift);
+	printk("init fs exfat, fat %p, part_lbabeg %ld, fat_offset %d, sec_per_clus_shift %d, bytes_per_sec_shift %d\n",
+		fs->fat,
+		fs->part->lba_beg,
+		fs->hdr->fat_offset,
+		(u32)fs->hdr->sec_per_clus_shift,
+		(u32)fs->hdr->byte_per_sec_shift);
 }
 
 u32
@@ -71,7 +76,7 @@ exfat_walk_dir(struct FS_exFAT *fs, const char *name, int name_len, struct exfat
 			if (cur_dir->clus_id == 0xFFFFFFFF)
 				break;
 			disk_read(fs->did, EXFAT_CLUS2LBA(fs, cur_dir->clus_id), 1u << fs->hdr->sec_per_clus_shift);
-			dir = EXFAT_CLUS2KADDR(fs, cur_dir->clus_id);
+			dir = lba2kaddr(fs->did, EXFAT_CLUS2LBA(fs, cur_dir->clus_id));
 			// printk("dir_clus_id: %x\n", dir_clus_id);
 			if (cur_dir->use_fat) {
 				// printk("open(): ");
