@@ -88,7 +88,7 @@ detect_guid(int did, int gpt_pid, struct GPTPAR *par)
 		break;
 	}
 	if (i == N_KNOWN_GUID) {
-		panic("GPT (sd%d,p%d): unknown guid.\n", did, i);
+		printk("GPT (sd%d,p%d): unknown guid.\n", did, i);
 	}
 }
 
