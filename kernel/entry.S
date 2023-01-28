@@ -31,7 +31,9 @@ ia32e:
 	cli
 	mov qword [pml4], pdpt0 + (PML4E_P | PML4E_W)
 	mov qword [pml4 + 0x800], pdpt0 + (PML4E_P | PML4E_W) ; map memory above KERNBASE
-	mov qword [pdpt0], 0x0 | PDPTE_P | PDPTE_W | PDPTE_PS
+	mov rax, 0x00000000
+	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pdpt0 + 0x00], rax
 	mov rax, 0x40000000
 	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
 	mov qword [pdpt0 + 0x08], rax
@@ -41,6 +43,42 @@ ia32e:
 	mov rax, 0xC0000000
 	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
 	mov qword [pdpt0 + 0x18], rax
+	mov rax, 0x100000000
+	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pdpt0 + 0x20], rax
+	mov rax, 0x140000000
+	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pdpt0 + 0x28], rax
+	mov rax, 0x180000000
+	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pdpt0 + 0x30], rax
+	mov rax, 0x1C0000000
+	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pdpt0 + 0x38], rax
+	mov rax, 0x200000000
+	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pdpt0 + 0x40], rax
+	mov rax, 0x240000000
+	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pdpt0 + 0x48], rax
+	mov rax, 0x280000000
+	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pdpt0 + 0x50], rax
+	mov rax, 0x2C0000000
+	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pdpt0 + 0x58], rax
+	mov rax, 0x300000000
+	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pdpt0 + 0x60], rax
+	mov rax, 0x340000000
+	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pdpt0 + 0x68], rax
+	mov rax, 0x380000000
+	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pdpt0 + 0x70], rax
+	mov rax, 0x3C0000000
+	or rax, PDPTE_P | PDPTE_W | PDPTE_PS
+	mov qword [pdpt0 + 0x78], rax
 ; kernel stack
 	mov rax, pdpt255 + (PML4E_P | PML4E_W)
 	mov qword [pml4 + 0xFF8], rax
