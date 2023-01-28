@@ -10,6 +10,12 @@ struct Proc *procs, *curproc, *kbd_proc;
 struct ProcContext empty_context;
 
 void
+clear_proc_context(struct ProcContext *context)
+{
+	memset(context, 0, sizeof(struct ProcContext));
+}
+
+void
 init_pcb(void)
 {
 	procs = (struct Proc *)ROUNDUP((u64)end_kmem, sizeof(struct Proc));
@@ -32,7 +38,7 @@ alloc_proc(void)
 			procs[i].state = PENDING;
 			procs[i].pid = i + 1;
 			procs[i].exec_time = 0;
-			procs[i].context = empty_context;
+			clear_proc_context(&procs[i].context);
 			return procs + i;
 		}
 	}

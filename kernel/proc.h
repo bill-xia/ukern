@@ -56,6 +56,7 @@ struct Proc {
 extern struct Proc *procs, *curproc, *kbd_proc;
 
 void init_pcb(void);
+void clear_proc_context(struct ProcContext *context);
 int create_proc(char *img);
 void run_proc(struct Proc *proc);
 void kill_proc(struct Proc *proc);

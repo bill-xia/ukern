@@ -199,6 +199,7 @@ sys_exec(struct ProcContext *tf)
 	copy_pgtbl(proc->p_pgtbl, proc->pgtbl, CPY_PGTBL_WITHKSPACE);
 	// set up runtime enviroment
 	struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
+	clear_proc_context(&proc->context);
 	proc->context.rip = ehdr->e_entry;
 	proc->context.cs = USER_CODE_SEL | 3;
 	proc->context.rsp = USTACK - NARGS * sizeof(u64);
