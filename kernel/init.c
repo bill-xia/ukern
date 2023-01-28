@@ -24,9 +24,9 @@ void init(struct boot_args *args)
 	init_freepages(); // initialize the free page list
 	// *(int*)0x7FFFFFFF0000 = 0;
 	// from now on, anyone needing a new page have to call kalloc()
-	init_mp();
 	init_pic();
 	init_ioapic();
+	init_mp();
 	// init_fs();
 	init_acpi(args->rsdp);
 	init_disk();

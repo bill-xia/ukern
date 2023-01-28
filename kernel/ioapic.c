@@ -46,6 +46,7 @@ init_ioapic()
 	// mask all interrupts, except for keyboard
 	for (int index = 0x10; index < 0x40; index += 2) {
 		wioregl(index, IOAPIC_MASKED);
+		// wioreg(index, 48 + (index - 0x10) / 2);
 	}
 	wioregl(0x12, 36);
 

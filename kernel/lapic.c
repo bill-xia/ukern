@@ -4,13 +4,32 @@
 #include "mem.h"
 
 void init_timer(void);
-u32 *lapic;
+volatile u32 *lapic;
 
 static void
 lapicw(int index, int value)
 {
 	lapic[index] = value;
 	lapic[LAPICR_ID];  // wait for write to finish, by reading
+}
+
+void
+print_IRR_ISR()
+{
+	int index = 0x100 / 4, index_end = 0x180 / 4;
+	printk("ISR\n");
+	while (index < index_end) {
+		printk("%x ", lapic[index]);
+		index += 4;
+	}
+	printk("\n");
+	printk("IRR\n");
+	index = 0x200 / 4, index_end = 0x280 / 4;
+	while (index < index_end) {
+		printk("%x ", lapic[index]);
+		index += 4;
+	}
+	printk("\n");
 }
 
 void
@@ -53,7 +72,9 @@ init_mp(void)
 	lapicw(LAPICR_ESR, 0);
 
 	// Ack any outstanding interrupts.
-	lapicw(LAPICR_EOI, 0);
+	for (int i = 0; i < 256; ++i) {
+		lapicw(LAPICR_EOI, 0);
+	}
 
 	// Send an Init Level De-Assert to synchronize arbitration ID's.
 	// lapicw(ICRHI, 0);
@@ -63,6 +84,7 @@ init_mp(void)
 
 	// Enable interrupts on the APIC (but not on the processor).
 	lapicw(LAPICR_TPR, 0);
+	// print_IRR_ISR();
 	// sti();
 }
 

@@ -262,11 +262,11 @@ void trap_handler(struct ProcContext *trapframe, u64 vecnum, u64 errno)
 		}
 		lapic_eoi();
 		return;
-	default: // panic
-		printk("trap handler\n");
-		printk("trapframe: %p, vecnum: %ld, errno: %lx\n", trapframe, vecnum, errno);
+	default: // ignore
+		printk("ignoring interrupt %d\n", vecnum);
 		print_tf(trapframe);
-		while (1);
+		lapic_eoi();
+		return;
 	}
 }
 
