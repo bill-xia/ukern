@@ -143,7 +143,6 @@ reg_kpgtbl_1Gpage(u64 addr)
 {
 	u64 pml4i = addr >> PML4_OFFSET;
 	u64 pdpti = addr >> PDPT_OFFSET;
-	k_pgtbl[pml4i] = K2P(&k_pdpt[pdpti & (~0x1FF)]) | PML4E_P | PML4E_W;
 	k_pdpt[pdpti] = addr | PDPTE_P | PDPTE_PS | PDPTE_W;
 }
 
@@ -155,9 +154,9 @@ init_kpgtbl(void)
 {
 	printk("end_kmem: %lx\n", end_kmem);
 	k_pgtbl = (pgtbl_t)ROUNDUP((u64)(end_kmem), PGSIZE);
-	n_pml4 = NENTRY(max_addr, PML4_OFFSET);
+	n_pml4 = 512;
 	k_pdpt = (pdpt_t)ROUNDUP((u64)(k_pgtbl + n_pml4), PGSIZE);
-	n_pdpt = NENTRY(max_addr, PDPT_OFFSET);
+	n_pdpt = 511 * 512; // whole address space except k_pgtbl[511], which is used by kstack
 	pdpt_t kstack_pdpt = (pdpt_t)ROUNDUP((u64)(k_pdpt + n_pdpt), PGSIZE);
 	pd_t kstack_pd = kstack_pdpt + PGSIZE / sizeof(u64*);
 	pt_t kstack_pt = kstack_pd + PGSIZE / sizeof(u64*);
@@ -167,11 +166,16 @@ init_kpgtbl(void)
 		*ptr = 0;
 		ptr++;
 	}
+	for (int i = 0; i < 256; ++i) {
+		k_pgtbl[i] = K2P(k_pdpt + (PGSIZE / sizeof(pdpt_t)) * i) | PML4E_P | PML4E_W;
+		// allocate pdpt for 
+	}
 	for (u64 i = 0; i < max_addr; i += 0x40000000ul) { // 1G pages
 		reg_kpgtbl_1Gpage(i);
 	}
 	for (int i = 0; i < 255; ++i) {
-		k_pgtbl[i + 256] = k_pgtbl[i];
+		k_pgtbl[i + 256] = k_pgtbl[i];	// Thus whole kernel space may be copied
+						// by just copying k_pgtbl[256:512]
 	}
 	k_pgtbl[511] = (u64)K2P(kstack_pdpt) | PML4E_P | PML4E_W; // kernel stack
 	kstack_pdpt[511] = (u64)K2P(kstack_pd) | PDPTE_P | PDPTE_W; // kernel stack
