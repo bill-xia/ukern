@@ -7,6 +7,7 @@
 #define NO_FAT_CHAIN 0x02
 
 #define EXFAT_CLUS2LBA(fs, clus) ((fs)->part->lba_beg + (fs)->hdr->cluster_heap_offset + (((clus) - 2) << (fs)->hdr->sec_per_clus_shift))
+#define EXFAT_CLUS2KADDR(fs, clus) (KDISK | (((fs)->part->lba_beg + (fs)->hdr->cluster_heap_offset + (((clus) - 2) <<  (fs)->hdr->sec_per_clus_shift)) << (fs)->hdr->byte_per_sec_shift))
 
 struct exFAT_hdr {
 	u8 jmp_boot[3];
