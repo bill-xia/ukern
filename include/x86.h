@@ -58,9 +58,9 @@ static inline void
 insl(int port, void *addr, int cnt)
 {
 	asm volatile("cld\n\trepne\n\tinsl"
-		     : "=D" (addr), "=c" (cnt)
-		     : "d" (port), "0" (addr), "1" (cnt)
-		     : "memory", "cc");
+			: "=D" (addr), "=c" (cnt)
+			: "d" (port), "0" (addr), "1" (cnt)
+			: "memory", "cc");
 }
 
 static inline void
@@ -73,9 +73,9 @@ static inline void
 outsb(int port, const void *addr, int cnt)
 {
 	asm volatile("cld\n\trepne\n\toutsb"
-		     : "=S" (addr), "=c" (cnt)
-		     : "d" (port), "0" (addr), "1" (cnt)
-		     : "cc");
+			: "=S" (addr), "=c" (cnt)
+			: "d" (port), "0" (addr), "1" (cnt)
+			: "cc");
 }
 
 static inline void
@@ -88,18 +88,18 @@ static inline void
 outsw(int port, const void *addr, int cnt)
 {
 	asm volatile("cld\n\trepne\n\toutsw"
-		     : "=S" (addr), "=c" (cnt)
-		     : "d" (port), "0" (addr), "1" (cnt)
-		     : "cc");
+			: "=S" (addr), "=c" (cnt)
+			: "d" (port), "0" (addr), "1" (cnt)
+			: "cc");
 }
 
 static inline void
 outsl(int port, const void *addr, int cnt)
 {
 	asm volatile("cld\n\trepne\n\toutsl"
-		     : "=S" (addr), "=c" (cnt)
-		     : "d" (port), "0" (addr), "1" (cnt)
-		     : "cc");
+			: "=S" (addr), "=c" (cnt)
+			: "d" (port), "0" (addr), "1" (cnt)
+			: "cc");
 }
 
 static inline void
@@ -231,8 +231,8 @@ cpuid(u64 info, u64 *raxp, u64 *rbxp, u64 *rcxp, u64 *rdxp)
 {
 	u64 rax, rbx, rcx, rdx;
 	asm volatile("cpuid"
-		     : "=a" (rax), "=b" (rbx), "=c" (rcx), "=d" (rdx)
-		     : "a" (info));
+			: "=a" (rax), "=b" (rbx), "=c" (rcx), "=d" (rdx)
+			: "a" (info));
 	if (raxp)
 		*raxp = rax;
 	if (rbxp)
@@ -265,9 +265,9 @@ xchg(volatile u64 *addr, u64 newval)
 
 	// The + in "+m" denotes a read-modify-write operand.
 	asm volatile("lock; xchgl %0, %1"
-		     : "+m" (*addr), "=a" (result)
-		     : "1" (newval)
-		     : "cc");
+			: "+m" (*addr), "=a" (result)
+			: "1" (newval)
+			: "cc");
 	return result;
 }
 
@@ -276,8 +276,8 @@ rdmsr(u64 addr)
 {
 	u64 result;
 	asm volatile("mov %0, %%rcx; rdmsr;"
-			 : "=a" (result)
-			 : "r" (addr));
+			: "=a" (result)
+			: "r" (addr));
 	return result;
 }
 
@@ -286,8 +286,8 @@ stmsr(u64 addr, u64 val)
 {
 	u32 lo = (u32)val, hi = (u32)(val >> 32);
 	asm volatile("wrmsr"
-			 :
-			 : "a" (lo), "d" (hi), "c" (addr));
+			:
+			: "a" (lo), "d" (hi), "c" (addr));
 	return;
 }
 
