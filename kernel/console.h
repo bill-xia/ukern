@@ -22,5 +22,6 @@ struct screen {
 
 void console_putch(char c);
 void init_console(struct screen *screen);
+extern u32*	pixelbuf;
 
 #endif

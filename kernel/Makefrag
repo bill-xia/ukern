@@ -13,6 +13,7 @@ KERNEL_OBJS := $(OBJ_DIR)/kernel/main.o \
 	$(OBJ_DIR)/kernel/acpi.o \
 	$(OBJ_DIR)/kernel/pic.o \
 	$(OBJ_DIR)/kernel/kbd.o \
+	$(OBJ_DIR)/kernel/mtrr.o \
 	$(OBJ_DIR)/kernel/fs/disk.o \
 	$(OBJ_DIR)/kernel/fs/fs.o \
 	$(OBJ_DIR)/kernel/fs/exfat.o \
@@ -35,6 +36,8 @@ KERNEL_HDRS := kernel/init.h \
 	kernel/lapic.h \
 	kernel/ioapic.h \
 	kernel/pic.h \
+	kernel/mtrr.h \
+	kernel/kbd.h \
 	kernel/pcie/pcie.h \
 	kernel/pcie/nvme.h \
 	kernel/fs/disk.h \

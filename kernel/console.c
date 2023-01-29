@@ -7,7 +7,7 @@ static u32 ind = 0, rows = 0, cols = 0,
 static u16 color = COLOR_WHITE_ON_BLACK;
 
 static char cbuf[1920 * 1080];
-static u32 *pixelbuf;
+u32 *pixelbuf;
 static u8 *font;
 
 int

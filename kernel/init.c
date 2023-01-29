@@ -10,6 +10,7 @@
 #include "acpi.h"
 #include "pic.h"
 #include "printk.h"
+#include "mtrr.h"
 #include "fs/disk.h"
 
 void init(struct boot_args *args)
@@ -19,6 +20,7 @@ void init(struct boot_args *args)
 	init_gdt();
 	init_kpageinfo(args->mem_map); // after the kernel image, is the k_pageinfo array
 	init_kpgtbl(); // then comes kernel pagetable, which maps the whole physical memory space
+	init_mtrr();
 	init_pcb(); // then Process Control Blocks
 	init_intr();
 	init_freepages(); // initialize the free page list
