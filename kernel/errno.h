@@ -8,6 +8,7 @@
 #define E_NOPCB 3  // for creating proc
 
 #define E_MAX 4
+#define E_NOSLOT 5
 
 extern const char *error_msg[E_MAX];
 

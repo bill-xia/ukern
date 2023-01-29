@@ -4,24 +4,21 @@
 #include "proc.h"
 #include "sched.h"
 #include "errno.h"
-#include "ide.h"
 #include "mem.h"
 
-char buf[512];
-
-int main()
+int main(struct boot_args *args)
 {
-    init();
-    // CREATE_PROC(hello);
-    // CREATE_PROC(sort);
-    // CREATE_PROC(divzero);
-    // // CREATE_PROC(fork);
-    CREATE_PROC(idle);
-    // CREATE_PROC(read);
-    // CREATE_PROC(mal_read);
-    // // CREATE_PROC(exec);
-    // CREATE_PROC(forkexec);
-    CREATE_PROC(sh);
-    sched();
-    while (1);
+	init(args);
+	// CREATE_PROC(hello);
+	// CREATE_PROC(sort);
+	// CREATE_PROC(divzero);
+	// // CREATE_PROC(fork);
+	CREATE_PROC(idle);
+	// CREATE_PROC(read);
+	// CREATE_PROC(mal_read);
+	// // CREATE_PROC(exec);
+	// CREATE_PROC(forkexec);
+	CREATE_PROC(sh);
+	sched();
+	while (1);
 }

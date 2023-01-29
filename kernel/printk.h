@@ -4,5 +4,6 @@
 #include "stdarg.h"
 
 void printk(const char *fmt, ...);
+void panic(const char *fmt, ...);
 
 #endif

@@ -2,45 +2,85 @@
 #define PROC_H
 
 #include "types.h"
-#include "fs.h"
+#include "fs/fs.h"
 
-#define NPROCS 1024
-#define NARGS  16
-#define ARGLEN 256
+#define NPROCS	1024
+#define NARGS	16
+#define ARGLEN	256
 
 enum proc_state {
-    CLOSE,
-    READY,
-    RUNNING,
-    PENDING
+	CLOSE,
+	READY,
+	RUNNING,
+	PENDING,
+	ZOMBIE
 };
 
 struct ProcContext {
-    uint64_t rax, rcx, rdx, rbx;
-    uint64_t rdi, rsi, rbp, zero;
-    uint64_t r8, r9, r10, r11;
-    uint64_t r12, r13, r14, r15;
-    uint64_t vecnum, errno;
-    uint64_t rip, cs;
-    uint64_t rflags;
-    uint64_t rsp, ss;
+	u64	rax,
+		rcx,
+		rdx,
+		rbx;
+	u64	rdi,
+		rsi,
+		rbp,
+		zero;
+	u64	r8,
+		r9,
+		r10,
+		r11;
+	u64	r12,
+		r13,
+		r14,
+		r15;
+	u64	vecnum,
+		errno;
+	u64	rip,
+		cs;
+	u64	rflags;
+	u64	rsp,
+		ss;
 };
 
 struct Proc {
-    pgtbl_t pgtbl,
-            p_pgtbl;// p_pgtbl's corresponding mapping should be
-                    // different with pgtbl only at W flag, and
-                    // kernel space in p_pgtbl may be not mapped,
-                    // because we don't use them in p_pgtbl
-    uint64_t pid;
-    enum proc_state state;
-    uint64_t exec_time;
-    struct ProcContext context;
-    struct file_desc fdesc[64];
+	pgtbl_t 		pgtbl,
+				p_pgtbl;// p_pgtbl's corresponding mapping should be
+					// different with pgtbl only at W flag, and
+					// kernel space in p_pgtbl may be not mapped,
+					// because we don't use them in p_pgtbl
+	u64			pid;
+	enum proc_state		state;
+	u64			exec_time;
+	struct ProcContext	context;
+	struct file_desc	fdesc[64];
+	int			*wait_status;
+	// About these pointers:
+	// Relation between processes can be modeled as a tree,
+	//	where parent and child refer to the process who
+	//	called fork() and is fork()-ed, respectively.
+	// `parent` points to its parent process, of course.
+	// For one process, it has a pointer `living_children`
+	//	which points to its *first* child that is alive,
+	//	`zombie_children` is the counterpart points to
+	//	its first zombie child.
+	// `next_sibling` points to its next sibling, no matter
+	//	this process is on its parent's living_children
+	//	list or zombie_children list. It cannot sit on
+	//	both of them, so it's fine. `prev_sibling` is similar.
+	// `living_children` and `zombie_children` are kind of "owned"
+	//	by the process itself, while `prev_sibling` and
+	//	`next_sibling` are "owned" by the parent process.
+	struct Proc		*parent,
+				*living_child,
+				*zombie_child,
+				*prev_sibling,
+				*next_sibling;
+	u64			waiting:1;
 };
 extern struct Proc *procs, *curproc, *kbd_proc;
 
 void init_pcb(void);
+void clear_proc_context(struct ProcContext *context);
 int create_proc(char *img);
 void run_proc(struct Proc *proc);
 void kill_proc(struct Proc *proc);
@@ -49,8 +89,11 @@ int load_img(char *img, struct Proc *proc);
 
 #define IMAGE_SYMBOL(x) _binary_obj_user_ ## x ## _start
 #define CREATE_PROC(x) do { \
-    extern char IMAGE_SYMBOL(x); \
-    create_proc(&IMAGE_SYMBOL(x)); \
+	extern char IMAGE_SYMBOL(x); \
+	int r; \
+	if ((r = create_proc(&IMAGE_SYMBOL(x))) < 0) { \
+		panic("create_proc failed: %d\n", r); \
+	} \
 } while (0)
 
 #endif

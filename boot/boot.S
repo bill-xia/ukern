@@ -103,17 +103,26 @@ Label_ReadProgramHeader:
     mov eax, [phoff]
     mov edx, [eax + 24] ; paddr / load address
     mov [paddr], edx
+    mov [paddrrem], edx
     mov edx, [eax + 8] ; file offset
     shr edx, 9 ; calc LBA
     add edx, 1 ; skip MBR
     mov [lba], edx
+    mov edx, [eax + 40] ; size in memory
+    mov [memsz], edx
     mov ecx, [eax + 32] ; size in file
+    mov [filesz], ecx
+    add ecx, 511 ; also read the tail
     shr ecx, 9 ; calc num of sectors to read
-    inc ecx ; also read the tail
     mov ebx, [eax] ; type
     cmp ebx, 1
     jne Label_ReadNextProgramHeader
+
 Label_ReadProgramSector:
+    cmp ecx, 0
+    je Label_ReadProgramSectorEnd
+
+    dec ecx
     mov ax, 0
     mov es, ax
     mov bx, 0x8000
@@ -129,8 +138,24 @@ Label_ReadProgramSector:
     inc dword [lba]
 
     pop ecx
-    dec ecx
-    jnz Label_ReadProgramSector
+    jmp Label_ReadProgramSector
+
+Label_ReadProgramSectorEnd:
+    push ecx
+    mov eax, [paddrrem]
+    mov ecx, eax
+    add eax, [filesz]
+    add ecx, [memsz]
+
+Label_MemClear:
+    cmp eax, ecx
+    jge Label_MemClearEnd
+    mov byte [eax], 0
+    inc eax
+    jmp Label_MemClear
+
+Label_MemClearEnd:
+    pop ecx
 
 Label_ReadNextProgramHeader:
     ; read one program header done
@@ -207,7 +232,10 @@ section .data
 phoff: dd 0
 phentsize: dd 0
 paddr: dd 0
+paddrrem: dd 0
 lba: dd 0
+filesz: dd 0
+memsz: dd 0
 
 gdt_protect:
 dq 0 ; first null segment

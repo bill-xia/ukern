@@ -1,5 +1,15 @@
 image
 fsimg
-.vscode/
+diskimg
+OVMF_VARS.fd
+
+.disk_dev_efi
+.disk_dev_main
+
 *.pdf
+*.efi
+*.o
+*.a
+
+.vscode/
 obj/

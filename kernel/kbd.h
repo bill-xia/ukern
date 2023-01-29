@@ -1,6 +1,8 @@
 #ifndef JOS_KBDREG_H
 #define JOS_KBDREG_H
 
+#include "types.h"
+
 // Special keycodes
 #define KEY_HOME	0xE0
 #define KEY_END		0xE1
@@ -19,8 +21,8 @@
 #define	KBSTATP		0x64	/* kbd controller status port(I) */
 #define	 KBS_DIB	0x01	/* kbd data in buffer */
 #define	 KBS_IBF	0x02	/* kbd input buffer low */
-#define	 KBS_WARM	0x04	/* kbd input buffer low */
-#define	 KBS_OCMD	0x08	/* kbd output buffer has command */
+#define	 KBS_WARM	0x04	/* kbd passed basic asurance test */
+#define	 KBS_OCMD	0x08	/* kbd output buffer has command(set) or data(off) */
 #define	 KBS_NOSEC	0x10	/* kbd security lock not engaged */
 #define	 KBS_TERR	0x20	/* kbd transmission error or from mouse */
 #define	 KBS_RERR	0x40	/* kbd receive error */
@@ -35,6 +37,8 @@
 #define	 KBC_KBDECHO	0xd2	/* echo to keyboard port */
 #define	 KBC_AUXECHO	0xd3	/* echo to auxiliary port */
 #define	 KBC_AUXWRITE	0xd4	/* write to auxiliary port */
+#define	 KBC_MOUSEDISABLE	0xa7	/* disable mouse port */
+#define	 KBC_MOUSEENABLE	0xa8	/* enable mouse port */
 #define	 KBC_SELFTEST	0xaa	/* start self-test */
 #define	 KBC_KBDTEST	0xab	/* test keyboard port */
 #define	 KBC_KBDDISABLE	0xad	/* disable keyboard port */
@@ -93,7 +97,7 @@
 
 #define E0ESC		(1<<6)
 
-static uint8_t shiftcode[256] =
+static u8 shiftcode[256] =
 {
 	[0x1D] = CTL,
 	[0x2A] = SHIFT,
@@ -103,14 +107,14 @@ static uint8_t shiftcode[256] =
 	[0xB8] = ALT
 };
 
-static uint8_t togglecode[256] =
+static u8 togglecode[256] =
 {
 	[0x3A] = CAPSLOCK,
 	[0x45] = NUMLOCK,
 	[0x46] = SCROLLLOCK
 };
 
-static uint8_t normalmap[256] =
+static u8 normalmap[256] =
 {
 	NO,   0x1B, '1',  '2',  '3',  '4',  '5',  '6',	// 0x00
 	'7',  '8',  '9',  '0',  '-',  '=',  '\b', '\t',
@@ -131,7 +135,7 @@ static uint8_t normalmap[256] =
 	[0xD2] = KEY_INS,	      [0xD3] = KEY_DEL
 };
 
-static uint8_t shiftmap[256] =
+static u8 shiftmap[256] =
 {
 	NO,   033,  '!',  '@',  '#',  '$',  '%',  '^',	// 0x00
 	'&',  '*',  '(',  ')',  '_',  '+',  '\b', '\t',
@@ -154,7 +158,7 @@ static uint8_t shiftmap[256] =
 
 #define C(x) (x - '@')
 
-static uint8_t ctlmap[256] =
+static u8 ctlmap[256] =
 {
 	NO,      NO,      NO,      NO,      NO,      NO,      NO,      NO,
 	NO,      NO,      NO,      NO,      NO,      NO,      NO,      NO,
@@ -171,11 +175,17 @@ static uint8_t ctlmap[256] =
 	[0xD2] = KEY_INS,		[0xD3] = KEY_DEL
 };
 
-static uint8_t *charcode[4] = {
+static u8 *charcode[4] = {
 	normalmap,
 	shiftmap,
 	ctlmap,
 	ctlmap
 };
+
+extern char kbd_buffer[4096];
+extern int kbd_buf_beg, kbd_buf_siz;
+
+int kbd_getch(void);
+int init_8042(void);
 
 #endif /* !JOS_KBDREG_H */

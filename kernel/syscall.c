@@ -6,264 +6,384 @@
 #include "elf64.h"
 #include "x86.h"
 #include "sched.h"
-#include "ide.h"
-#include "fs.h"
+#include "fs/fs.h"
+#include "kbd.h"
 
 int
-check_umem_mapping(uint64_t addr, uint64_t siz)
+check_umem_mapping(u64 addr, u64 siz)
 {
-    addr = PAGEADDR(addr);
-    uint64_t end = PAGEADDR(addr + siz) + PGSIZE;
-    uint64_t *pte, flags = PTE_U | PTE_P | PTE_W;
-    pgtbl_t pgtbl = (pgtbl_t)P2K(rcr3());
-    while (addr != end) {
-        walk_pgtbl(pgtbl, addr, &pte, 0);
-        if ((*pte & flags) != flags) {
-            return 0;
-        }
-        addr += PGSIZE;
-    }
-    return 1;
+	addr = PAGEADDR(addr);
+	u64 end = PAGEADDR(addr + siz) + PGSIZE;
+	u64 *pte, flags = PTE_U | PTE_P | PTE_W;
+	pgtbl_t pgtbl = (pgtbl_t)P2K(rcr3());
+	while (addr != end) {
+		walk_pgtbl(pgtbl, addr, &pte, 0);
+		if ((*pte & flags) != flags) {
+			return 0;
+		}
+		addr += PGSIZE;
+	}
+	return 1;
 }
 
 void
 sys_hello(void)
 {
-    printk("\"hello, world!\" from user space!\n");
+	printk("\"hello, world!\" from user space!\n");
 }
 
 void
 sys_fork(struct ProcContext *tf)
 {
-    struct Proc *nproc = alloc_proc();
-    copy_pgtbl(nproc->pgtbl, curproc->p_pgtbl, CPY_PGTBL_CNTREF | CPY_PGTBL_WITHKSPACE);
-    // save the "real" page table
-    copy_pgtbl(nproc->p_pgtbl, curproc->p_pgtbl, CPY_PGTBL_WITHKSPACE);
-    // clear write flag at "write-on-copy" pages
-    pgtbl_clearflags(nproc->pgtbl, PTE_W);
-    pgtbl_clearflags(curproc->pgtbl, PTE_W);
-    // copy context
-    nproc->context = *tf;
-    // set return value
-    tf->rax = nproc->pid;
-    nproc->context.rax = 0;
-    // set state
-    nproc->state = READY;
-    lcr3(rcr3());
+	struct Proc *nproc = alloc_proc();
+
+	// add to living_child
+	if (curproc->living_child == NULL) {
+		curproc->living_child = nproc;
+		nproc->prev_sibling = nproc->next_sibling = NULL;
+	} else {
+		struct Proc *ohead = curproc->living_child;
+		ohead->prev_sibling = nproc;
+		nproc->next_sibling = ohead;
+		curproc->living_child = nproc;
+	}
+	nproc->parent = curproc;
+
+	copy_pgtbl(nproc->pgtbl, curproc->p_pgtbl, CPY_PGTBL_CNTREF | CPY_PGTBL_WITHKSPACE);
+	// save the "real" page table
+	copy_pgtbl(nproc->p_pgtbl, curproc->p_pgtbl, CPY_PGTBL_WITHKSPACE);
+	// clear write flag at "write-on-copy" pages
+	pgtbl_clearflags(nproc->pgtbl, PTE_W);
+	pgtbl_clearflags(curproc->pgtbl, PTE_W);
+	// copy context
+	nproc->context = *tf;
+	// set return value
+	tf->rax = nproc->pid;
+	nproc->context.rax = 0;
+	// set state
+	nproc->state = READY;
+	lcr3(rcr3());
 }
 
 void
 sys_open(struct ProcContext *tf)
 {
-    uint32_t head_cluster, use_fat;
-    uint64_t file_len;
-    int r = open_file((void *)(tf->rdx), &head_cluster, &file_len, &use_fat);
-    if (r == 0) {
-        for (int fd = 0; fd < 256; ++fd) {
-            if (curproc->fdesc[fd].head_cluster) continue;
-            curproc->fdesc[fd].head_cluster = head_cluster;
-            curproc->fdesc[fd].read_ptr = 0;
-            curproc->fdesc[fd].file_len = file_len;
-            curproc->fdesc[fd].use_fat = use_fat;
-            tf->rax = fd;
-            return;
-        }
-        // no available file descriptor
-        tf->rax = -E_NO_AVAIL_FD;
-        return;
-    } else {
-        tf->rax = r;
-        return;
-    }
+	u32 head_cluster, use_fat;
+	u64 file_len;
+	for (int fd = 0; fd < 256; ++fd) {
+		if (curproc->fdesc[fd].inuse) continue;
+		int r = open_file((void *)(tf->rdx), curproc->fdesc + fd);
+		if (r == 0) {
+			tf->rax = fd;
+			curproc->fdesc[fd].inuse = 1;
+		} else {
+			tf->rax = r;
+		}
+		return;
+	}
+	// no available file descriptor
+	tf->rax = -E_NO_AVAIL_FD;
+	return;
 }
 
-inline uint64_t
-min(uint64_t a, uint64_t b)
+inline u64
+min(u64 a, u64 b)
 {
-    return a < b ? a : b;
+	return a < b ? a : b;
 }
 
 void
 sys_read(struct ProcContext *tf)
 {
-    int fd = tf->rdx;
-    if (fd < 0 || fd >= 64) {
-        tf->rax = -E_INVALID_FD;
-        return;
-    }
-    struct file_desc *fdesc = &curproc->fdesc[fd];
-    if (fdesc->head_cluster == 0) {
-        tf->rax = -E_FD_NOT_OPENED;
-        return;
-    }
-    if (!check_umem_mapping(tf->rcx, tf->rbx)) {
-        tf->rax = -E_INVALID_MEM;
-        return;
-    }
-    int r = read_file(fdesc->head_cluster, 
-        fdesc->read_ptr,
-        (void *)tf->rcx,
-        min(tf->rbx, fdesc->file_len - fdesc->read_ptr),
-        fdesc->use_fat);
-    tf->rax = r;
-    curproc->fdesc[fd].read_ptr += r;
+	int fd = tf->rdx;
+	if (fd < 0 || fd >= 64) {
+		tf->rax = -E_INVALID_FD;
+		return;
+	}
+	struct file_desc *fdesc = &curproc->fdesc[fd];
+	if (fdesc->meta_exfat.head_cluster == 0) {
+		tf->rax = -E_FD_NOT_OPENED;
+		return;
+	}
+	if (!check_umem_mapping(tf->rcx, tf->rbx)) {
+		tf->rax = -E_INVALID_MEM;
+		return;
+	}
+	int r = read_file(
+		(void *)tf->rcx,
+		tf->rbx,
+		fdesc
+	);
+	tf->rax = r;
+	curproc->fdesc[fd].read_ptr += r;
 }
 
 void strncpy(char *dst, char *src, int n)
 {
-    for (int i = 0; i < n && *src != '\0'; ++i) {
-        *dst = *src;
-        src++;
-        dst++;
-    }
+	for (int i = 0; i < n && *src != '\0'; ++i) {
+		*dst = *src;
+		src++;
+		dst++;
+	}
 }
 
 void
 sys_exec(struct ProcContext *tf)
 {
-    static char argv_buf[16][256];
-    uint32_t head_cluster, use_fat;
-    uint64_t file_len;
-    int ret = 0;
-    int r = open_file((void *)(tf->rdx), &head_cluster, &file_len, &use_fat);
-    if (r) { // open file failed
-        tf->rax = r;
-        return;
-    }
-    // save argv
-    char **ori_argv = (char **)tf->rbx;
-    for (int i = 0; i < NARGS; ++i) {
-        if (ori_argv[i] != NULL) {
-            strncpy(argv_buf[i], ori_argv[i], ARGLEN);
-        }
-    }
-    // read image
-    char *img = (char *)EXEC_IMG;
-    uint64_t addr = EXEC_IMG, addr_end = EXEC_IMG + file_len;
-    lcr3(K2P(k_pml4));
-    // if (img < img_end) {
-        // file too large, seldom happen
-    // }
-    while (addr < addr_end) {
-        pte_t *pte;
-        if (ret = walk_pgtbl(k_pml4, addr, &pte, 1)) {
-            tf->rax = -E_NOMEM;
-            // TODO: free memory for img?
-            return;
-        }
-        *pte |= PTE_U | PTE_W;
-        addr += PGSIZE;
-    }
-    lcr3(rcr3());
-    read_file(head_cluster, 0, img, file_len, use_fat);
-    // TODO: check file format before destroying current enviroment,
-    // return enough information if format error
-    curproc->state = PENDING;
-    // from now on, old process image is destroyed
-    free_pgtbl(curproc->pgtbl, FREE_PGTBL_DECREF);
-    free_pgtbl(curproc->p_pgtbl, 0);
-    struct PageInfo *page = alloc_page(FLAG_ZERO);
-    curproc->pgtbl = (pgtbl_t)page->paddr;
-    page = alloc_page(FLAG_ZERO);
-    curproc->p_pgtbl = (pgtbl_t)page->paddr;
-    // code below is copied from create_proc()
-    // may delete create_proc() in the future
-    struct Proc *proc = curproc;
-    if (ret = load_img(img, proc)) {
-        kill_proc(proc);
-        sched();
-    }
-    // TODO: unmap img here
-    // stack
-    pte_t *pte;
-    if (ret = walk_pgtbl(proc->pgtbl, USTACK - PGSIZE, &pte, 1)) {
-        kill_proc(proc);
-        sched();
-    }
-    *pte |= PTE_U | PTE_W;
-    // uargs
-    char **uargv = (char **)(PAGEKADDR(*pte) + PGSIZE - NARGS * sizeof(uint64_t));
-    for (int i = 0; i < NARGS; ++i) {
-        uargv[i] = (char *)((uint64_t)UARGS + 256 * i);
-    }
-    if (ret = walk_pgtbl(proc->pgtbl, UARGS, &pte, 1)) {
-        kill_proc(proc);
-        sched();
-    }
-    *pte |= PTE_U | PTE_W;
-    char *uarg_pg = (char *)PAGEKADDR(*pte);
-    for (int i = 0; i < NARGS; ++i) {
-        strncpy(uarg_pg + i * ARGLEN, argv_buf[i], ARGLEN);
-    }
-    // mapping kernel space
-    pgtbl_t *pgtbl = (pgtbl_t)P2K(proc->pgtbl);
-    for (int i = 256; i < 512; ++i) {
-        pgtbl[i] = k_pml4[i];
-    }
-    copy_pgtbl(proc->p_pgtbl, proc->pgtbl, CPY_PGTBL_WITHKSPACE);
-    // set up runtime enviroment
-    struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
-    proc->context.rip = ehdr->e_entry;
-    proc->context.cs = USER_CODE_SEL | 3;
-    proc->context.rsp = USTACK - NARGS * sizeof(uint64_t);
-    proc->context.ss = USER_DATA_SEL | 3;
-    proc->context.rflags = 0x02 | RFLAGS_IF | (3 << RFLAGS_IOPL_SHIFT);
-    // argc in rdi
-    proc->context.rdi = tf->rcx;
-    // argv in rsi, which is predefined
-    proc->context.rsi = USTACK - NARGS * sizeof(uint64_t);
-    proc->state = READY;
-    sched();
+	static char argv_buf[16][256];
+	struct file_desc fdesc;
+	int ret = 0;
+	int r = open_file((void *)(tf->rdx), &fdesc);
+	if (r) { // open file failed
+		printk("exec: open file failed.\n");
+		tf->rax = r;
+		return;
+	}
+	// save argv
+	char **ori_argv = (char **)tf->rbx;
+	for (int i = 0; i < NARGS; ++i) {
+		if (ori_argv[i] != NULL) {
+			strncpy(argv_buf[i], ori_argv[i], ARGLEN);
+		}
+	}
+	// read image
+	char *img = (char *)EXEC_IMG;
+	u64 addr = EXEC_IMG, addr_end = EXEC_IMG + fdesc.file_len;
+	lcr3(K2P(k_pgtbl));
+	// if (img < img_end) {
+		// file too large, seldom happen
+	// }
+	while (addr < addr_end) {
+		pte_t *pte;
+		if (ret = walk_pgtbl(k_pgtbl, addr, &pte, 1)) {
+			tf->rax = -E_NOMEM;
+			// TODO: free memory for img?
+			return;
+		}
+		*pte |= PTE_U | PTE_W;
+		addr += PGSIZE;
+	}
+	lcr3(rcr3());
+	read_file(img, fdesc.file_len, &fdesc);
+	// TODO: check file format before destroying current enviroment,
+	// return enough information if format error
+	curproc->state = PENDING;
+	// from now on, old process image is destroyed
+	free_pgtbl(curproc->pgtbl, FREE_PGTBL_DECREF);
+	free_pgtbl(curproc->p_pgtbl, 0);
+	struct PageInfo *page = alloc_page(FLAG_ZERO);
+	curproc->pgtbl = (pgtbl_t)page->paddr;
+	page = alloc_page(FLAG_ZERO);
+	curproc->p_pgtbl = (pgtbl_t)page->paddr;
+	// code below is copied from create_proc()
+	// may delete create_proc() in the future
+	struct Proc *proc = curproc;
+	if (ret = load_img(img, proc)) {
+		kill_proc(proc);
+		sched();
+	}
+	// TODO: unmap img here
+	// stack
+	pte_t *pte;
+	if (ret = walk_pgtbl(proc->pgtbl, USTACK - PGSIZE, &pte, 1)) {
+		kill_proc(proc);
+		sched();
+	}
+	*pte |= PTE_U | PTE_W;
+	// uargs
+	char **uargv = (char **)(PAGEKADDR(*pte) + PGSIZE - NARGS * sizeof(u64));
+	for (int i = 0; i < NARGS; ++i) {
+		uargv[i] = (char *)((u64)UARGS + 256 * i);
+	}
+	if (ret = walk_pgtbl(proc->pgtbl, UARGS, &pte, 1)) {
+		kill_proc(proc);
+		sched();
+	}
+	*pte |= PTE_U | PTE_W;
+	char *uarg_pg = (char *)PAGEKADDR(*pte);
+	for (int i = 0; i < NARGS; ++i) {
+		strncpy(uarg_pg + i * ARGLEN, argv_buf[i], ARGLEN);
+	}
+	// mapping kernel space
+	pgtbl_t pgtbl = (pgtbl_t)P2K(proc->pgtbl);
+	for (int i = 256; i < 512; ++i) {
+		pgtbl[i] = k_pgtbl[i];
+	}
+	copy_pgtbl(proc->p_pgtbl, proc->pgtbl, CPY_PGTBL_WITHKSPACE);
+	// set up runtime enviroment
+	struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
+	clear_proc_context(&proc->context);
+	proc->context.rip = ehdr->e_entry;
+	proc->context.cs = USER_CODE_SEL | 3;
+	proc->context.rsp = USTACK - NARGS * sizeof(u64);
+	proc->context.ss = USER_DATA_SEL | 3;
+	proc->context.rflags = 0x02 | RFLAGS_IF | (3 << RFLAGS_IOPL_SHIFT);
+	// argc in rdi
+	proc->context.rdi = tf->rcx;
+	// argv in rsi, which is predefined
+	proc->context.rsi = USTACK - NARGS * sizeof(u64);
+	proc->state = READY;
+	sched();
 }
 
 #define E_KBD_IN_USE 1
 void
 sys_getch(struct ProcContext *tf)
 {
-    if (kbd_proc == NULL) {
-        kbd_proc = curproc;
-    } else {
-        tf->rax = -E_KBD_IN_USE; // keyboard in use
-        return;
-    }
-    curproc->context = *tf;
-    curproc->state = PENDING;
-    sched();
+	if (kbd_buf_siz > 0) {
+		tf->rax = kbd_buffer[kbd_buf_beg++];
+		if (kbd_buf_beg == 4096)
+			kbd_buf_beg = 0;
+		kbd_buf_siz--;
+		return;
+	}
+	if (kbd_proc == NULL) {
+		kbd_proc = curproc;
+	} else {
+		tf->rax = -E_KBD_IN_USE; // keyboard in use
+		return;
+	}
+	curproc->context = *tf;
+	curproc->state = PENDING;
+	sched();
+}
+
+void
+exit_as_parent()
+{
+	struct Proc	*living_child = curproc->living_child,
+			*zombie_child = curproc->zombie_child,
+			*nxt;
+	while (living_child != NULL) {
+		living_child->parent = NULL;
+		living_child = living_child->next_sibling;
+	}
+	while (zombie_child != NULL) {
+		nxt = zombie_child->next_sibling;
+		kill_proc(zombie_child);
+		zombie_child = nxt;
+	}
+}
+
+void
+exit_as_child()
+{
+	struct Proc *parent = curproc->parent;
+	if (parent == NULL) {
+		// parent is dead
+		kill_proc(curproc);
+		return;
+	}
+	if (!parent->waiting) {
+		// zombie
+		// add to zombie_child
+		if (parent->zombie_child == NULL) {
+			parent->zombie_child = curproc;
+			curproc->prev_sibling = curproc->next_sibling = NULL;
+		} else {
+			struct Proc *ohead = parent->zombie_child;
+			ohead->prev_sibling = curproc;
+			curproc->next_sibling = ohead;
+			parent->zombie_child = curproc;
+		}
+
+		curproc->state = ZOMBIE;
+		return;
+	}
+	// wait()ed by parent
+	parent->waiting = 0;
+	if (parent->wait_status != NULL) {
+		*parent->wait_status = 0;
+	}
+	// invoke parent
+	parent->context.rax = curproc->pid;
+	parent->state = READY;
+	// detach from the sibling chain
+	if (curproc->prev_sibling) {
+		curproc->prev_sibling->next_sibling = curproc->next_sibling;
+	}
+	if (curproc->next_sibling) {
+		curproc->next_sibling->prev_sibling = curproc->prev_sibling;
+	}
+	// hand over sibling chain head
+	if (parent->living_child == curproc) {
+		parent->living_child = curproc->next_sibling;
+	}
+	if (parent->zombie_child == curproc) {
+		parent->zombie_child = curproc->next_sibling;
+	}
+	kill_proc(curproc);
+}
+
+void
+sys_exit()
+{
+	exit_as_parent();
+	exit_as_child();
+	sched();
+}
+
+void
+sys_wait(struct ProcContext *tf)
+{
+	// TODO: check whether wait_status is user-writable
+	if (curproc->zombie_child != NULL) {
+		// have zombie child, wait() it
+		if (tf->rdx != 0)
+			*(int *)(tf->rdx) = 0; // TODO: more wait status
+		struct Proc	*ohead = curproc->zombie_child,
+				*nhead = curproc->zombie_child->next_sibling;
+		// return child's pid
+		tf->rax = ohead->pid;
+		curproc->zombie_child = nhead;
+		if (nhead)
+			nhead->prev_sibling = NULL;
+		kill_proc(ohead);
+		return;
+	}
+	// no zombie child, sleep
+	curproc->waiting = 1;
+	curproc->wait_status = tf->rdx;
+	curproc->context = *tf;
+	curproc->state = PENDING;
+	sched();
 }
 
 void
 syscall(struct ProcContext *tf)
 {
-    int num = tf->rax;
-    switch (num) {
-    case 1:
-        curproc->state = PENDING;
-        kill_proc(curproc);
-        sched();
-    case 2:
-        sys_hello();
-        tf->rax = 0;
-        break;
-    case 3:
-        console_putch(tf->rdx);
-        break;
-    case 4:
-        sys_fork(tf);
-        break;
-    case 5:
-        sys_open(tf);
-        break;
-    case 6:
-        sys_read(tf);
-        break;
-    case 7:
-        sys_exec(tf);
-        break;
-    case 8:
-        sys_getch(tf);
-        break;
-    default:
-        printk("unknown syscall\n");
-        while (1);
-    }
+	int num = tf->rax;
+	switch (num) {
+	case 1:
+		sys_exit();
+		break;
+	case 2:
+		sys_hello();
+		tf->rax = 0;
+		break;
+	case 3:
+		console_putch(tf->rdx);
+		break;
+	case 4:
+		sys_fork(tf);
+		break;
+	case 5:
+		sys_open(tf);
+		break;
+	case 6:
+		sys_read(tf);
+		break;
+	case 7:
+		sys_exec(tf);
+		break;
+	case 8:
+		sys_getch(tf);
+		break;
+	case 9:
+		sys_wait(tf);
+		break;
+	default:
+		printk("unknown syscall\n");
+		while (1);
+	}
 }

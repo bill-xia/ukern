@@ -26,6 +26,28 @@
 3. 图形界面（不写显卡驱动应该大概率刷新率小于1Hz，所以写一个不拉跨的界面应该有相当难度）
 4. 多体系结构支持
 
+## Usage
+
+### 环境配置
+
+```
+sudo apt install gcc build-essential qemu ovmf # to be tested and completed
+cp /usr/share/OVMF/OVMF_VARS.fd ./
+make qemu
+```
+
+OVMF_VARS 是 UEFI 的配置记录文件，我们在 UEFI 中进行的配置更改（如添加启动项）都会存储在这个文件中。由于不同的仓库中 OVMF_VARS 不完全相同，它没有被 git 管理，所以需要在配环境时手动拷贝到当前文件夹。这个文件不要轻易删除，否则 UEFI 的配置更改旧都失效了。
+
+然后连按 Esc 进入 UEFI 菜单，添加一个启动选项 BOOTX64.EFI。
+
+注意不要轻易删除 diskimg，否则重新生成的 diskimg 会有不同的 PARTUUID，UEFI 配置的启动项就失效了。如果误删了也不要紧，重新配置一次启动项就好。
+
+### 日常调试
+
+```
+make qemu
+```
+
 ## 注意事项
 
 配环境很重要，心态要放好，认真学习这些工具是目的之一。写的每一行（配置）代码心里都要清楚，勤搜索勤研究。累了就歇歇放下改天再做，也不要混过去。

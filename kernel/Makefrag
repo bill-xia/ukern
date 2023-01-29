@@ -8,12 +8,20 @@ KERNEL_OBJS := $(OBJ_DIR)/kernel/main.o \
 	$(OBJ_DIR)/kernel/sched.o \
 	$(OBJ_DIR)/kernel/syscall.o \
 	$(OBJ_DIR)/kernel/errno.o \
-	$(OBJ_DIR)/kernel/mp.o \
+	$(OBJ_DIR)/kernel/lapic.o \
 	$(OBJ_DIR)/kernel/ioapic.o \
-	$(OBJ_DIR)/kernel/ide.o \
-	$(OBJ_DIR)/kernel/fs.o \
 	$(OBJ_DIR)/kernel/acpi.o \
+	$(OBJ_DIR)/kernel/pic.o \
+	$(OBJ_DIR)/kernel/kbd.o \
+	$(OBJ_DIR)/kernel/mtrr.o \
+	$(OBJ_DIR)/kernel/fs/disk.o \
+	$(OBJ_DIR)/kernel/fs/fs.o \
+	$(OBJ_DIR)/kernel/fs/exfat.o \
+	$(OBJ_DIR)/kernel/pcie/pcie.o \
+	$(OBJ_DIR)/kernel/pcie/nvme.o \
+	$(OBJ_DIR)/kernel/pcie/sata.o \
 	$(OBJ_DIR)/kernel/lib/printfmt.o \
+	$(OBJ_DIR)/kernel/lib/string.o \
 
 KERNEL_HDRS := kernel/init.h \
 	kernel/intr.h \
@@ -25,10 +33,17 @@ KERNEL_HDRS := kernel/init.h \
 	kernel/console.h \
 	kernel/printk.h \
 	kernel/errno.h \
-	kernel/mp.h \
+	kernel/lapic.h \
 	kernel/ioapic.h \
-	kernel/ide.h \
-	kernel/fs.h \
+	kernel/pic.h \
+	kernel/mtrr.h \
+	kernel/kbd.h \
+	kernel/pcie/pcie.h \
+	kernel/pcie/nvme.h \
+	kernel/fs/disk.h \
+	kernel/fs/fs.h \
+	kernel/fs/exfat.h \
+	kernel/acpi.h \
 
 KERNEL_BINS := $(OBJ_DIR)/user/divzero \
 	$(OBJ_DIR)/user/hello \
@@ -45,16 +60,25 @@ KERNEL_INC := -Iinclude -Ilib -Ikernel
 
 KERNEL_CFLAGS := -DKERNEL
 
-$(OBJ_DIR)/kernel/kernel: $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry $(OBJ_DIR)/kernel/intr_entry $(KERNEL_BINS)
+$(OBJ_DIR)/kernel/kernel: $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry $(OBJ_DIR)/kernel/intr_entry $(KERNEL_BINS) kernel/kernel.ld
 	ld -T kernel/kernel.ld $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry $(OBJ_DIR)/kernel/intr_entry -b binary $(KERNEL_BINS) -o $(OBJ_DIR)/kernel/kernel --no-relax
 
+$(OBJ_DIR)/kernel/kernel_bios: $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry_bios $(OBJ_DIR)/kernel/intr_entry $(KERNEL_BINS) kernel/kernel.ld
+	ld -T kernel/kernel.ld $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry_bios $(OBJ_DIR)/kernel/intr_entry -b binary $(KERNEL_BINS) -o $(OBJ_DIR)/kernel/kernel --no-relax
+
 $(OBJ_DIR)/kernel/entry: kernel/entry.S
+	$(AS) $< -f elf64 -o $@
+
+$(OBJ_DIR)/kernel/entry_bios: kernel/entry_bios.S
 	$(AS) $< -f elf64 -o $@
 
 $(OBJ_DIR)/kernel/intr_entry: kernel/intr_entry.S
 	as $< -o $@
 
 $(OBJ_DIR)/kernel/%.o: kernel/%.c $(KERNEL_HDRS)
+	$(CC) $(CFLAGS) $(KERNEL_CFLAGS) $(KERNEL_INC) $< -c -o $@
+
+$(OBJ_DIR)/kernel/pcie/%.o: kernel/pcie/%.c $(KERNEL_HDRS)
 	$(CC) $(CFLAGS) $(KERNEL_CFLAGS) $(KERNEL_INC) $< -c -o $@
 
 $(OBJ_DIR)/kernel/lib/%.o: lib/%.c
