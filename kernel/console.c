@@ -83,9 +83,9 @@ init_console(struct screen *screen)
 	hpixel = screen->hpixel;
 	width = screen->width;
 	cols = width / hpixel;
-	pixelbuf = P2K(screen->buf);
+	pixelbuf = (u32 *)P2K(screen->buf);
 	bytes_per_glyph = screen->bytes_per_glyph;
-	font = P2K(screen->glyph);
+	font = (u8 *)P2K(screen->glyph);
 	for (int i = 0; i < rows; ++i) {
 		console_putch('\n');
 	}

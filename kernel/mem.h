@@ -97,7 +97,7 @@ struct mem_map {
 #define FREE_PGTBL_DECREF	0x1
 
 #define CPY_PGTBL_CNTREF	0x1
-#define CPY_PGTBL_WITHKSPACE	0x2
+#define CPY_PGTBL_NOKSPACE	0x2
 
 /*
 

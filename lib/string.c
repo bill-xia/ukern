@@ -38,3 +38,13 @@ strcmp(const char *s1, const char *s2, size_t n)
 	}
 	return 0;
 }
+
+void
+strncpy(char *dst, char *src, int n)
+{
+	for (int i = 0; i < n && *src != '\0'; ++i) {
+		*dst = *src;
+		src++;
+		dst++;
+	}
+}

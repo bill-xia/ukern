@@ -188,7 +188,7 @@ sata_read_block(int did, u64 block)
 		pg = alloc_page(FLAG_ZERO);
 		cmd_tbl = (struct sata_cmd_tbl *)P2K(pg->paddr);
 	}
-	cmd_hdr->dw2 = (u32)cmd_tbl;
+	cmd_hdr->dw2 = (u32)(u64)cmd_tbl;
 	cmd_hdr->dw3 = K2P(cmd_tbl) >> 32;
 
 	// pte_t *ppte;

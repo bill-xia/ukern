@@ -76,7 +76,7 @@ exfat_walk_dir(struct FS_exFAT *fs, const char *name, int name_len, struct exfat
 			if (cur_dir->clus_id == 0xFFFFFFFF)
 				break;
 			disk_read(fs->did, EXFAT_CLUS2LBA(fs, cur_dir->clus_id), 1u << fs->hdr->sec_per_clus_shift);
-			dir = lba2kaddr(fs->did, EXFAT_CLUS2LBA(fs, cur_dir->clus_id));
+			dir = (struct dir_entry *)lba2kaddr(fs->did, EXFAT_CLUS2LBA(fs, cur_dir->clus_id));
 			// printk("dir_clus_id: %x\n", dir_clus_id);
 			if (cur_dir->use_fat) {
 				// printk("open(): ");

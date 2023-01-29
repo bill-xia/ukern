@@ -434,7 +434,7 @@ copy_pgtbl(pgtbl_t dst, pgtbl_t src, u64 flags)
 		}
 	}
 	// copy kernel space
-	if (flags & CPY_PGTBL_WITHKSPACE) {
+	if (!(flags & CPY_PGTBL_NOKSPACE)) {
 		for (int i = 256; i < 512; ++i) {
 			dst[i] = src[i];
 		}
