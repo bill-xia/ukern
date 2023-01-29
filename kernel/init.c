@@ -15,7 +15,8 @@
 
 void init(struct boot_args *args)
 {
-	end_kmem = end;
+	extern char end_kernel_img[];
+	end_kmem = end_kernel_img;
 	init_console(args->screen);
 	init_gdt();
 	init_kpageinfo(args->mem_map); // after the kernel image, is the k_pageinfo array

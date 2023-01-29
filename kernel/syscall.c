@@ -171,7 +171,7 @@ sys_exec(struct ProcContext *tf)
 	// from now on, old process image is destroyed
 	free_pgtbl(curproc->pgtbl, FREE_PGTBL_DECREF);
 	free_pgtbl(curproc->p_pgtbl, 0);
-	struct PageInfo *page = alloc_page(FLAG_ZERO);
+	struct page_info *page = alloc_page(FLAG_ZERO);
 	curproc->pgtbl = (pgtbl_t)page->paddr;
 	page = alloc_page(FLAG_ZERO);
 	curproc->p_pgtbl = (pgtbl_t)page->paddr;

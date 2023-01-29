@@ -118,7 +118,7 @@ init_xhci(u8 bus, u8 device, u8 func)
 	u8 max_slots = xhci_readb(cap_base, HCSPARAMS1);
 	xhci_writeb(op_base, CONFIG, max_slots);
 	// dcbaap
-	struct PageInfo *pginfo = alloc_page(FLAG_ZERO);
+	struct page_info *pginfo = alloc_page(FLAG_ZERO);
 	dcbaap = (u32 *)pginfo->paddr;
 	xhci_writel(op_base, DCBAAP, pginfo->paddr);
 	xhci_writel(op_base, DCBAAP + 4, pginfo->paddr >> 32);

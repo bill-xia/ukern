@@ -34,7 +34,7 @@ alloc_proc(void)
 			continue;
 		}
 		// TODO: add lock here when multi-core is up
-		struct PageInfo *page = alloc_page(FLAG_ZERO);
+		struct page_info *page = alloc_page(FLAG_ZERO);
 		proc->pgtbl = (pgtbl_t)page->paddr;
 		page = alloc_page(FLAG_ZERO);
 		proc->p_pgtbl = (pgtbl_t)page->paddr;

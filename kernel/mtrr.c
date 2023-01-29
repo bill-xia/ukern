@@ -45,15 +45,15 @@ init_mtrr()
 	stmsr(MSR_MTRR_DEF_TYPE, deftype);
 
 	// test our screen again, it should be fast!
-	int	color,
-		ind;
-	for (color = 0; color < 0x1000000; color += 0x10101) {
-		for (ind = 0; ind < 1920 * 1080; ++ind) {
-			pixelbuf[ind] = color;
-		}
-	}
+	// int	color,
+	// 	ind;
+	// for (color = 0; color < 0x1000000; color += 0x10101) {
+	// 	for (ind = 0; ind < 1920 * 1080; ++ind) {
+	// 		pixelbuf[ind] = color;
+	// 	}
+	// }
 
-	for (ind = 0; ind < 1920 * 1080; ++ind) {
-		pixelbuf[ind] = 0;
-	}
+	// for (ind = 0; ind < 1920 * 1080; ++ind) {
+	// 	pixelbuf[ind] = 0;
+	// }
 }

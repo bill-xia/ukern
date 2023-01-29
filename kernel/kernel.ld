@@ -20,6 +20,6 @@ SECTIONS
         { *(.bss) }
     .rodata :
         { *(.rodata) }
-    PROVIDE(end = .);
+    PROVIDE(end_kernel_img = .);
     /DISCARD/ : { *(.comment) *(.eh_frame) *(.note) *(.group)}
 }

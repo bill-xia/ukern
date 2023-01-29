@@ -119,7 +119,7 @@ pcie_sata_ahci_init(volatile struct pci_config_device *cfg)
 		}
 
 		// 5. alloc memory for cl and fb
-		struct PageInfo *pg;
+		struct page_info *pg;
 		pg = alloc_page(FLAG_ZERO);
 		u64 paddr = pg->paddr;
 		map_mmio(k_pgtbl, KMMIO | paddr, paddr, NULL);
@@ -181,7 +181,7 @@ sata_read_block(int did, u64 block)
 	struct sata_cmd_hdr *cmd_hdr = &cmd_list[port][slot];
 	int prdtl = 1, cfl = sizeof(struct reg_h2d_fis) / 4, isatapi = 0;
 	// build ATA command
-	struct PageInfo *pg;
+	struct page_info *pg;
 	static struct sata_cmd_tbl *cmd_tbl = NULL;
 	// this function always use _the_ page for cmd_tbl
 	if (cmd_tbl == NULL) {

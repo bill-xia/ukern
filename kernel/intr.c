@@ -298,7 +298,7 @@ void page_fault_handler(struct ProcContext *tf, u64 errno) {
 			*pte |= PTE_W;
 		} else {
 			PA2PGINFO(*pte)->u.ref--;
-			struct PageInfo *page = alloc_page(0);
+			struct page_info *page = alloc_page(0);
 			char *src = (char *)PAGEKADDR(*pte), *dst = (char *)PAGEKADDR(page->paddr);
 			for (int i = 0; i < PGSIZE; ++i) dst[i] = src[i];
 			*pte = page->paddr | PTE_P | PTE_U | PTE_W;
