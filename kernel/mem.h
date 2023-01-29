@@ -36,8 +36,8 @@
 #define PT_OFFSET	12
 
 #define MASK(x)		((1ul << (x)) - 1)
-#define PAGEADDR(x)	((x) & ~(PGSIZE - 1))
-#define PAGEKADDR(x)	(((x) & ~(PGSIZE - 1)) | KERNBASE)
+#define PAGEADDR(x)	((u64)(x) & ~(PGSIZE - 1))
+#define PAGEKADDR(x)	(PAGEADDR(x) | KERNBASE)
 #define PA2PGINFO(x)	((struct page_info *)(k_pageinfo + ((u64)(x) >> 12)))
 #define KA2PGINFO(x)	((struct page_info *)(k_pageinfo + (K2P(x) >> 12)))
 
