@@ -29,10 +29,10 @@ main()
 		case '\n':
 			// run the command
 			sys_putch(c);
-			buf[ptr++] = ' ';
+			buf[ptr++] = '\0';
 			int argc = 0;
-			for (int i = 0, j = 0; i < ptr; ++i) {
-				if (buf[i] != ' ' && buf[i] != '\t') {
+			for (int i = 0, j = 0; i <= ptr; ++i) {
+				if (i < ptr && buf[i] != ' ' && buf[i] != '\t') {
 					argv[argc][j] = buf[i];
 					++j;
 					if (j == 256) {
