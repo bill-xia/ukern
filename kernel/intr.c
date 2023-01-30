@@ -208,7 +208,7 @@ init_intr(void)
 	lidt(&idt_desc);
 }
 
-void print_tf(struct ProcContext *tf)
+void print_tf(struct proc_context *tf)
 {
 	printk("rax: %lx, rcx: %lx, rdx: %lx, rbx: %lx\n", tf->rax, tf->rcx, tf->rdx, tf->rbx);
 	printk("rdi: %lx, rsi: %lx, rbp: %lx\n", tf->rdi, tf->rsi, tf->rbp);
@@ -217,10 +217,10 @@ void print_tf(struct ProcContext *tf)
 	printk("cs: %lx, rip: %lx, ss: %lx, rsp: %lx\n", tf->cs, tf->rip, tf->ss, tf->rsp);
 }
 
-void page_fault_handler(struct ProcContext *tf, u64 errno);
+void page_fault_handler(struct proc_context *tf, u64 errno);
 int keyboard_handler(void);
 
-void trap_handler(struct ProcContext *trapframe, u64 vecnum, u64 errno)
+void trap_handler(struct proc_context *trapframe, u64 vecnum, u64 errno)
 {
 	switch(vecnum) {
 	case 0:
@@ -270,7 +270,7 @@ void trap_handler(struct ProcContext *trapframe, u64 vecnum, u64 errno)
 	}
 }
 
-void page_fault_handler(struct ProcContext *tf, u64 errno) {
+void page_fault_handler(struct proc_context *tf, u64 errno) {
 	int r;
 	if (errno != 7) {
 		printk("cr2: %p\n", rcr2());

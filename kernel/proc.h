@@ -16,7 +16,7 @@ enum proc_state {
 	ZOMBIE
 };
 
-struct ProcContext {
+struct proc_context {
 	u64	rax,
 		rcx,
 		rdx,
@@ -42,7 +42,7 @@ struct ProcContext {
 		ss;
 };
 
-struct Proc {
+struct proc {
 	pgtbl_t 		pgtbl,
 				p_pgtbl;// p_pgtbl's corresponding mapping should be
 					// different with pgtbl only at W flag, and
@@ -51,7 +51,7 @@ struct Proc {
 	u64			pid;
 	enum proc_state		state;
 	u64			exec_time;
-	struct ProcContext	context;
+	struct proc_context	context;
 	struct file_desc	fdesc[64];
 	int			*wait_status;
 	// About these pointers:
@@ -70,22 +70,23 @@ struct Proc {
 	// `living_children` and `zombie_children` are kind of "owned"
 	//	by the process itself, while `prev_sibling` and
 	//	`next_sibling` are "owned" by the parent process.
-	struct Proc		*parent,
+	struct proc		*parent,
 				*living_child,
 				*zombie_child,
 				*prev_sibling,
 				*next_sibling;
 	u64			waiting:1;
 };
-extern struct Proc *procs, *curproc, *kbd_proc;
+extern struct proc *procs, *curproc, *kbd_proc;
 
 void init_pcb(void);
-void clear_proc_context(struct ProcContext *context);
+void clear_proc_context(struct proc_context *context);
 int create_proc(char *img);
-void run_proc(struct Proc *proc);
-void kill_proc(struct Proc *proc);
-struct Proc *alloc_proc(void);
-int load_img(char *img, struct Proc *proc);
+void run_proc(struct proc *proc);
+void kill_proc(struct proc *proc);
+void clear_proc(struct proc *proc);
+struct proc *alloc_proc(void);
+int load_img(char *img, struct proc *proc);
 
 #define IMAGE_SYMBOL(x) _binary_obj_user_ ## x ## _start
 #define CREATE_PROC(x) do { \

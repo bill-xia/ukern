@@ -6,29 +6,28 @@
 #include "sched.h"
 #include "errno.h"
 
-struct Proc *procs, *curproc, *kbd_proc;
-struct ProcContext empty_context;
+struct proc *procs, *curproc, *kbd_proc;
+struct proc_context empty_context;
+static u64 g_pid;
 
 void
-clear_proc_context(struct ProcContext *context)
+clear_proc_context(struct proc_context *context)
 {
-	memset(context, 0, sizeof(struct ProcContext));
+	memset(context, 0, sizeof(struct proc_context));
 }
 
 void
 init_pcb(void)
 {
-	procs = (struct Proc *)ROUNDUP((u64)end_kmem, sizeof(struct Proc));
-	for (int i = 0; i < NPROCS; ++i) {
-		procs[i].state = 0;
-	}
+	procs = (struct proc *)ROUNDUP((u64)end_kmem, sizeof(struct proc));
+	memset(procs, 0, NPROCS * sizeof(struct proc));
 	end_kmem = (char *)(procs + NPROCS);
 }
 
-struct Proc *
+struct proc *
 alloc_proc(void)
 {
-	struct Proc *proc;
+	struct proc *proc;
 	for (proc = procs; proc < procs + NPROCS; ++proc) {
 		if (proc->state != CLOSE) {
 			continue;
@@ -39,19 +38,7 @@ alloc_proc(void)
 		page = alloc_page(FLAG_ZERO);
 		proc->p_pgtbl = (pgtbl_t)page->paddr;
 		proc->state = PENDING;
-		proc->pid = (proc - procs) + 1;
-		proc->exec_time = 0;
-		clear_proc_context(&proc->context);
-		proc->parent = NULL;
-		proc->next_sibling = NULL;
-		proc->prev_sibling = NULL;
-		proc->living_child = NULL;
-		proc->zombie_child = NULL;
-		proc->wait_status = NULL;
-		proc->waiting = 0;
-		for (int i = 0; i < 64; ++i) {
-			proc->fdesc[i].inuse = 0;
-		}
+		proc->pid = ++g_pid;
 		return proc;
 	}
 	return NULL;
@@ -66,7 +53,7 @@ create_proc(char *img)
 {
 	int ret = 0;
 	// printk("nfreepages before create_proc(): %d\n", nfreepages);
-	struct Proc *proc = alloc_proc();
+	struct proc *proc = alloc_proc();
 	if (proc == NULL) {
 		return -EAGAIN;
 	}
@@ -110,12 +97,12 @@ create_proc(char *img)
 }
 
 void
-run_proc(struct Proc *proc)
+run_proc(struct proc *proc)
 {
 	// if (proc != procs)
 	//     printk("run_proc: %d\n", proc - procs);
 	curproc = proc;
-	struct ProcContext *context = &proc->context;
+	struct proc_context *context = &proc->context;
 	lcr3((u64)proc->pgtbl);
 	asm volatile (
 		"mov %0, %%rsp\n"
@@ -141,21 +128,101 @@ run_proc(struct Proc *proc)
 }
 
 void
-kill_proc(struct Proc *proc)
+exit_as_parent(struct proc *proc)
 {
-	// printk("nfreepages before kill_proc(): %d\n", nfreepages);
+	struct proc	*living_child = proc->living_child,
+			*zombie_child = proc->zombie_child,
+			*nxt;
+	while (living_child != NULL) {
+		living_child->parent = NULL;
+		living_child = living_child->next_sibling;
+	}
+	while (zombie_child != NULL) {
+		nxt = zombie_child->next_sibling;
+		clear_proc(zombie_child);
+		zombie_child = nxt;
+	}
+}
+
+void
+exit_as_child(struct proc *proc)
+{
+	struct proc *parent = proc->parent;
+	if (parent == NULL) {
+		// parent is dead
+		clear_proc(proc);
+		return;
+	}
+	if (!parent->waiting) {
+		// zombie
+		// add to zombie_child
+		if (parent->zombie_child == NULL) {
+			parent->zombie_child = proc;
+			proc->prev_sibling = proc->next_sibling = NULL;
+		} else {
+			struct proc *ohead = parent->zombie_child;
+			ohead->prev_sibling = proc;
+			proc->next_sibling = ohead;
+			parent->zombie_child = proc;
+		}
+
+		proc->state = ZOMBIE;
+		return;
+	}
+	// wait()ed by parent
+	parent->waiting = 0;
+	if (parent->wait_status != NULL) {
+		*parent->wait_status = 0; // TODO: copy on write?
+	}
+	// invoke parent
+	parent->context.rax = proc->pid;
+	parent->state = READY;
+	// detach from the sibling chain
+	if (proc->prev_sibling) {
+		proc->prev_sibling->next_sibling = proc->next_sibling;
+	}
+	if (proc->next_sibling) {
+		proc->next_sibling->prev_sibling = proc->prev_sibling;
+	}
+	// hand over sibling chain head
+	if (parent->living_child == proc) {
+		parent->living_child = proc->next_sibling;
+	}
+	if (parent->zombie_child == proc) {
+		parent->zombie_child = proc->next_sibling;
+	}
+	clear_proc(proc);
+}
+
+// Don't use this function if you're not sure what it does: maybe you just want
+// a `memset(proc, 0, sizeof(struct proc));`
+//
+// Clean up a process, no one cares about it any more.
+// Note that zombie won't be cleared, see kill_proc() and exit_as_child().
+void
+clear_proc(struct proc *proc)
+{
+	// Don't allocate this struct proc yet, thus don't mark as CLOSE.
+	// Meaningless in a single-processor system, but it's a must-have in
+	// MP system.
 	proc->state = PENDING;
+	
 	free_pgtbl((pgtbl_t)P2K(proc->pgtbl), FREE_PGTBL_DECREF);
 	free_pgtbl((pgtbl_t)P2K(proc->p_pgtbl), 0);
-	proc->state = CLOSE;
-	for (int i = 0; i < 64; ++i) {
-		proc->fdesc[i].inuse = 0;
-	}
-	// printk("proc[%d] exec time: %d timer periods.\n", proc - procs, proc->exec_time);
-	proc->exec_time = 0;
+
 	if (proc == kbd_proc)
 		kbd_proc = NULL;
-	// printk("nfreepages after kill_proc(): %d\n", nfreepages);
+
+	// fish back to the sea
+	memset(proc, 0, sizeof(struct proc));
+}
+
+// Kill the process, it may become a zombie! (sounds scary...)
+void
+kill_proc(struct proc *proc)
+{
+	exit_as_parent(proc);
+	exit_as_child(proc);
 }
 
 // Load program image pointed by `ehdr`
@@ -165,7 +232,7 @@ kill_proc(struct Proc *proc)
 //	-ENOMEM when memory not enough
 //	-ENOEXEC when img is not ELF64 file
 int
-load_img(char *img, struct Proc *proc)
+load_img(char *img, struct proc *proc)
 {
 	struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
 	if (*(u32 *)ehdr->e_ident != ELF_MAGIC) {

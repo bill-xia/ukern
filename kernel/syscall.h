@@ -4,6 +4,6 @@
 #include "types.h"
 #include "proc.h"
 
-void syscall(struct ProcContext *tf);
+void syscall(struct proc_context *tf);
 
 #endif

@@ -72,16 +72,16 @@ sys_hello(void)
 }
 
 void
-sys_fork(struct ProcContext *tf)
+sys_fork(struct proc_context *tf)
 {
-	struct Proc *nproc = alloc_proc();
+	struct proc *nproc = alloc_proc();
 
 	// add to living_child
 	if (curproc->living_child == NULL) {
 		curproc->living_child = nproc;
 		nproc->prev_sibling = nproc->next_sibling = NULL;
 	} else {
-		struct Proc *ohead = curproc->living_child;
+		struct proc *ohead = curproc->living_child;
 		ohead->prev_sibling = nproc;
 		nproc->next_sibling = ohead;
 		curproc->living_child = nproc;
@@ -104,7 +104,7 @@ sys_fork(struct ProcContext *tf)
 }
 
 void
-sys_open(struct ProcContext *tf)
+sys_open(struct proc_context *tf)
 {
 	if (!check_str(tf->rdx, 256, PTE_U)) { // TODO: max filename length
 		tf->rax = -EFAULT;
@@ -129,7 +129,7 @@ sys_open(struct ProcContext *tf)
 }
 
 void
-sys_read(struct ProcContext *tf)
+sys_read(struct proc_context *tf)
 {
 	int fd = tf->rdx;
 	if (fd < 0 || fd >= 64) {
@@ -155,7 +155,7 @@ sys_read(struct ProcContext *tf)
 }
 
 void
-sys_exec(struct ProcContext *tf)
+sys_exec(struct proc_context *tf)
 {
 	static char argv_buf[16][256];
 	// save argv
@@ -215,7 +215,7 @@ sys_exec(struct ProcContext *tf)
 	curproc->p_pgtbl = (pgtbl_t)page->paddr;
 	// code below is copied from create_proc()
 	// may delete create_proc() in the future
-	struct Proc *proc = curproc;
+	struct proc *proc = curproc;
 	if (ret = load_img(img, proc)) {
 		kill_proc(proc);
 		goto free_img;
@@ -277,7 +277,7 @@ free_img:
 }
 
 void
-sys_getch(struct ProcContext *tf)
+sys_getch(struct proc_context *tf)
 {
 	if (kbd_buf_siz > 0) {
 		tf->rax = kbd_buffer[kbd_buf_beg++];
@@ -298,82 +298,14 @@ sys_getch(struct ProcContext *tf)
 }
 
 void
-exit_as_parent()
-{
-	struct Proc	*living_child = curproc->living_child,
-			*zombie_child = curproc->zombie_child,
-			*nxt;
-	while (living_child != NULL) {
-		living_child->parent = NULL;
-		living_child = living_child->next_sibling;
-	}
-	while (zombie_child != NULL) {
-		nxt = zombie_child->next_sibling;
-		kill_proc(zombie_child);
-		zombie_child = nxt;
-	}
-}
-
-void
-exit_as_child()
-{
-	struct Proc *parent = curproc->parent;
-	if (parent == NULL) {
-		// parent is dead
-		kill_proc(curproc);
-		return;
-	}
-	if (!parent->waiting) {
-		// zombie
-		// add to zombie_child
-		if (parent->zombie_child == NULL) {
-			parent->zombie_child = curproc;
-			curproc->prev_sibling = curproc->next_sibling = NULL;
-		} else {
-			struct Proc *ohead = parent->zombie_child;
-			ohead->prev_sibling = curproc;
-			curproc->next_sibling = ohead;
-			parent->zombie_child = curproc;
-		}
-
-		curproc->state = ZOMBIE;
-		return;
-	}
-	// wait()ed by parent
-	parent->waiting = 0;
-	if (parent->wait_status != NULL) {
-		*parent->wait_status = 0; // TODO: copy on write?
-	}
-	// invoke parent
-	parent->context.rax = curproc->pid;
-	parent->state = READY;
-	// detach from the sibling chain
-	if (curproc->prev_sibling) {
-		curproc->prev_sibling->next_sibling = curproc->next_sibling;
-	}
-	if (curproc->next_sibling) {
-		curproc->next_sibling->prev_sibling = curproc->prev_sibling;
-	}
-	// hand over sibling chain head
-	if (parent->living_child == curproc) {
-		parent->living_child = curproc->next_sibling;
-	}
-	if (parent->zombie_child == curproc) {
-		parent->zombie_child = curproc->next_sibling;
-	}
-	kill_proc(curproc);
-}
-
-void
 sys_exit()
 {
-	exit_as_parent();
-	exit_as_child();
+	kill_proc(curproc);
 	sched();
 }
 
 void
-sys_wait(struct ProcContext *tf)
+sys_wait(struct proc_context *tf)
 {
 	if (tf->rdx != 0 && !check_mem(tf->rdx, sizeof(int), PTE_U | PTE_W)) {
 		tf->rax = -EFAULT;
@@ -383,14 +315,14 @@ sys_wait(struct ProcContext *tf)
 		// have zombie child, wait() it
 		if (tf->rdx != 0)
 			*(int *)(tf->rdx) = 0; // TODO: more wait_status
-		struct Proc	*ohead = curproc->zombie_child,
+		struct proc	*ohead = curproc->zombie_child,
 				*nhead = curproc->zombie_child->next_sibling;
 		// return child's pid
 		tf->rax = ohead->pid;
 		curproc->zombie_child = nhead;
 		if (nhead)
 			nhead->prev_sibling = NULL;
-		kill_proc(ohead);
+		clear_proc(ohead);
 		return;
 	}
 	if (curproc->living_child == NULL) {
@@ -407,7 +339,7 @@ sys_wait(struct ProcContext *tf)
 }
 
 void
-syscall(struct ProcContext *tf)
+syscall(struct proc_context *tf)
 {
 	int num = tf->rax;
 	switch (num) {
