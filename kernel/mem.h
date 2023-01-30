@@ -57,6 +57,22 @@ struct page_info {
 	struct page_info	*next;
 };
 
+#define EFI_RESERVED_MEMORY_TYPE	0
+#define EFI_LOADER_CODE			1
+#define EFI_LOADER_DATA			2
+#define EFI_BOOT_SERVICES_CODE		3
+#define EFI_BOOT_SERVICES_DATA		4
+#define EFI_RUNTIME_SERVICE_CODE	5
+#define EFI_RUNTIME_SERVICE_DATA	6
+#define EFI_CONVENTIONAL_MEMORY		7
+#define EFI_UNUSABLE_MEMORY		8
+#define EFI_ACPI_RECLAIM_MEMORY		9
+#define EFI_ACPI_MEMORY_NVS		10
+#define EFI_MEMORY_MAPPED_IO		11
+#define EFI_MEMORY_MAPPED_IOPORT_SPACE	12
+#define EFI_PAL_CODE			13
+#define EFI_PERSISTENT_MEMORY		14
+
 struct mem_map_desc {
 	u32	type;           // Field size is 32 bits followed by 32 bit pad
 	u32	pad;

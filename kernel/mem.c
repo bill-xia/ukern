@@ -117,6 +117,7 @@ init_kpageinfo(struct mem_map *mem_map)
 	// printk("ndesc: %d\n", n_desc);
 	for (int i = 0; i < n_desc; ++i) {
 		u64 end_addr = desc->phys_start + desc->num_of_pages*PGSIZE;
+		// ignore UEFI memory type, just find the max addr
 		max_addr = max(max_addr, end_addr);
 		desc = (struct mem_map_desc *)((u64)desc + desc_size);
 	}
@@ -128,6 +129,12 @@ init_kpageinfo(struct mem_map *mem_map)
 
 	desc = (struct mem_map_desc *)mem_map->list;
 	for (int i = 0; i < n_desc; ++i) {
+		// If we don't set paddr, this page won't be inside free list。
+		// See init_freepages().
+		if (desc->type != EFI_CONVENTIONAL_MEMORY) {
+			desc = (struct mem_map_desc *)((u64)desc + desc_size);
+			continue;
+		}
 		// According to UEFI Spec 7.2.3 Release 2.10, phys_start must be
 		// aligned on a 4KiB boundary, and num_of_pages is number of
 		// *4KiB* pages.
