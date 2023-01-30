@@ -1,5 +1,6 @@
 #include "console.h"
 #include "mem.h"
+#include "printk.h"
 
 static u32 ind = 0, rows = 0, cols = 0,
 	height, width,
@@ -90,4 +91,9 @@ init_console(struct screen *screen)
 		console_putch('\n');
 	}
 	ind = 0;
+
+	// We assert buf is (1<<23) byte aligned, and we'll mark
+	// [buf, buf+(1<<23)] as cache-combined to spped up graphic,
+	// see mtrr.c for details.
+	assert(((u64)screen->buf & MASK(23)) == 0);
 }

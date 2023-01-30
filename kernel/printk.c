@@ -1,6 +1,4 @@
 #include "printk.h"
-#include "stdarg.h"
-#include "printfmt.h"
 #include "console.h"
 
 void

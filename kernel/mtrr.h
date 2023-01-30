@@ -24,6 +24,8 @@
 #define MSR_MTRR_PHYS_MASK(i)		(0x201 + 2 * (i))
 	#define MTRR_MASK_V		0x800
 
+#define CPUID_ADDR_PHYSHIFT_MASK	0xFF
+#define CPUID_ADDR_LINSHIFT_MASK	0xFF00
 
 int init_mtrr(void);
 

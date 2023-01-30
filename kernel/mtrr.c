@@ -18,30 +18,35 @@ init_mtrr()
 	u64 mtrr_cap = rdmsr(MSR_MTRR_CAP);
 	if (!(mtrr_cap & MTRR_CAP_WC)) {
 		panic("Doesn't support Write Combing.\n");
-	} else {
-		printk("Support Write Combing.\n");
 	}
 
 	// disable
 	deftype = rdmsr(MSR_MTRR_DEF_TYPE);
-	if (deftype & (MTRR_DEF_TYPE_FE | MTRR_DEF_TYPE_E)) {
-		printk("MTRR enabled, disbling.\n");
-	}
+	// if (deftype & (MTRR_DEF_TYPE_FE | MTRR_DEF_TYPE_E)) {
+	// 	printk("MTRR enabled, disbling.\n");
+	// }
 	deftype &= ~(MTRR_DEF_TYPE_E | MTRR_DEF_TYPE_FE);
 	stmsr(MSR_MTRR_DEF_TYPE, deftype);
 
 	// set pixelbuf to Write-Combining
 	int mtrr_vcnt = mtrr_cap & MTRR_CAP_VCNT_MASK;
 	stmsr(MSR_MTRR_PHYS_BASE(0), K2P(PAGEADDR(pixelbuf)) | MTRR_TYPE_WC);
-	stmsr(MSR_MTRR_PHYS_MASK(0), (0xFFul << 28) | MTRR_MASK_V);
-	// TODO: get MAXPHYSADDR and mask according to it
+
+	// get MAXPHYSADDR and mask according to it
+	u64 addr_size;
+	cpuid(0x80000008, &addr_size, NULL, NULL, NULL);
+	u64	phy_shift = addr_size & CPUID_ADDR_PHYSHIFT_MASK,
+		lin_shift = (addr_size & CPUID_ADDR_LINSHIFT_MASK) >> 8;
+	assert(lin_shift >= 48); // thus our memory layout works
+	stmsr(MSR_MTRR_PHYS_MASK(0), (~MASK(23)&MASK(phy_shift)) | MTRR_MASK_V);
+
 	for (int i = 1; i < mtrr_vcnt; ++i) {
 		stmsr(MSR_MTRR_PHYS_BASE(i), 0);
 		// without MTRR_MASK_V, thus disabled
 		stmsr(MSR_MTRR_PHYS_MASK(i), 0);
 	}
 
-	// enabling
+	// enable
 	deftype = (MTRR_DEF_TYPE_E | MTRR_DEF_TYPE_FE) | MTRR_TYPE_WB;
 	stmsr(MSR_MTRR_DEF_TYPE, deftype);
 

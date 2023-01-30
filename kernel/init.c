@@ -18,10 +18,10 @@ void init(struct boot_args *args)
 	extern char end_kernel_img[];
 	end_kmem = end_kernel_img;
 	init_console(args->screen);
+	init_mtrr();
 	init_gdt();
 	init_kpageinfo(args->mem_map); // after the kernel image, is the k_pageinfo array
 	init_kpgtbl(); // then comes kernel pagetable, which maps the whole physical memory space
-	init_mtrr();
 	init_pcb(); // then Process Control Blocks
 	init_intr();
 	init_freepages(); // initialize the free page list
