@@ -158,6 +158,24 @@ u8 kstack[4096] __attribute__ (( aligned(4096)));
 void
 init_kpgtbl(void)
 {
+	// Clear any write protection,
+	// kernel need write access to the whole space.
+	u64 cr0 = rcr0(), cr4 = rcr4();
+	if (cr0 & CR0_WP) {
+		// printk("CR0_WP is set, clearing.\n");
+		cr0 &= ~CR0_WP;
+		lcr0(cr0);
+	}
+	if (cr4 & CR4_SMAP) {
+		// printk("CR4_SMAP is set, clearing.\n");
+		cr4 &= ~CR4_SMAP;
+		lcr4(cr4);
+	}
+	if (cr4 & (CR4_PKE | CR4_PKS)) {
+		cr4 &= ~(CR4_PKE | CR4_PKS);
+		lcr4(cr4);
+	}
+
 	// Allocate PDPTs for whole address space
 	// Thus whole kernel space may be copied
 	// by just copying k_pgtbl[256:512]

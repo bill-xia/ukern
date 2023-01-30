@@ -136,6 +136,12 @@ We know nothing about physical memory allocation, we get the info from ACPI.
 
 */
 
+#define CR0_WP		(1ul << 16)
+
+#define CR4_SMAP	(1ul << 21)
+#define CR4_PKE		(1ul << 22)
+#define CR4_PKS		(1ul << 24)
+
 struct seg_desc {
 	u16	limit1;
 	u16	base1;
