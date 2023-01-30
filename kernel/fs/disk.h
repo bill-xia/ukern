@@ -21,7 +21,7 @@ struct guid {
 };
 
 static int
-guid_eq(struct guid *a, struct guid *b)
+guid_eq(void *a, void *b)
 {
 	return !strcmp((char *)a, (char *)b, 16);
 }
