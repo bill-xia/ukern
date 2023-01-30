@@ -3,6 +3,7 @@ USERINC := -Iinclude -Ilib
 USERLIBS := $(OBJ_DIR)/user/lib/printf.o \
 	$(OBJ_DIR)/user/lib/usyscall.o \
 	$(OBJ_DIR)/user/lib/printfmt.o \
+	$(OBJ_DIR)/user/lib/errno.o \
 
 $(OBJ_DIR)/user/%: $(OBJ_DIR)/user/%.o $(USERLIBS)
 	ld -T user/user.ld $^ -o $@

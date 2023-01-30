@@ -1,15 +1,6 @@
 #ifndef FS_H
 #define FS_H
 
-#define E_TRAVEL_INTO_FILE	1
-#define E_FILE_NOT_EXIST	2
-#define E_FILE_NAME_TOO_LONG	3
-#define E_NO_AVAIL_FD		4
-
-#define E_INVALID_FD		1
-#define E_FD_NOT_OPENED		2
-#define E_INVALID_MEM		3
-
 #include "mem.h"
 #include "disk.h"
 

@@ -21,6 +21,17 @@ typedef u64*		pdpt_t;
 typedef u64*		pd_t;
 typedef u64*		pt_t;
 
+
+#define max(a,b) \
+	({ __typeof__ (a) _a = (a); \
+	__typeof__ (b) _b = (b); \
+	_a > _b ? _a : _b; })
+
+#define min(a,b) \
+	({ __typeof__ (a) _a = (a); \
+	__typeof__ (b) _b = (b); \
+	_a < _b ? _a : _b; })
+
 #define NULL 0
 
 #endif

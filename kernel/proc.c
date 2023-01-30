@@ -57,10 +57,10 @@ alloc_proc(void)
 	return NULL;
 }
 
-u64 min(u64 a, u64 b) {
-	return a < b ? a : b;
-}
-
+// Create a process according to executable image `img`.
+// Returns:
+//	0 on success
+//	-EAGAIN if limit on the number of processes is encountered
 int
 create_proc(char *img)
 {
@@ -68,7 +68,7 @@ create_proc(char *img)
 	// printk("nfreepages before create_proc(): %d\n", nfreepages);
 	struct Proc *proc = alloc_proc();
 	if (proc == NULL) {
-		return -E_NOPCB;
+		return -EAGAIN;
 	}
 	if (ret = load_img(img, proc)) {
 		return ret;
@@ -158,27 +158,26 @@ kill_proc(struct Proc *proc)
 	// printk("nfreepages after kill_proc(): %d\n", nfreepages);
 }
 
-//
 // Load program image pointed by `ehdr`
 // into `proc`'s memory space.
-// Returns 0 on success,
-//        -ENOMEM when memory not enough,
-//        -EFORMAT when img is not ELF64 file.
-//
+// Returns:
+//	0 on success
+//	-ENOMEM when memory not enough
+//	-ENOEXEC when img is not ELF64 file
 int
 load_img(char *img, struct Proc *proc)
 {
 	struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
 	if (*(u32 *)ehdr->e_ident != ELF_MAGIC) {
-		return -E_FORMAT;
+		return -ENOEXEC;
 	}
 	struct Elf64_Phdr *phdr = (struct Elf64_Phdr *)(img + ehdr->e_phoff);
 	for (int i = 0; i < ehdr->e_phnum; ++i, ++phdr) {
 		if (phdr->p_type != PT_LOAD)
 			continue;
-		char *src = img + phdr->p_offset, 
-			 *src_fileend = src + phdr->p_filesz,
-			 *src_memend = src + phdr->p_memsz;
+		char	*src = img + phdr->p_offset, 
+			*src_fileend = src + phdr->p_filesz,
+			*src_memend = src + phdr->p_memsz;
 		u64 vaddr = phdr->p_vaddr;
 		pte_t *pte = NULL;
 		while (src < src_memend) {
@@ -186,7 +185,7 @@ load_img(char *img, struct Proc *proc)
 				int ret = walk_pgtbl(proc->pgtbl, PAGEADDR(vaddr), &pte, 1);
 				if (ret) {
 					free_pgtbl(proc->pgtbl, FREE_PGTBL_DECREF);
-					return -E_NOMEM;
+					return -ENOMEM;
 				}
 				*pte |= PTE_U | PTE_W;
 			}

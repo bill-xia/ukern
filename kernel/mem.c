@@ -8,6 +8,7 @@
 #include "x86.h"
 #include "errno.h"
 #include "string.h"
+#include "proc.h"
 
 struct seg_desc	gdt[9] = {
 	{}, // empty
@@ -61,10 +62,6 @@ static const int	n_pml4_perpage = PGSIZE / sizeof(pgtbl_t),
 
 static struct page_info	*freepages = NULL;
 
-u64 max(u64 a, u64 b) {
-	return a > b ? a : b;
-}
-
 static inline
 void load_segs(u64 cs)
 {
@@ -112,29 +109,31 @@ void
 init_kpageinfo(struct mem_map *mem_map)
 {
 	k_pageinfo = (struct page_info *)end_kmem;
-	int	i = 0,
-		desc_size = mem_map->desc_size,
+	int	desc_size = mem_map->desc_size,
 		n_desc = mem_map->map_size / desc_size;
 	max_addr = 0;
 
 	struct mem_map_desc *desc = (struct mem_map_desc *)mem_map->list;
 	// printk("ndesc: %d\n", n_desc);
-	for (i = 0; i < n_desc; ++i) {
+	for (int i = 0; i < n_desc; ++i) {
 		u64 end_addr = desc->phys_start + desc->num_of_pages*PGSIZE;
 		max_addr = max(max_addr, end_addr);
 		desc = (struct mem_map_desc *)((u64)desc + desc_size);
 	}
 	for (u64 addr = 0; addr < max_addr; addr += PGSIZE) {
 		PA2PGINFO(addr)->paddr = 0;
+		PA2PGINFO(addr)->ref = 0;
+		PA2PGINFO(addr)->next = NULL;
 	}
 
 	desc = (struct mem_map_desc *)mem_map->list;
-	for (i = 0; i < n_desc; ++i) {
+	for (int i = 0; i < n_desc; ++i) {
 		// According to UEFI Spec 7.2.3 Release 2.10, phys_start must be
 		// aligned on a 4KiB boundary, and num_of_pages is number of
 		// *4KiB* pages.
 		u64	beg_addr = desc->phys_start,
 			end_addr = desc->phys_start + desc->num_of_pages*PGSIZE;
+		// printk("[%lx, %lx]  ", beg_addr, end_addr);
 		while (beg_addr < end_addr) {
 			PA2PGINFO(beg_addr)->paddr = beg_addr;
 			beg_addr += PGSIZE;
@@ -159,8 +158,6 @@ u8 kstack[4096] __attribute__ (( aligned(4096)));
 void
 init_kpgtbl(void)
 {
-	int i;
-
 	// Allocate PDPTs for whole address space
 	// Thus whole kernel space may be copied
 	// by just copying k_pgtbl[256:512]
@@ -173,12 +170,11 @@ init_kpgtbl(void)
 	char *end_kpgtbl = (char *)(kstack_pt + PGSIZE / sizeof(u64*));
 
 	memset(k_pgtbl, 0, (u64)end_kpgtbl - (u64)k_pgtbl);
-	for (i = 0; i < n_pml4; ++i) {
+	for (int i = 0; i < n_pml4; ++i) {
 		k_pgtbl[i] = K2P(k_pdpt + n_pdpt_perpage*i) | PML4E_P | PML4E_W;
 	}
 
-	u64 addr;
-	for (addr = 0; addr < max_addr; addr += 0x40000000ul) { // 1G pages
+	for (u64 addr = 0; addr < max_addr; addr += 0x40000000ul) { // 1G pages
 		reg_kpgtbl_1Gpage(addr, addr);
 		reg_kpgtbl_1Gpage(KERNBASE | addr, addr);
 	}
@@ -204,18 +200,19 @@ init_freepages(void)
 		if (pginfo->paddr < K2P((u64)end_kmem)) {
 			// used by kernel, or unavailable
 			// for unavailable page, paddr is 0x0
-			pginfo->u.ref++;
+			pginfo->ref = 1;
+			pginfo->next = NULL;
 			continue;
 		}
 		if (last_page) {
-			last_page->u.next = pginfo;
+			last_page->next = pginfo;
 		} else {
 			freepages = pginfo;
 		}
 		last_page = pginfo;
 		nfreepages++;
 	}
-	last_page->u.next = NULL;
+	last_page->next = NULL;
 }
 
 //
@@ -235,10 +232,16 @@ alloc_page(u64 flags)
 {
 	if (freepages == NULL) return NULL;
 	struct page_info *ret = freepages;
-	freepages = freepages->u.next;
-	if (flags & FLAG_ZERO)
+	freepages = freepages->next;
+	if (freepages->paddr > max_addr) {
+		panic("alloc_page(): paddr %lx greater than max_addr %lx",
+			freepages->paddr,
+			max_addr);
+	}
+	if (flags & FLAG_ZERO) {
 		memset((void *)P2K(ret->paddr), 0, PGSIZE);
-	ret->u.ref = 1;
+	}
+	ret->ref = 1;
 	nfreepages--;
 	return ret;
 }
@@ -251,18 +254,27 @@ alloc_page(u64 flags)
 void
 free_page(struct page_info *page)
 {
-	if (page->u.ref == 0) {
-		panic("free_page(): page with ref equals zero, paddr: %p\n",
+	if (page->paddr < K2P((u64)end_kmem)) {
+		panic("free_page(): try to free page inside kernel： %lx\n",
 			page->paddr);
 	}
-	if (--page->u.ref == 0) {
-		page->u.next = freepages;
+	if (page->paddr >= K2P(max_addr)) {
+		panic("free_page(): addr %lx greater than max_addr %lx.\n",
+			page->paddr,
+			max_addr);
+	}
+	if (page->ref <= 0) {
+		panic("free_page(): page %p with ref(%d) <= 0\n",
+			page->paddr,
+			page->ref);
+	}
+	if (--page->ref == 0) {
+		page->next = freepages;
 		freepages = page;
 		nfreepages++;
 	}
 }
 
-//
 // Take a walk at pgtbl according to vaddr. If `create`
 // is non-zero, create new page in need. No permission is
 // given on the pte of the new created page. Otherwise,
@@ -272,8 +284,10 @@ free_page(struct page_info *page)
 //
 // Pass out a pointer to the page table entry at *pte, pass
 // NULL if vaddr is not mapped.
-// Returns 0 on success, or -E_NOMEM if memory not enough.
-//
+// Returns:
+//	0 on success
+//	-EFAULT if vaddr is not mapped
+//	-ENOMEM if memory not enough
 int
 walk_pgtbl(pgtbl_t pgtbl, u64 vaddr, pte_t **pte, int create)
 {
@@ -295,6 +309,7 @@ walk_pgtbl(pgtbl_t pgtbl, u64 vaddr, pte_t **pte, int create)
 
 	pdpt_t pdpt = (pdpt_t)PAGEKADDR(pgtbl[pml4i]);
 	int pdpti = PDPT_INDEX(vaddr);
+	assert(!(pdpt[pdpti] & PDPTE_PS)); // TODO: support walk in huge page
 	if (!(pdpt[pdpti] & PDPTE_P)) {
 		if (!create) goto unmapped;
 		alloced[1] = alloc_page(FLAG_ZERO);
@@ -306,6 +321,7 @@ walk_pgtbl(pgtbl_t pgtbl, u64 vaddr, pte_t **pte, int create)
 
 	pd_t pd = (pd_t)PAGEKADDR(pdpt[pdpti]);
 	int pdi = PD_INDEX(vaddr);
+	assert(!(pd[pdi] & PDE_PS));
 	if (!(pd[pdi] & PDE_P)) {
 		if (!create) goto unmapped;
 		alloced[2] = alloc_page(FLAG_ZERO);
@@ -332,10 +348,12 @@ walk_pgtbl(pgtbl_t pgtbl, u64 vaddr, pte_t **pte, int create)
 unmapped:
 	if (pte != NULL)
 		*pte = NULL;
+	return -EFAULT;
 no_mem:
-	for (int i = 0; i < 4 && alloced[i] != NULL; ++i)
+	for (int i = 0; i < 4 && alloced[i] != NULL; ++i) {
 		free_page(alloced[i]);
-	return -E_NOMEM;
+	}
+	return -ENOMEM;
 }
 
 int
@@ -378,9 +396,9 @@ free_pgtbl(pgtbl_t pgtbl, u64 flags)
 				for (int pti = 0; pti < 512; ++pti) {
 					if (!(pt[pti] & PTE_P))
 						continue;
-					u64 paddr = PAGEKADDR(pt[pti]);
-					if (flags & FREE_PGTBL_DECREF)
-						free_page(KA2PGINFO(paddr));
+					if (flags & FREE_PGTBL_DECREF) {
+						free_page(PA2PGINFO(pt[pti]));
+					}
 				}
 				free_page(KA2PGINFO(pt));
 			}
@@ -389,6 +407,36 @@ free_pgtbl(pgtbl_t pgtbl, u64 flags)
 		free_page(KA2PGINFO(pdpt));
 	}
 	free_page(KA2PGINFO(pgtbl));
+}
+
+void
+print_pgtbl(pgtbl_t pgtbl)
+{
+	pgtbl = (pgtbl_t)P2K(pgtbl);
+	printk("pgtbl: %lx\n", pgtbl);
+	for (int pml4i = 0; pml4i < 256; ++pml4i) {
+		if (!(pgtbl[pml4i] & PML4E_P))
+			continue;
+		printk("  %d %lx\n", pml4i, pgtbl[pml4i]);
+		pdpt_t pdpt = (pdpt_t)PAGEKADDR(pgtbl[pml4i]);
+		for (int pdpti = 0; pdpti < 512; ++pdpti) {
+			if (!(pdpt[pdpti] & PDPTE_P))
+				continue;
+			printk("    %d %lx\n", pml4i, pdpt[pdpti]);
+			pd_t pd = (pd_t)PAGEKADDR(pdpt[pdpti]);
+			for (int pdi = 0; pdi < 512; ++pdi) {
+				if (!(pd[pdi] & PDE_P))
+					continue;
+				printk("      %d %lx\n", pdi, pd[pdi]);
+				pt_t pt = (pt_t)PAGEKADDR(pd[pdi]);
+				for (int pti = 0; pti < 512; ++pti) {
+					if (!(pt[pti] & PTE_P))
+						continue;
+					printk("        %d %lx\n", pti, pt[pti]);
+				}
+			}
+		}
+	}
 }
 
 /************************************************
@@ -428,7 +476,7 @@ copy_pgtbl(pgtbl_t dst, pgtbl_t src, u64 flags)
 						continue;
 					pt_d[pti] = pt_s[pti];
 					if (flags & CPY_PGTBL_CNTREF)
-						PA2PGINFO(pt_s[pti])->u.ref++;
+						PA2PGINFO(pt_s[pti])->ref++;
 				}
 			}
 		}

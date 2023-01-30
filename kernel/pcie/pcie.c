@@ -59,13 +59,12 @@ pcie_init_device(int bus, int devfn)
 	//     (int)pcie_readb(dev, SUBCLASS),
 	//     (int)pcie_readb(dev, PROGIF)
 	// );
-	int i;
 	u8     vecdor = pcie_readw(dev, VENDORID),
 				devid = pcie_readw(dev, DEVICEID);
 	u16    class = pcie_readb(dev, CLASS),
 				subclass = pcie_readb(dev, SUBCLASS),
 				progif = pcie_readb(dev, PROGIF);
-	for (i = 0; i < n_pcie_dev_type; ++i) {
+	for (int i = 0; i < n_pcie_dev_type; ++i) {
 		if (pcie_dev_type_list[i].class == class &&
 			pcie_dev_type_list[i].subclass == subclass &&
 			pcie_dev_type_list[i].progif == progif) { // match

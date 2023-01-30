@@ -9,22 +9,60 @@
 #include "fs/fs.h"
 #include "kbd.h"
 #include "string.h"
+#include "errno.h"
 
+// check inside current pagetable:
+// whether `flags` are set for PTEs in memory range [addr,addr+siz]
+// PTE_P is neccessary, add other flags on need. (PTE_U and PTE_W are common)
+// Returns 1 on success, 0 on failure.
 int
-check_umem_mapping(u64 addr, u64 siz)
+check_mem(u64 addr, u64 siz, u64 flags)
 {
+	flags |= PTE_P;
 	addr = PAGEADDR(addr);
 	u64 end = PAGEADDR(addr + siz) + PGSIZE;
-	u64 *pte, flags = PTE_U | PTE_P | PTE_W;
+	u64 *pte;
 	pgtbl_t pgtbl = (pgtbl_t)P2K(rcr3());
 	while (addr != end) {
 		walk_pgtbl(pgtbl, addr, &pte, 0);
-		if ((*pte & flags) != flags) {
+		if (pte == NULL || (*pte & flags) != flags) {
 			return 0;
 		}
 		addr += PGSIZE;
 	}
 	return 1;
+}
+
+// check inside current pagetable:
+// whether `flags` are set for PTEs in string beginning at `addr`. Check `siz`
+// bytes at most.
+// PTE_P is neccessary, add other flags on need. (PTE_U and PTE_W are common)
+// Returns 1 on success, 0 on failure.
+int
+check_str(u64 addr, u64 siz, u64 flags)
+{
+	// printk("check_str addr: %lx, siz %d, flags %lx\n", addr, siz, flags);
+	u64 str_offset = addr & PGMASK;
+
+	flags |= PTE_P;
+	addr = PAGEADDR(addr);
+	u64 end = PAGEADDR(addr + siz) + PGSIZE;
+	u64 *pte;
+	pgtbl_t pgtbl = (pgtbl_t)P2K(rcr3());
+	while (addr != end) {
+		walk_pgtbl(pgtbl, addr, &pte, 0);
+		if (pte == NULL || (*pte & flags) != flags) {
+			return 0;
+		}
+		char *str = (char *)PAGEKADDR(*pte) + str_offset;
+		for (int i = 0; i < PGSIZE - str_offset; ++i) {
+			if (str[i] == 0)
+				return 1;
+		}
+		str_offset = 0;
+		addr += PGSIZE;
+	}
+	return 0;
 }
 
 void
@@ -49,7 +87,6 @@ sys_fork(struct ProcContext *tf)
 		curproc->living_child = nproc;
 	}
 	nproc->parent = curproc;
-
 	copy_pgtbl(nproc->pgtbl, curproc->p_pgtbl, CPY_PGTBL_CNTREF);
 	// save the "real" page table
 	copy_pgtbl(nproc->p_pgtbl, curproc->p_pgtbl, 0);
@@ -69,11 +106,15 @@ sys_fork(struct ProcContext *tf)
 void
 sys_open(struct ProcContext *tf)
 {
+	if (!check_str(tf->rdx, 256, PTE_U)) { // TODO: max filename length
+		tf->rax = -EFAULT;
+		return;
+	}
 	u32 head_cluster, use_fat;
 	u64 file_len;
 	for (int fd = 0; fd < 256; ++fd) {
 		if (curproc->fdesc[fd].inuse) continue;
-		int r = open_file((void *)(tf->rdx), curproc->fdesc + fd);
+		int r = open_file((void *)tf->rdx, curproc->fdesc + fd);
 		if (r == 0) {
 			tf->rax = fd;
 			curproc->fdesc[fd].inuse = 1;
@@ -83,14 +124,8 @@ sys_open(struct ProcContext *tf)
 		return;
 	}
 	// no available file descriptor
-	tf->rax = -E_NO_AVAIL_FD;
+	tf->rax = -EMFILE;
 	return;
-}
-
-inline u64
-min(u64 a, u64 b)
-{
-	return a < b ? a : b;
 }
 
 void
@@ -98,16 +133,16 @@ sys_read(struct ProcContext *tf)
 {
 	int fd = tf->rdx;
 	if (fd < 0 || fd >= 64) {
-		tf->rax = -E_INVALID_FD;
+		tf->rax = -EBADF;
+		return;
+	}
+	if (!check_mem(tf->rcx, tf->rbx, PTE_U | PTE_W)) {
+		tf->rax = -EFAULT;
 		return;
 	}
 	struct file_desc *fdesc = &curproc->fdesc[fd];
-	if (fdesc->meta_exfat.head_cluster == 0) {
-		tf->rax = -E_FD_NOT_OPENED;
-		return;
-	}
-	if (!check_umem_mapping(tf->rcx, tf->rbx)) {
-		tf->rax = -E_INVALID_MEM;
+	if (fdesc->inuse == 0) {
+		tf->rax = -EBADF;
 		return;
 	}
 	int r = read_file(
@@ -123,6 +158,22 @@ void
 sys_exec(struct ProcContext *tf)
 {
 	static char argv_buf[16][256];
+	// save argv
+	char **ori_argv = (char **)tf->rbx;
+	int argc = (int)tf->rcx;
+	if (argc > NARGS) {
+		tf->rax = -EINVAL;
+		return;
+	}
+	for (int i = 0; i < argc; ++i) {
+		if (!check_str((u64)ori_argv[i], ARGLEN, PTE_U)) {
+			tf->rax = -EINVAL;
+			return;
+		}
+		strncpy(argv_buf[i], ori_argv[i], ARGLEN);
+	}
+
+	// open file
 	struct file_desc fdesc;
 	int ret = 0;
 	int r = open_file((void *)(tf->rdx), &fdesc);
@@ -131,13 +182,7 @@ sys_exec(struct ProcContext *tf)
 		tf->rax = r;
 		return;
 	}
-	// save argv
-	char **ori_argv = (char **)tf->rbx;
-	for (int i = 0; i < NARGS; ++i) {
-		if (ori_argv[i] != NULL) {
-			strncpy(argv_buf[i], ori_argv[i], ARGLEN);
-		}
-	}
+
 	// read image
 	char *img = (char *)EXEC_IMG;
 	u64 addr = EXEC_IMG, addr_end = EXEC_IMG + fdesc.file_len;
@@ -148,9 +193,9 @@ sys_exec(struct ProcContext *tf)
 	while (addr < addr_end) {
 		pte_t *pte;
 		if (ret = walk_pgtbl(k_pgtbl, addr, &pte, 1)) {
-			tf->rax = -E_NOMEM;
-			// TODO: free memory for img?
-			return;
+			tf->rax = -ENOMEM;
+			addr_end = addr;
+			goto free_img;
 		}
 		*pte |= PTE_U | PTE_W;
 		addr += PGSIZE;
@@ -159,6 +204,7 @@ sys_exec(struct ProcContext *tf)
 	read_file(img, fdesc.file_len, &fdesc);
 	// TODO: check file format before destroying current enviroment,
 	// return enough information if format error
+
 	curproc->state = PENDING;
 	// from now on, old process image is destroyed
 	free_pgtbl(curproc->pgtbl, FREE_PGTBL_DECREF);
@@ -172,14 +218,13 @@ sys_exec(struct ProcContext *tf)
 	struct Proc *proc = curproc;
 	if (ret = load_img(img, proc)) {
 		kill_proc(proc);
-		sched();
+		goto free_img;
 	}
-	// TODO: unmap img here
 	// stack
 	pte_t *pte;
 	if (ret = walk_pgtbl(proc->pgtbl, USTACK - PGSIZE, &pte, 1)) {
 		kill_proc(proc);
-		sched();
+		goto free_img;
 	}
 	*pte |= PTE_U | PTE_W;
 	// uargs
@@ -189,7 +234,7 @@ sys_exec(struct ProcContext *tf)
 	}
 	if (ret = walk_pgtbl(proc->pgtbl, UARGS, &pte, 1)) {
 		kill_proc(proc);
-		sched();
+		goto free_img;
 	}
 	*pte |= PTE_U | PTE_W;
 	char *uarg_pg = (char *)PAGEKADDR(*pte);
@@ -215,10 +260,22 @@ sys_exec(struct ProcContext *tf)
 	// argv in rsi, which is predefined
 	proc->context.rsi = USTACK - NARGS * sizeof(u64);
 	proc->state = READY;
+
+	// free pages for img
+free_img:
+	addr = EXEC_IMG;
+	while (addr < addr_end) {
+		pte_t *pte;
+		ret = walk_pgtbl(k_pgtbl, addr, &pte, 0);
+		assert(pte != NULL && ret == 0);
+		free_page(PA2PGINFO(*pte));
+		*pte = 0;
+		addr += PGSIZE;
+	}
+
 	sched();
 }
 
-#define E_KBD_IN_USE 1
 void
 sys_getch(struct ProcContext *tf)
 {
@@ -232,7 +289,7 @@ sys_getch(struct ProcContext *tf)
 	if (kbd_proc == NULL) {
 		kbd_proc = curproc;
 	} else {
-		tf->rax = -E_KBD_IN_USE; // keyboard in use
+		tf->rax = -EBUSY; // keyboard in use
 		return;
 	}
 	curproc->context = *tf;
@@ -285,7 +342,7 @@ exit_as_child()
 	// wait()ed by parent
 	parent->waiting = 0;
 	if (parent->wait_status != NULL) {
-		*parent->wait_status = 0;
+		*parent->wait_status = 0; // TODO: copy on write?
 	}
 	// invoke parent
 	parent->context.rax = curproc->pid;
@@ -318,11 +375,14 @@ sys_exit()
 void
 sys_wait(struct ProcContext *tf)
 {
-	// TODO: check whether wait_status is user-writable
+	if (tf->rdx != 0 && !check_mem(tf->rdx, sizeof(int), PTE_U | PTE_W)) {
+		tf->rax = -EFAULT;
+		return;
+	}
 	if (curproc->zombie_child != NULL) {
 		// have zombie child, wait() it
 		if (tf->rdx != 0)
-			*(int *)(tf->rdx) = 0; // TODO: more wait status
+			*(int *)(tf->rdx) = 0; // TODO: more wait_status
 		struct Proc	*ohead = curproc->zombie_child,
 				*nhead = curproc->zombie_child->next_sibling;
 		// return child's pid
@@ -333,7 +393,12 @@ sys_wait(struct ProcContext *tf)
 		kill_proc(ohead);
 		return;
 	}
-	// no zombie child, sleep
+	if (curproc->living_child == NULL) {
+		// no child at all
+		tf->rax = -ECHILD;
+		return;
+	}
+	// sleep, wait for living child
 	curproc->waiting = 1;
 	curproc->wait_status = (int *)tf->rdx;
 	curproc->context = *tf;

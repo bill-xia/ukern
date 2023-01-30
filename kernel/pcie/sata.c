@@ -38,8 +38,6 @@ check_port(int port)
 void
 pcie_sata_ahci_init(volatile struct pci_config_device *cfg)
 {
-	int i, j;
-
 	struct pcie_dev *dev = &pcie_dev_list[n_pcie_dev++];
 	dev->class = 0x01;
 	dev->subclass = 0x06;
@@ -77,7 +75,7 @@ pcie_sata_ahci_init(volatile struct pci_config_device *cfg)
 	// 3. make sure all ports are in idle state
 	// printk("IS.IPS: %x", sata_regs[SATA_IS]);
 	ports = (struct sata_port_regs *)(sata_regs + (0x100 / 4));
-	for (i = 0; i < 32; ++i) {
+	for (int i = 0; i < 32; ++i) {
 		if (!(ports_mask & (1u << i)))
 			continue;
 		// port enabled
@@ -97,6 +95,7 @@ pcie_sata_ahci_init(volatile struct pci_config_device *cfg)
 				while (ports[i].cmd & CMD_FR)
 					;
 			}
+			int j;
 			for (j = 0; j < 5000 && ports[i].cmd & (CMD_CR |CMD_FR); ++j)
 				; // wait until CR cleared
 			// printk("port %d cmd after reset: %x, j: %d\n", i, ports[i].cmd, j);
@@ -166,7 +165,7 @@ sata_read_block(int did, u64 block)
 {
 	// AHCI Spec 1.3.1 Section 5.5
 	int port = disk[did].disk_ind;
-	int i, slot = 0;
+	int slot = 0;
 	ports[port].is = 0xFFFF;
 	// printk("port is: %x\n", ports[port].is);
 	for (slot = 0; slot < 32; ++slot) {
@@ -176,7 +175,7 @@ sata_read_block(int did, u64 block)
 	}
 	if (slot == 32) {
 		panic("no slot.\n");
-		return -E_NOSLOT;
+		return -EBUSY;
 	}
 	struct sata_cmd_hdr *cmd_hdr = &cmd_list[port][slot];
 	int prdtl = 1, cfl = sizeof(struct reg_h2d_fis) / 4, isatapi = 0;
@@ -214,7 +213,7 @@ sata_read_block(int did, u64 block)
 	cfis->counth = 0;
 	// cmd_tbl->acmd
 	// cmd_tbl->prdt
-	for (i = 0; i < prdtl; ++i) {
+	for (int i = 0; i < prdtl; ++i) {
 		u64 vaddr = blk2kaddr(did, block);
 		pte_t *pte;
 		walk_pgtbl(k_pgtbl, vaddr, &pte, 1);

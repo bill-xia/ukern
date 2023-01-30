@@ -271,6 +271,7 @@ void trap_handler(struct ProcContext *trapframe, u64 vecnum, u64 errno)
 }
 
 void page_fault_handler(struct ProcContext *tf, u64 errno) {
+	int r;
 	if (errno != 7) {
 		printk("cr2: %p\n", rcr2());
 		printk("errno: %lx\n", errno);
@@ -287,20 +288,21 @@ void page_fault_handler(struct ProcContext *tf, u64 errno) {
 	// check copy-on-write case
 	u64 vaddr = rcr2();
 	pte_t *pte;
-	walk_pgtbl(curproc->p_pgtbl, vaddr, &pte, 0);
-	if ((*pte & PTE_P)
-	&&  (*pte & PTE_U)
-	&&  (*pte & PTE_W)) {
+	r = walk_pgtbl(curproc->p_pgtbl, vaddr, &pte, 0);
+	u64 flags = PTE_P | PTE_U | PTE_W;
+	if (r == 0 && (*pte & flags) == flags) {
 		// copy-on-write
 		walk_pgtbl(curproc->pgtbl, vaddr, &pte, 0);
-		if (PA2PGINFO(*pte)->u.ref == 1) {
+		if (PA2PGINFO(*pte)->ref == 1) {
 			// just add the write flag
 			*pte |= PTE_W;
 		} else {
-			PA2PGINFO(*pte)->u.ref--;
+			PA2PGINFO(*pte)->ref--;
 			struct page_info *page = alloc_page(0);
-			char *src = (char *)PAGEKADDR(*pte), *dst = (char *)PAGEKADDR(page->paddr);
-			for (int i = 0; i < PGSIZE; ++i) dst[i] = src[i];
+			char	*src = (char *)PAGEKADDR(*pte),
+				*dst = (char *)PAGEKADDR(page->paddr);
+			for (int i = 0; i < PGSIZE; ++i)
+				dst[i] = src[i];
 			*pte = page->paddr | PTE_P | PTE_U | PTE_W;
 			walk_pgtbl(curproc->p_pgtbl, vaddr, &pte, 0);
 			*pte = page->paddr | PTE_P | PTE_U | PTE_W;
@@ -308,6 +310,7 @@ void page_fault_handler(struct ProcContext *tf, u64 errno) {
 		lcr3(rcr3());
 		return;
 	}
+	// a malicious write
 	print_tf(tf);
 	printk("cr2: %p\n", rcr2());
 	printk("errno: %lx\n", errno);

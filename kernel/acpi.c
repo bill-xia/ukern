@@ -56,11 +56,9 @@ init_acpi(struct RSDPDescriptor *rsdp)
 void
 init_rsdp2(struct RSDPDescriptor20 *rsdp)
 {
-	int i, j;
-
 	printk("RSDP 2.0\n");
 	u8 chksum = 0, *cursor = (u8 *)rsdp;
-	for (i = 0; i < sizeof(struct RSDPDescriptor20); ++i) {
+	for (int i = 0; i < sizeof(struct RSDPDescriptor20); ++i) {
 		chksum += cursor[i];
 	}
 	if (chksum != 0) {
@@ -73,10 +71,10 @@ init_rsdp2(struct RSDPDescriptor20 *rsdp)
 	int n_xsdt_entries = (xsdt_desc->Length - sizeof(struct DescHeader)) / 8;
 	u64 *xsdt = (u64 *)P2K(xsdt_desc + 1);
 	// printk("# of xsdt entries: %d\n", n_xsdt_entries);
-	for (i = 0; i < n_xsdt_entries; ++i) {
+	for (int i = 0; i < n_xsdt_entries; ++i) {
 		struct DescHeader *tbl = (struct DescHeader *)P2K(xsdt[i]);
 		u32 sign = 0;
-		for (j = 3; j >= 0; --j) {
+		for (int j = 3; j >= 0; --j) {
 			sign = (sign << 8) + tbl->Signature[j];
 		}
 		// printk("signature: %c%c%c%c\n", sign>>24, (sign>>16)&255, (sign>>8)&255, sign & 255);
@@ -96,11 +94,9 @@ init_rsdp2(struct RSDPDescriptor20 *rsdp)
 void
 init_rsdp(struct RSDPDescriptor *rsdp)
 {
-	int i, j;
-
 	printk("RSDP 1.0\n");
 	u8 chksum = 0, *cursor = (u8 *)rsdp;
-	for (i = 0; i < sizeof(struct RSDPDescriptor); ++i) {
+	for (int i = 0; i < sizeof(struct RSDPDescriptor); ++i) {
 		chksum += cursor[i];
 	}
 	if (chksum != 0) {
@@ -113,10 +109,10 @@ init_rsdp(struct RSDPDescriptor *rsdp)
 	int n_rsdt_entries = (rsdt_desc->Length - sizeof(struct DescHeader)) / 4;
 	u32 *rsdt = (u32 *)P2K(rsdt_desc + 1);
 	// printk("# of rsdt entries: %d\n", n_rsdt_entries);
-	for (i = 0; i < n_rsdt_entries; ++i) {
+	for (int i = 0; i < n_rsdt_entries; ++i) {
 		struct DescHeader *tbl = (struct DescHeader *)P2K(rsdt[i]);
 		u32 sign = 0;
-		for (j = 3; j >= 0; --j) {
+		for (int j = 3; j >= 0; --j) {
 			sign = (sign << 8) + tbl->Signature[j];
 		}
 		// printk("signature: %c%c%c%c\n", sign>>24, (sign>>16)&255, (sign>>8)&255, sign & 255);
@@ -136,14 +132,13 @@ init_rsdp(struct RSDPDescriptor *rsdp)
 void
 acpi_init_mcfg(struct DescHeader *tbl)
 {
-	int i, j;
 	printk("ACPI: Found MCFG entry. Initializing PCIe.\n");
 	struct MCFG_entry *mcfg_ent = (struct MCFG_entry *)((u64)tbl + sizeof(struct DescHeader) + 8);
 	// printk("tbl->Length: %d\n", tbl->Length);
 	int n_mcfg_ent = (tbl->Length - sizeof(struct DescHeader) - 8) / sizeof(struct MCFG_entry), group = 1 << 16;
 	// printk("n_mcfg_ent: %d\n", n_mcfg_ent);
 	pte_t *pte;
-	for (i = 0; i < n_mcfg_ent; ++i) {
+	for (int i = 0; i < n_mcfg_ent; ++i) {
 		if (group == (1 << 16)) {
 			group = mcfg_ent[i].PCISegGroupNum;
 		}
@@ -162,7 +157,7 @@ acpi_init_mcfg(struct DescHeader *tbl)
 		for (bus = 0; bus <= mcfg_ent[i].EndPCIBusNum - mcfg_ent[i].StartPCIBusNum; ++bus) {
 			u64 base = mcfg_ent[i].ECAMBase + (bus << 20);
 			// printk("mapping %p onto %p\n", base, base | KMMIO);
-			for (j = 0; j < 256 * PGSIZE; j += PGSIZE)
+			for (int j = 0; j < 256 * PGSIZE; j += PGSIZE)
 				map_mmio(k_pgtbl, KMMIO | (base + j), (base + j), &pte);
 		}
 	}
@@ -172,7 +167,6 @@ acpi_init_mcfg(struct DescHeader *tbl)
 void
 acpi_init_apic(struct DescHeader *tbl)
 {
-	int i, j;
 	printk("ACPI: Found MADT entry. Initializing IOAPIC.\n");
 	struct MADT_entry_hdr *madt_ent_hdr;
 	int ps2kbd_valid = (*(u32*)((u64)tbl + sizeof(struct DescHeader) + 4)) & 0x1;

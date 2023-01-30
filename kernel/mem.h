@@ -9,6 +9,7 @@
 
 #define PGSIZE		4096
 #define PGSHIFT		12
+#define PGMASK		MASK(PGSHIFT)
 
 #define PML4E_P		0x1
 #define PML4E_W		0x2
@@ -22,6 +23,7 @@
 #define PDE_P		0x1
 #define PDE_W		0x2
 #define PDE_U		0x4
+#define PDE_PS		0x80
 
 #define PTE_P		0x1
 #define PTE_W		0x2
@@ -36,7 +38,7 @@
 #define PT_OFFSET	12
 
 #define MASK(x)		((1ul << (x)) - 1)
-#define PAGEADDR(x)	((u64)(x) & ~(PGSIZE - 1))
+#define PAGEADDR(x)	((u64)(x) & ~PGMASK)
 #define PAGEKADDR(x)	(PAGEADDR(x) | KERNBASE)
 #define PA2PGINFO(x)	((struct page_info *)(k_pageinfo + ((u64)(x) >> 12)))
 #define KA2PGINFO(x)	((struct page_info *)(k_pageinfo + (K2P(x) >> 12)))
@@ -50,11 +52,9 @@
 #define ROUNDUP(x, blk_size)	((((x)+(blk_size)-1) / (blk_size)) * (blk_size))
 
 struct page_info {
-	u64	paddr;
-	union {
-		struct page_info	*next;
-		u64 		ref;
-	} u;
+	u64			paddr;
+	i64 			ref;
+	struct page_info	*next;
 };
 
 struct mem_map_desc {
@@ -199,6 +199,7 @@ void init_freepages(void);
 int walk_pgtbl(pgtbl_t pgtbl, u64 vaddr, pte_t **pte, int create);
 int map_mmio(pgtbl_t pgtbl, u64 vaddr, u64 mmioaddr, pte_t **pte);
 struct page_info *alloc_page(u64 flags);
+void free_page(struct page_info *page);
 void init_gdt(void);
 void free_pgtbl(pgtbl_t pgtbl, u64 flags);
 int copy_pgtbl(pgtbl_t dst, pgtbl_t src, u64 flags);

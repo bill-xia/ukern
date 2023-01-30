@@ -7,8 +7,8 @@ This document refers to Linux kernel coding style, and is building in progress.
 1. Header files should be protected by #ifndef FILENAME_H clauses.
 2. All files should be aligned by tab rather than space, tab size is 8.
 3. In `#define` clauses, seperate `#define` and name with 1 space, name with value (if exist) with tab(s), nearby values should be vertically aligned by tab.
-4. Define local variables inside function on their first usage, exceptions in 5); while defining multiple local variables at once, each variable takes 1 line, variable names should be aligned by tab.
-5. Several common local variable names: `i`, `j`, `k` as enumerating variables, `r` as result in clauses like `if ((r = func()) < 0)`, `tmp` as temporary variable. These names should be defined at beginning of function.
+4. Define local variables inside function on their first usage; while defining multiple local variables at once, each variable takes 1 line, variable names should be aligned by tab.
+5. Several common local variable names: `i`, `j`, `k` as enumerating variables, they should be defined inside for loop; `r` as result in clauses like `if ((r = func()) < 0)`; `tmp` as temporary variable.
 6. Only use typedef with a clear reason, refer to Linux kernel coding style. All typedef-ed name should end with `_t`, to distinguish from variable names.
 
 ## Naming

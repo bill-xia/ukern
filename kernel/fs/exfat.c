@@ -2,6 +2,7 @@
 #include "fs/fs.h"
 #include "mem.h"
 #include "printk.h"
+#include "errno.h"
 
 void
 init_fs_exfat(struct FS_exFAT *fs)
@@ -57,8 +58,7 @@ exfat_walk_dir(struct FS_exFAT *fs, const char *name, int name_len, struct exfat
 	struct dir_entry *dir;
 	// TODO: what if cluster size > 4K?
 
-	int	i,
-		name_ptr,
+	int	name_ptr,
 		secondary_count,
 		name_dismatch,
 		clus_size = (1ul << (fs->hdr->byte_per_sec_shift + fs->hdr->sec_per_clus_shift)),
@@ -69,7 +69,7 @@ exfat_walk_dir(struct FS_exFAT *fs, const char *name, int name_len, struct exfat
 		is_dir,
 		matched = 0;
 	u64	data_len;
-	for (i = 0;; ++i) {
+	for (int i = 0;; ++i) {
 		// cur->clus_id stores the clus *to be read*, rather than already read
 		// Thus, first read, then update clus_id
 		if (i % entry_perclus == 0) {
@@ -138,10 +138,8 @@ exfat_open_file(struct FS_exFAT *fs, const char *filename, struct file_desc *fde
 		.use_fat = 1
 	};
 	static char name[256];
-	int 	i,
-		r,
-		ind;
-	for (i = 0, ind = 0; i < 256; ++i, ++ind) {
+	int  r;
+	for (int i = 0, ind = 0; i < 256; ++i, ++ind) {
 		if (filename[i] != '/' && filename[i] != '\0') {
 			name[ind] = filename[i];
 			continue;
@@ -154,10 +152,10 @@ exfat_open_file(struct FS_exFAT *fs, const char *filename, struct file_desc *fde
 		// `name` is complete.
 		if (!cur_dir.is_dir) {
 			// travel into a file, like `filename is` "/a/b" and "/a" is a file
-			return -E_TRAVEL_INTO_FILE;
+			return -ENOTDIR;
 		}
 		if ((r = exfat_walk_dir(fs, name, ind, &cur_dir)) < 0) {
-			return -E_FILE_NOT_EXIST;
+			return -ENOENT;
 		}
 		// check if filename comes to end
 		if (filename[i] == '\0') {
@@ -169,13 +167,7 @@ exfat_open_file(struct FS_exFAT *fs, const char *filename, struct file_desc *fde
 		}
 		ind = -1;
 	}
-	return -E_FILE_NAME_TOO_LONG;
-}
-
-inline u64
-min(u64 a, u64 b)
-{
-	return a < b ? a : b;
+	return -ENAMETOOLONG;
 }
 
 int

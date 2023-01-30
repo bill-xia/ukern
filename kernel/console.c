@@ -23,9 +23,9 @@ void
 print_font_at(char ch, int pos)
 {
 	cbuf[pos] = ch;
-	int i, j, r = (pos / cols) * vpixel, c = (pos % cols) * hpixel;
-	for (i = 0; i < vpixel; ++i) {
-		for (j = 0; j < hpixel; ++j) {
+	int r = (pos / cols) * vpixel, c = (pos % cols) * hpixel;
+	for (int i = 0; i < vpixel; ++i) {
+		for (int j = 0; j < hpixel; ++j) {
 			if (glyph_at(ch, i, j))
 				pixelbuf[(r + i) * width + c + j] = 0x00FFFFFF;
 			else

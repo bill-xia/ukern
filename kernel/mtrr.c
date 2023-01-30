@@ -31,12 +31,11 @@ init_mtrr()
 	stmsr(MSR_MTRR_DEF_TYPE, deftype);
 
 	// set pixelbuf to Write-Combining
-	int	i,
-		mtrr_vcnt = mtrr_cap & MTRR_CAP_VCNT_MASK;
+	int mtrr_vcnt = mtrr_cap & MTRR_CAP_VCNT_MASK;
 	stmsr(MSR_MTRR_PHYS_BASE(0), PAGEKADDR(pixelbuf) | MTRR_TYPE_WC);
 	stmsr(MSR_MTRR_PHYS_MASK(0), (0xFFul << 28) | MTRR_MASK_V);
 	// TODO: get MAXPHYSADDR and mask according to it
-	for (i = 1; i < mtrr_vcnt; ++i) {
+	for (int i = 1; i < mtrr_vcnt; ++i) {
 		stmsr(MSR_MTRR_PHYS_BASE(i), 0);
 		// without MTRR_MASK_V, thus disabled
 		stmsr(MSR_MTRR_PHYS_MASK(i), 0);

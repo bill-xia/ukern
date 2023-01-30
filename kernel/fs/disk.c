@@ -95,7 +95,7 @@ detect_guid(int did, int gpt_pid, struct GPTPAR *par)
 int
 init_gpt(int did)
 {
-	int i, blk, r;
+	int blk, r;
 	if (disk[did].driver_type == DISK_SATA) {
 		for (blk = 1; blk <= 5; ++blk) {
 			sata_read_block(did, blk);
@@ -113,7 +113,7 @@ init_gpt(int did)
 	char *ptr = (char *)gpt + 512;
 	int n_part = gpt->n_pararr, par_entry_siz = gpt->par_entry_siz;
 	printk("GPT partition number: %d\n", n_part);
-	for (i = 0; i < n_part; ++i, ptr += par_entry_siz) {
+	for (int i = 0; i < n_part; ++i, ptr += par_entry_siz) {
 		detect_guid(did, i, (struct GPTPAR *)ptr);
 	}
 }
@@ -121,14 +121,14 @@ init_gpt(int did)
 int
 init_mbr(int did)
 {
-	int i, blk = 0;
+	int blk = 0;
 	if (disk[did].driver_type == DISK_SATA) {
 		sata_read_block(did, blk);
 	} else {
 		panic("unknown disk type.\n");
 	}
 	struct MBR *mbr = (struct MBR *)blk2kaddr(did, blk);
-	for (i = 0; i < 4; ++i) {
+	for (int i = 0; i < 4; ++i) {
 		int unknown = 0, part_type = mbr->part[i].part_type;
 		switch (part_type) {
 		case 0x00:
@@ -185,8 +185,7 @@ init_mbr(int did)
 int
 print_guid(char *guid)
 {
-	int i;
-	for (i = 0; i < 16; ++i) {
+	for (int i = 0; i < 16; ++i) {
 		u8 lo = guid[i] & 0xF, hi = (u8)guid[i] >> 4;
 		printk("%c%c ", "0123456789ABCDEF"[hi], "0123456789ABCDEF"[lo]);
 	}
@@ -199,10 +198,10 @@ disk_read(int did, u64 lba, int n_sec)
 	if (did < 0 || did >= n_disk)
 		panic("disk_read_lba(): invalid did %d, n_disk %d.\n", did, n_disk);
 	
-	int i, r;
+	int r;
 	switch (disk[did].driver_type) {
 	case DISK_SATA:
-		for (i = 0; i < (n_sec - 1) / 8 + 1; ++i) {
+		for (int i = 0; i < (n_sec - 1) / 8 + 1; ++i) {
 			if ((r = sata_read_block(did, lba / 8)) < 0)
 				return r;
 			lba += 8;

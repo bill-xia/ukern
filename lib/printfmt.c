@@ -1,10 +1,7 @@
 #include "printfmt.h"
 #include "types.h"
 #include "stdarg.h"
-
-#ifdef KERNEL
-	#include "errno.h"
-#endif
+#include "errno.h"
 
 void
 printint(void (*putch)(char c), u64 n, int base, int width, char padc)
@@ -135,14 +132,12 @@ vprintfmt(void (*putch)(char), const char *fmt, va_list ap)
 			case '%':
 				putch('%');
 				break;
-			#ifdef KERNEL
-				case 'e':
-					num = -(va_arg(ap, i32));
-					if (num <= 0 || num >= E_MAX)
-						num = 0; // E_INVALID
-					printstr(putch, error_msg[num]);
-					break;
-			#endif
+			case 'e':
+				num = -(va_arg(ap, i32));
+				if (num <= 0 || num >= EMAX)
+					num = 0; // wrong errno
+				printstr(putch, error_msg[num]);
+				break;
 			default:
 				putch('%');
 				putch(fmt[i - 1]);
