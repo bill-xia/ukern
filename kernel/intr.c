@@ -265,6 +265,9 @@ void trap_handler(struct proc_context *trapframe, u64 vecnum, u64 errno)
 	default: // ignore
 		printk("ignoring interrupt %d\n", vecnum);
 		print_tf(trapframe);
+		if (trapframe->cs == USER_CODE_SEL) {
+			kill_proc(curproc, -0xFF);
+		}
 		lapic_eoi();
 		return;
 	}

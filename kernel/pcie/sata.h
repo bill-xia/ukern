@@ -5,8 +5,6 @@
 #include "pcie/pcie.h"
 #include "fs/fs.h"
 
-extern u32 *sata_regs;
-
 #define SATA_CAP (0x00 / 4)
 #define SATA_GHC (0x04 / 4)
 #define SATA_IS (0x08 / 4)

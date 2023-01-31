@@ -4,8 +4,8 @@
 #include "x86.h"
 #include "intr.h"
 
-static u32	*ioregsel = 	(u32 *)0xFFFFFFFFFEC00000,
-		*iowin = 	(u32 *)0xFFFFFFFFFEC00010;
+static volatile u32	*ioregsel = (u32 *)0xFFFFFFFFFEC00000,
+			*iowin    = (u32 *)0xFFFFFFFFFEC00010;
 
 u32
 rioreg(u32 index)

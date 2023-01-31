@@ -1,6 +1,6 @@
 AS := /usr/bin/nasm
 CC := /usr/bin/gcc
-CFLAGS := -Wall -nostdinc -fno-builtin -g -fno-stack-protector
+CFLAGS := -Wall -nostdinc -fno-builtin -g -fno-stack-protector -O2
 # QEMU_FLAGS := -d cpu_reset
 OBJ_DIR := obj
 

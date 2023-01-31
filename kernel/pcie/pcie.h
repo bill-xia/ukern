@@ -92,7 +92,7 @@ pcie_write(volatile void *_base, int offset, u32 value)
 static inline u16
 pcie_readw(volatile void *_base, int offset)
 {
-	volatile u32 r = pcie_read(_base, offset);
+	u32 r = pcie_read(_base, offset);
 	offset &= 3;
 	if (offset & 1) { // odd offset is not permitted
 		panic("pcie_readw: odd offset %d.\n", offset);
@@ -105,7 +105,7 @@ pcie_readw(volatile void *_base, int offset)
 static inline u8
 pcie_readb(volatile void *_base, int offset)
 {
-	volatile u32 r = pcie_read(_base, offset);
+	u32 r = pcie_read(_base, offset);
 	r >>= 8 * (offset & 3);
 	return (u8)r;
 }
@@ -113,7 +113,7 @@ pcie_readb(volatile void *_base, int offset)
 static inline u16
 pcie_writew(volatile void *_base, int offset, u16 value)
 {
-	volatile u32 r = pcie_read(_base, offset);
+	u32 r = pcie_read(_base, offset);
 	offset &= 3;
 	if (offset & 1) { // odd offset is not permitted
 		panic("pcie_writew: odd offset %d.\n", offset);

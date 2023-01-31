@@ -8,7 +8,7 @@
 #include "x86.h"
 #include "fs/fs.h"
 
-u32 *sata_regs;
+volatile u32 *sata_regs;
 static struct sata_cmd_hdr *cmd_list[32];
 volatile struct sata_port_regs *ports;
 

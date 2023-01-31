@@ -7,7 +7,6 @@
 #include "errno.h"
 
 struct proc *procs, *curproc, *kbd_proc;
-struct proc_context empty_context;
 static u64 g_pid;
 
 void
