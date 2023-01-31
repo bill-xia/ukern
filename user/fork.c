@@ -14,5 +14,5 @@ int main()
 	} else {
 		printf("child after fork\n");
 	}
-	sys_exit();
+	sys_exit(0);
 }

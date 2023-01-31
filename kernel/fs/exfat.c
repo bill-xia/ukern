@@ -150,7 +150,7 @@ exfat_open_file(struct FS_exFAT *fs, const char *filename, struct file_desc *fde
 		if (ind == 0) {
 			// name is empty, skip
 			ind = -1;
-			continue;
+			goto after_walk;
 		}
 		// `name` is complete.
 		if (!cur_dir.is_dir) {
@@ -160,6 +160,7 @@ exfat_open_file(struct FS_exFAT *fs, const char *filename, struct file_desc *fde
 		if ((r = exfat_walk_dir(fs, name, ind, &cur_dir)) < 0) {
 			return -ENOENT;
 		}
+	after_walk:
 		// check if filename comes to end
 		if (filename[i] == '\0') {
 			if (cur_dir.is_dir) {

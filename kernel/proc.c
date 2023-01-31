@@ -149,7 +149,7 @@ exit_as_parent(struct proc *proc)
 }
 
 void
-exit_as_child(struct proc *proc)
+exit_as_child(struct proc *proc, i64 exit_val)
 {
 	struct proc *parent = proc->parent;
 	if (parent == NULL) {
@@ -169,14 +169,14 @@ exit_as_child(struct proc *proc)
 			proc->next_sibling = ohead;
 			parent->zombie_child = proc;
 		}
-
+		proc->exit_val = exit_val;
 		proc->state = ZOMBIE;
 		return;
 	}
 	// wait()ed by parent
 	parent->waiting = 0;
 	if (parent->wait_status != NULL) {
-		*parent->wait_status = 0; // TODO: copy on write?
+		*parent->wait_status = exit_val; // TODO: copy on write?
 	}
 	// invoke parent
 	parent->context.rax = proc->pid;
@@ -217,16 +217,28 @@ clear_proc(struct proc *proc)
 	if (proc == kbd_proc)
 		kbd_proc = NULL;
 
+	proc->exit_val = 0;
 	// fish back to the sea
 	memset(proc, 0, sizeof(struct proc));
 }
 
 // Kill the process, it may become a zombie! (sounds scary...)
 void
-kill_proc(struct proc *proc)
+kill_proc(struct proc *proc, i64 exit_val)
 {
+	proc->exit_val = exit_val;
 	exit_as_parent(proc);
-	exit_as_child(proc);
+	exit_as_child(proc, exit_val);
+}
+
+int
+check_img_format(char *img)
+{
+	struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
+	if (*(u32 *)ehdr->e_ident != ELF_MAGIC) {
+		return -ENOEXEC;
+	}
+	return 0;
 }
 
 // Load program image pointed by `ehdr`

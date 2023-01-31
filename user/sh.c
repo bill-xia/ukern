@@ -51,11 +51,16 @@ main()
 			int child;
 			if (child = sys_fork()) {
 				// parent
-				sys_wait(NULL);
+				int wstatus;
+				sys_wait(&wstatus);
+				if (wstatus != 0 && wstatus != 0xdeadbeef) {
+					printf("sh: '%s' exited with value %d.\n",
+						argv[0], wstatus);
+				}
 			} else {
 				int r = sys_exec(argv[0], argc, argv);
 				printf("sh: '%s' failed running: %e\n", argv[0], r);
-				sys_exit();
+				sys_exit(0xdeadbeef);
 			}
 		clear_buf:
 			ptr = 0;

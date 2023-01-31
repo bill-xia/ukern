@@ -224,7 +224,7 @@ void trap_handler(struct proc_context *trapframe, u64 vecnum, u64 errno)
 {
 	switch(vecnum) {
 	case 0:
-		kill_proc(curproc);
+		kill_proc(curproc, -0xFF);
 		sched();
 		break;
 	case 14:
@@ -282,7 +282,7 @@ void page_fault_handler(struct proc_context *tf, u64 errno) {
 			while (1);
 		}
 		// in user process, kill it
-		kill_proc(curproc);
+		kill_proc(curproc, -0xFF);
 		sched();
 	}
 	// check copy-on-write case
@@ -315,7 +315,7 @@ void page_fault_handler(struct proc_context *tf, u64 errno) {
 	printk("cr2: %p\n", rcr2());
 	printk("errno: %lx\n", errno);
 	printk("curproc: proc[%ld]\n", curproc - procs);
-	kill_proc(curproc);
+	kill_proc(curproc, -0xFF);
 	sched();
 }
 

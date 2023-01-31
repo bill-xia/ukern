@@ -30,9 +30,9 @@ sys_putch(char c)
 }
 
 void
-sys_exit(void)
+sys_exit(int exit_val)
 {
-	syscall(1,0,0,0,0,0,0);
+	syscall(1,exit_val,0,0,0,0,0);
 }
 
 int

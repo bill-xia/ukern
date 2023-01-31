@@ -186,7 +186,6 @@ sys_exec(struct proc_context *tf)
 	// read image
 	char *img = (char *)EXEC_IMG;
 	u64 addr = EXEC_IMG, addr_end = EXEC_IMG + fdesc.file_len;
-	lcr3(K2P(k_pgtbl));
 	// if (img < img_end) {
 		// file too large, seldom happen
 	// }
@@ -202,13 +201,27 @@ sys_exec(struct proc_context *tf)
 		*pte = page->paddr | PTE_P;
 		addr += PGSIZE;
 	}
-	lcr3(rcr3());
+	// lcr3(rcr3()); // TODO: do we need to flush this?
 	read_file(img, fdesc.file_len, &fdesc);
-	// TODO: check file format before destroying current enviroment,
+	// check file format before destroying current enviroment,
 	// return enough information if format error
+	if (ret = check_img_format(img)) {
+		tf->rax = -ENOEXEC;
+		addr = EXEC_IMG;
+		while (addr < addr_end) {
+			pte_t *pte;
+			ret = walk_pgtbl(k_pgtbl, addr, &pte, 0);
+			assert(pte != NULL && ret == 0);
+			free_page(PA2PGINFO(*pte));
+			*pte = 0;
+			addr += PGSIZE;
+		}
+		return;
+	}
 
 	curproc->state = PENDING;
 	// from now on, old process image is destroyed
+	lcr3(K2P(k_pgtbl));
 	free_pgtbl(curproc->pgtbl, FREE_PGTBL_DECREF);
 	free_pgtbl(curproc->p_pgtbl, 0);
 
@@ -220,13 +233,13 @@ sys_exec(struct proc_context *tf)
 	// may delete create_proc() in the future
 	struct proc *proc = curproc;
 	if (ret = load_img(img, proc)) {
-		kill_proc(proc);
+		kill_proc(proc, ret);
 		goto free_img;
 	}
 	// stack
 	pte_t *pte;
 	if (ret = walk_pgtbl(proc->pgtbl, USTACK - PGSIZE, &pte, 1)) {
-		kill_proc(proc);
+		kill_proc(proc, ret);
 		goto free_img;
 	}
 	assert(*pte == 0);
@@ -238,7 +251,7 @@ sys_exec(struct proc_context *tf)
 		uargv[i] = (char *)((u64)UARGS + 256 * i);
 	}
 	if (ret = walk_pgtbl(proc->pgtbl, UARGS, &pte, 1)) {
-		kill_proc(proc);
+		kill_proc(proc, ret);
 		goto free_img;
 	}
 	assert(*pte == 0);
@@ -305,9 +318,9 @@ sys_getch(struct proc_context *tf)
 }
 
 void
-sys_exit()
+sys_exit(i64 exit_val)
 {
-	kill_proc(curproc);
+	kill_proc(curproc, exit_val);
 	sched();
 }
 
@@ -320,10 +333,10 @@ sys_wait(struct proc_context *tf)
 	}
 	if (curproc->zombie_child != NULL) {
 		// have zombie child, wait() it
-		if (tf->rdx != 0)
-			*(int *)(tf->rdx) = 0; // TODO: more wait_status
 		struct proc	*ohead = curproc->zombie_child,
 				*nhead = curproc->zombie_child->next_sibling;
+		if (tf->rdx != 0)
+			*(i64 *)(tf->rdx) = ohead->exit_val; // TODO: more wait_status
 		// return child's pid
 		tf->rax = ohead->pid;
 		curproc->zombie_child = nhead;
@@ -339,7 +352,15 @@ sys_wait(struct proc_context *tf)
 	}
 	// sleep, wait for living child
 	curproc->waiting = 1;
-	curproc->wait_status = (int *)tf->rdx;
+	// set the pointer inside kernel space
+	if (tf->rdx != 0) {
+		pte_t *pte;
+		walk_pgtbl(curproc->pgtbl, tf->rdx, &pte, 0);
+		curproc->wait_status = (i64 *)(PAGEKADDR(*pte) | (tf->rdx & PGMASK));
+	} else {
+		curproc->wait_status = NULL;
+	}
+
 	curproc->context = *tf;
 	curproc->state = PENDING;
 	sched();
@@ -351,7 +372,7 @@ syscall(struct proc_context *tf)
 	int num = tf->rax;
 	switch (num) {
 	case 1:
-		sys_exit();
+		sys_exit(tf->rdx);
 		break;
 	case 2:
 		sys_hello();

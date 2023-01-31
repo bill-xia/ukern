@@ -53,7 +53,7 @@ struct proc {
 	u64			exec_time;
 	struct proc_context	context;
 	struct file_desc	fdesc[64];
-	int			*wait_status;
+	i64			*wait_status;
 	// About these pointers:
 	// Relation between processes can be modeled as a tree,
 	//	where parent and child refer to the process who
@@ -75,6 +75,7 @@ struct proc {
 				*zombie_child,
 				*prev_sibling,
 				*next_sibling;
+	i64			exit_val;
 	u64			waiting:1;
 };
 extern struct proc *procs, *curproc, *kbd_proc;
@@ -83,10 +84,11 @@ void init_pcb(void);
 void clear_proc_context(struct proc_context *context);
 int create_proc(char *img);
 void run_proc(struct proc *proc);
-void kill_proc(struct proc *proc);
+void kill_proc(struct proc *proc, i64 exit_val);
 void clear_proc(struct proc *proc);
 struct proc *alloc_proc(void);
 int load_img(char *img, struct proc *proc);
+int check_img_format(char *img);
 
 #define IMAGE_SYMBOL(x) _binary_obj_user_ ## x ## _start
 #define CREATE_PROC(x) do { \

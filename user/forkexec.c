@@ -18,7 +18,6 @@ int main()
 		printf("before exec\n");
 		sys_exec("/hello", 2, argv);
 		printf("after exec\n");
-		sys_exit();
 	}
-	sys_exit();
+	sys_exit(0);
 }

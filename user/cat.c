@@ -8,12 +8,12 @@ int main(int argc, char *argv[])
 	if (argc != 2) {
 		printf("cat: wrong argument number.\n"
 			"usage: cat <filename>\n");
-		sys_exit();
+		sys_exit(-1);
 	}
 	int fd = sys_open(argv[1]);
 	if (fd < 0) {
 		printf("cat: %s: %e\n", argv[1], fd);
-		sys_exit();
+		sys_exit(-2);
 	}
 	int r;
 	while ((r = sys_read(fd, buf, 4096)) > 0) {
@@ -24,5 +24,5 @@ int main(int argc, char *argv[])
 		printf("cat: in reading %s: %e.\n", argv[1], r);
 	}
 	printf("\n");
-	sys_exit();
+	sys_exit(0);
 }

@@ -18,5 +18,5 @@ int main()
 		printf("%d %d ", 1ll * a[i], 1ll * a[i + 1]);
 	}
 	printf("\n");
-	sys_exit();
+	sys_exit(0);
 }

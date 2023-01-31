@@ -7,7 +7,7 @@ int syscall(int num, u64 a1, u64 a2, u64 a3, u64 a4, u64 a5, u64 a6);
 
 void sys_hello(void);
 void sys_putch(char);
-void sys_exit(void);
+void sys_exit(int exit_val);
 int sys_fork(void);
 int sys_open(const char *fn);
 int sys_read(int fd, char *fn, u32 sz);

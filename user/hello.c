@@ -10,5 +10,5 @@ int main(int argc, char *argv[])
 		printf("\n");
 	}
 	printf("hello from user space!\n");
-	sys_exit();
+	sys_exit(0);
 }
