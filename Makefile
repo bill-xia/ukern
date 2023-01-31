@@ -60,11 +60,12 @@ efi: pre-build $(OBJ_DIR)/kernel/kernel gnu-efi/x86_64/apps/ukernbl.efi diskimg
 	mkdir efifs
 	sudo mount /dev/mapper/$$(cat .disk_dev_efi) efifs
 	sudo rm -rf efifs/*
-	sudo cp gnu-efi/x86_64/apps/ukernbl.efi efifs/BOOTX64.EFI
-	sudo cp obj/kernel/kernel efifs/KERNEL
-	sudo cp Tamsyn.psf efifs/TAMSYN.PSF
+	sudo mkdir -p efifs/EFI/boot
+	sudo mkdir -p efifs/EFI/ukern
+	sudo cp gnu-efi/x86_64/apps/ukernbl.efi efifs/EFI/boot/bootx64.EFI
+	sudo cp obj/kernel/kernel efifs/EFI/ukern/kernel
+	sudo cp Tamsyn.psf efifs/EFI/ukern/tamsyn.psf
 	sync
-	sleep 1
 	sudo umount efifs
 	rm -rd efifs
 
@@ -82,7 +83,6 @@ efi: pre-build $(OBJ_DIR)/kernel/kernel gnu-efi/x86_64/apps/ukernbl.efi diskimg
 		sudo cp $$bin mainfs/ ; \
 	done
 	sync
-	sleep 1
 	sudo umount mainfs
 	rm -rd mainfs
 	sudo kpartx -d diskimg

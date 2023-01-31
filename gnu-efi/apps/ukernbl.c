@@ -352,7 +352,7 @@ EFI_STATUS
 efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
 	InitializeLib(ImageHandle, SystemTable);
 
-	EFI_FILE* KernelFile = OpenFile(NULL, L"KERNEL", ImageHandle);
+	EFI_FILE* KernelFile = OpenFile(NULL, L"\\EFI\\ukern\\kernel", ImageHandle);
 	if (KernelFile == NULL){
 		Print(L"Could not open kernel file.\n\r");
 	} else{
@@ -361,7 +361,7 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
 
 	InitializeGOP();
 
-	EFI_FILE* FontFile = OpenFile(NULL, L"TAMSYN.PSF", ImageHandle);
+	EFI_FILE* FontFile = OpenFile(NULL, L"\\EFI\\ukern\\tamsyn.psf", ImageHandle);
 	if (FontFile == NULL) {
 		Print(L"Could not open font file.\n\r");
 	} else{
