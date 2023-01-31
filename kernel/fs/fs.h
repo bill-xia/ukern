@@ -36,13 +36,13 @@ int open_file(const char *filename, struct file_desc *fdesc);
 
 #define DSKSHIFT	41
 
-static u64
+static inline u64
 blk2kaddr(int did, u64 blk)
 {
 	return KDISK | ((u64)did << DSKSHIFT) | (blk << PGSHIFT);
 }
 
-static u64
+static inline u64
 lba2kaddr(int did, u64 lba)
 {
 	return KDISK | ((u64)did << DSKSHIFT) | (lba << (PGSHIFT - 3));

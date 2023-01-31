@@ -55,20 +55,20 @@ struct exfat_dir_file {
 int
 exfat_walk_dir(struct FS_exFAT *fs, const char *name, int name_len, struct exfat_dir_file *cur_dir)
 {
-	struct dir_entry *dir;
+	struct dir_entry *dir = NULL;
 	// TODO: what if cluster size > 4K?
 
-	int	name_ptr,
-		secondary_count,
-		name_dismatch,
+	int	name_ptr = 0,
+		// secondary_count,
+		name_dismatch = 0,
 		clus_size = (1ul << (fs->hdr->byte_per_sec_shift + fs->hdr->sec_per_clus_shift)),
 		entry_perclus = clus_size / sizeof(struct dir_entry),
-		clus_id,
-		use_fat,
-		fn_len,
-		is_dir,
+		clus_id = 0,
+		use_fat = 0,
+		fn_len = 0,
+		is_dir = 0,
 		matched = 0;
-	u64	data_len;
+	u64	data_len = 0;
 	for (int i = 0;; ++i) {
 		// cur->clus_id stores the clus *to be read*, rather than already read
 		// Thus, first read, then update clus_id
@@ -91,7 +91,7 @@ exfat_walk_dir(struct FS_exFAT *fs, const char *name, int name_len, struct exfat
 			goto dir_end;
 		case 0x85: ;// file_dir
 			struct file_dir_entry *fd_dir = (struct file_dir_entry *)&dir[i % entry_perclus];
-			secondary_count = fd_dir->secondary_count;
+			// secondary_count = fd_dir->secondary_count;
 			name_dismatch = 0;
 			name_ptr = 0;
 			is_dir = (fd_dir->file_attr & 0x10) >> 4; // Directory
@@ -189,7 +189,7 @@ exfat_read_file(struct FS_exFAT *fs, char *dst, size_t sz, struct file_desc *fde
 	while (ptr >= clus_size) {
 		ptr -= clus_size;
 		// printk("read(): ");
-		if (fdesc->meta_exfat.use_fat)
+		if (use_fat)
 			clus_id = get_fat_at(fs, clus_id);
 		else
 			clus_id++;
@@ -208,7 +208,7 @@ exfat_read_file(struct FS_exFAT *fs, char *dst, size_t sz, struct file_desc *fde
 		while (n >= clus_size) {
 			n -= clus_size;
 			// printk("read(): ");
-			if (fdesc->meta_exfat.use_fat)
+			if (use_fat)
 				clus_id = get_fat_at(fs, clus_id);
 			else
 				clus_id++;

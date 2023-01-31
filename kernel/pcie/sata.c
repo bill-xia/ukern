@@ -70,7 +70,7 @@ pcie_sata_ahci_init(volatile struct pci_config_device *cfg)
 	// sata_regs[SATA_GHC] = GHC_AE;
 	sata_regs[SATA_GHC] |= GHC_IE;
 	// 2. get nports and ports mask
-	int nports = (sata_regs[SATA_CAP] & CAP_NP) + 1;
+	// int nports = (sata_regs[SATA_CAP] & CAP_NP) + 1;
 	int ports_mask = sata_regs[SATA_PI];
 	// 3. make sure all ports are in idle state
 	// printk("IS.IPS: %x", sata_regs[SATA_IS]);
@@ -155,7 +155,7 @@ pcie_sata_ahci_init(volatile struct pci_config_device *cfg)
 		// printk("ie: %x\n", ports[i].ie);
 	}
 	// 4. get ncs
-	int ncs = ((sata_regs[SATA_CAP] & CAP_NCS) >> 8) + 1;
+	// int ncs = ((sata_regs[SATA_CAP] & CAP_NCS) >> 8) + 1;
 
 	// printk("AHCI nports: %d, ports implemented: %x, ncs: %d\n", nports, ports_mask, ncs);
 }

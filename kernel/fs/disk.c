@@ -62,16 +62,16 @@ int init_gpt(int did);
 int
 init_disk()
 {
-	int i, did = 0, blk = 0;
-	for (did = 0; did < n_disk; ++did) {
+	for (int did = 0; did < n_disk; ++did) {
 		init_mbr(did);
 	}
+	return 0;
 }
 
 int
 detect_guid(int did, int gpt_pid, struct GPTPAR *par)
 {
-	int i, r;
+	int i;
 	for (i = 0; i < N_KNOWN_GUID; ++i) {
 		if (!guid_eq(&par->type_guid, &known_guid[i])) 
 			continue;
@@ -83,19 +83,20 @@ detect_guid(int did, int gpt_pid, struct GPTPAR *par)
 		disk[did].part[pid].n_sec = par->lba_end - par->lba_beg + 1;
 		// printk("GPT (sd%d,p%d) type(%d): %s\n", did, pid, i, guid_name[i]);
 		if (i == GUID_WIN_DATA || i == GUID_LINUX_FS) {
-			r = detect_fs(did, pid);
+			detect_fs(did, pid);
 		}
 		break;
 	}
 	if (i == N_KNOWN_GUID) {
 		printk("GPT (sd%d,p%d): unknown guid.\n", did, i);
 	}
+	return 0;
 }
 
 int
 init_gpt(int did)
 {
-	int blk, r;
+	int blk;
 	if (disk[did].driver_type == DISK_SATA) {
 		for (blk = 1; blk <= 5; ++blk) {
 			sata_read_block(did, blk);
@@ -116,6 +117,7 @@ init_gpt(int did)
 	for (int i = 0; i < n_part; ++i, ptr += par_entry_siz) {
 		detect_guid(did, i, (struct GPTPAR *)ptr);
 	}
+	return 0;
 }
 
 int
@@ -180,6 +182,7 @@ init_mbr(int did)
 			disk[did].part[pid].part_type = part_type;
 		}
 	}
+	return 0;
 }
 
 int
@@ -211,4 +214,5 @@ disk_read(int did, u64 lba, int n_sec)
 		printk("disk_read_lba(): unknown disk driver type %d.\n", disk[did].driver_type);
 		return -1;
 	}
+	return 0;
 }

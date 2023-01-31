@@ -13,3 +13,6 @@ $(OBJ_DIR)/user/lib/%.o: lib/%.c
 
 $(OBJ_DIR)/user/%.o: user/%.c
 	$(CC) $(CFLAGS) $(USERINC) $< -c -o $@
+
+$(OBJ_DIR)/user/divzero.o: user/divzero.c
+	$(CC) $(CFLAGS) -Wno-div-by-zero $(USERINC) $< -c -o $@

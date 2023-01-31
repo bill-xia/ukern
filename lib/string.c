@@ -8,6 +8,7 @@ memcpy(void *s1, const void *s2, size_t n)
 	for (int i = 0; i < n; ++i) {
 		dst[i] = src[i];
 	}
+	return dst;
 }
 
 void *
@@ -17,6 +18,7 @@ memset(void *s, int c, size_t n)
 	for (int i = 0; i < n; ++i) {
 		dst[i] = c;
 	}
+	return dst;
 }
 
 size_t

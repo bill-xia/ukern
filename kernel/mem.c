@@ -380,7 +380,7 @@ map_mmio(pgtbl_t pgtbl, u64 vaddr, u64 mmioaddr, pte_t **_pte)
 {
 	int r;
 	pte_t *pte;
-	if (r = walk_pgtbl(pgtbl, vaddr, &pte, 1)) {
+	if ((r = walk_pgtbl(pgtbl, vaddr, &pte, 1)) < 0) {
 		return r;
 	}
 	*pte = mmioaddr | PTE_P | PTE_W | PTE_PWT | PTE_PCD;

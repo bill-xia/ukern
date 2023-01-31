@@ -14,7 +14,7 @@ main()
 		argv[i] = argv_buf[i];
 	}
 	printf("sh # ");
-	while (c = sys_getch()) {
+	while ((c = sys_getch())) {
 		if (c == -1) {
 			printf("keyboard in use\n");
 			while(1);
@@ -49,7 +49,7 @@ main()
 				}
 			}
 			int child;
-			if (child = sys_fork()) {
+			if ((child = sys_fork())) {
 				// parent
 				int wstatus;
 				sys_wait(&wstatus);

@@ -10,7 +10,7 @@ int main()
 {
 	printf("before fork\n");
 	int child;
-	if (child = sys_fork()) {
+	if ((child = sys_fork())) {
 		printf("parent after fork, child: %d\n", child);
 		sys_wait(NULL);
 	} else {

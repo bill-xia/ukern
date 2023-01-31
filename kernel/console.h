@@ -3,9 +3,6 @@
 
 #include "types.h"
 
-#define COLOR_WHITE_ON_BLACK 0x0700
-#define COLOR_BLACK_ON_WHITE 0xF000
-
 #define TAB_SIZE 4
 
 struct screen {

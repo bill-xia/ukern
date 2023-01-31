@@ -77,7 +77,7 @@ vprintfmt(void (*putch)(char), const char *fmt, va_list ap)
 		if (fmt[i] == '%') {
 			++i;
 			u64 flags = 0;
-			int width = -1, precision = -1;
+			int width = -1;
 			char padc = ' ';
 		movein:
 			switch (fmt[i++]) {
@@ -94,7 +94,8 @@ vprintfmt(void (*putch)(char), const char *fmt, va_list ap)
 					sgn_num = va_arg(ap, i64);
 				else
 					sgn_num = va_arg(ap, i32);
-				if (width == -1) width = get_precision(sgn_num, 10, 1);
+				if (width == -1)
+					width = get_precision(sgn_num, 10, 1);
 				if (sgn_num < 0) {
 					putch('-');
 					width--;
@@ -107,7 +108,8 @@ vprintfmt(void (*putch)(char), const char *fmt, va_list ap)
 					num = va_arg(ap, u64);
 				else
 					num = va_arg(ap, u32);
-				if (width == -1) width = get_precision(num, 10, 0);
+				if (width == -1)
+					width = get_precision(num, 10, 0);
 				printint(putch, num, 10, width, padc);
 				break;
 			case 'x':
@@ -115,12 +117,14 @@ vprintfmt(void (*putch)(char), const char *fmt, va_list ap)
 					num = va_arg(ap, u64);
 				else
 					num = va_arg(ap, u32);
-				if (width == -1) width = get_precision(num, 16, 0);
+				if (width == -1)
+					width = get_precision(num, 16, 0);
 				printint(putch, num, 16, width, padc);
 				break;
 			case 'p':
 				num = va_arg(ap, u64);
-				if (width == -1) width = get_precision(num, 16, 0);
+				if (width == -1)
+					width = get_precision(num, 16, 0);
 				putch('0');
 				putch('x');
 				printint(putch, num, 16, width, padc);

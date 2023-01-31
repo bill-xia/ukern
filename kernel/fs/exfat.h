@@ -11,7 +11,7 @@
 
 struct exFAT_hdr {
 	u8 jmp_boot[3];
-	u8 fs_name[8];
+	char fs_name[8];
 	u8 zero[53];
 	u64 partition_offset;
 	u64 volume_length;

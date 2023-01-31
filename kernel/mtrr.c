@@ -62,4 +62,6 @@ init_mtrr()
 	// for (ind = 0; ind < 1920 * 1080; ++ind) {
 	// 	pixelbuf[ind] = 0;
 	// }
+
+	return 0;
 }

@@ -44,27 +44,24 @@ alloc_proc(void)
 	return NULL;
 }
 
-// Create a process according to executable image `img`.
+// Create a process according to executable image `img`. Only executed on boot.
 // Returns:
 //	0 on success
 //	-EAGAIN if limit on the number of processes is encountered
 int
 create_proc(char *img)
 {
-	int ret = 0;
+	int r = 0;
 	// printk("nfreepages before create_proc(): %d\n", nfreepages);
 	struct proc *proc = alloc_proc();
 	if (proc == NULL) {
 		return -EAGAIN;
 	}
-	if (ret = load_img(img, proc)) {
-		return ret;
-	}
+	assert((r = load_img(img, proc)) == 0);
 	// stack
 	pte_t *pte;
-	if (ret = walk_pgtbl(proc->pgtbl, USTACK - PGSIZE, &pte, 1)) {
-		free_pgtbl(proc->pgtbl, FREE_PGTBL_DECREF);
-		return ret;
+	if ((r = walk_pgtbl(proc->pgtbl, USTACK - PGSIZE, &pte, 1)) < 0) {
+		panic("create_proc() failed: %e\n", r);
 	}
 	assert(*pte == 0);
 	struct page_info *page = alloc_page(FLAG_ZERO);
@@ -74,10 +71,7 @@ create_proc(char *img)
 	for (int i = 0; i < NARGS; ++i) {
 		uargv[i] = (char *)((u64)UARGS + 256 * i);
 	}
-	if (ret = walk_pgtbl(proc->pgtbl, UARGS, &pte, 1)) {
-		free_pgtbl(proc->pgtbl, FREE_PGTBL_DECREF);
-		return ret;
-	}
+	assert((r = walk_pgtbl(proc->pgtbl, UARGS, &pte, 1)) == 0);
 	assert(*pte == 0);
 	page = alloc_page(FLAG_ZERO);
 	*pte = page->paddr | PTE_P | PTE_U | PTE_W;
@@ -97,6 +91,7 @@ create_proc(char *img)
 	// argv in rsi, which is predefined
 	proc->context.rsi = USTACK - NARGS * sizeof(u64);
 	proc->state = READY;
+	return 0;
 	// printk("nfreepages after create_proc(): %d\n", nfreepages);
 }
 

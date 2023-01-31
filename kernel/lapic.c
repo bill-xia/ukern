@@ -40,7 +40,7 @@ init_mp(void)
 	cpuid(1, &rax, &rbx, &rcx, &rdx); // read APIC info
 	// printk("detect APIC: %lx\n", (rdx >> 9) & 1);
 	// read MSR
-	u64 apic_base_msr = rdmsr(0x1B);
+	// u64 apic_base_msr = rdmsr(0x1B);
 	// printk("apic_base_msr: %lx\n", apic_base_msr);
 	// set up APIC register mapping
 	pte_t *pte;
@@ -48,11 +48,11 @@ init_mp(void)
 	*pte = 0xFEE00000 | PTE_P | PTE_W | PTE_PWT | PTE_PCD;
 	lcr3(rcr3());
 	// info
-	u32 lapicid = lapic[LAPICR_ID];
+	// u32 lapicid = lapic[LAPICR_ID];
 	// printk("id: %x\n", lapicid);
-	u32 ver = lapic[LAPICR_VER];
+	// u32 ver = lapic[LAPICR_VER];
 	// printk("ver: %x\n", ver);
-	u32 svr = lapic[LAPICR_SVR];
+	// u32 svr = lapic[LAPICR_SVR];
 	// printk("svr: %x\n", svr);
 	lapicw(LAPICR_SVR, 0x100 | 35); // spurious vector 35, APIC software enable
 	// Init LVT

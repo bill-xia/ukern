@@ -20,7 +20,7 @@ struct guid {
 	u8	f4[8];
 };
 
-static int
+static inline int
 guid_eq(void *a, void *b)
 {
 	return !strcmp((char *)a, (char *)b, 16);

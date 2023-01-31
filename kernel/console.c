@@ -5,7 +5,6 @@
 static u32 ind = 0, rows = 0, cols = 0,
 	height, width,
 	hpixel = 0, vpixel = 0, bytes_per_glyph;
-static u16 color = COLOR_WHITE_ON_BLACK;
 
 static char cbuf[1920 * 1080];
 u32 *pixelbuf;

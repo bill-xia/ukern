@@ -110,8 +110,6 @@ sys_open(struct proc_context *tf)
 		tf->rax = -EFAULT;
 		return;
 	}
-	u32 head_cluster, use_fat;
-	u64 file_len;
 	for (int fd = 0; fd < 256; ++fd) {
 		if (curproc->fdesc[fd].inuse) continue;
 		int r = open_file((void *)tf->rdx, curproc->fdesc + fd);
@@ -159,6 +157,7 @@ sys_exec(struct proc_context *tf)
 {
 	static char argv_buf[16][256];
 	struct page_info *page;
+	int r;
 	// save argv
 	char **ori_argv = (char **)tf->rbx;
 	int argc = (int)tf->rcx;
@@ -176,9 +175,7 @@ sys_exec(struct proc_context *tf)
 
 	// open file
 	struct file_desc fdesc;
-	int ret = 0;
-	int r = open_file((void *)(tf->rdx), &fdesc);
-	if (r) { // open file failed
+	if ((r = open_file((void *)(tf->rdx), &fdesc)) < 0) { // open file failed
 		tf->rax = r;
 		return;
 	}
@@ -191,7 +188,7 @@ sys_exec(struct proc_context *tf)
 	// }
 	while (addr < addr_end) {
 		pte_t *pte;
-		if (ret = walk_pgtbl(k_pgtbl, addr, &pte, 1)) {
+		if ((r = walk_pgtbl(k_pgtbl, addr, &pte, 1)) < 0) {
 			tf->rax = -ENOMEM;
 			addr_end = addr;
 			goto free_img;
@@ -205,13 +202,13 @@ sys_exec(struct proc_context *tf)
 	read_file(img, fdesc.file_len, &fdesc);
 	// check file format before destroying current enviroment,
 	// return enough information if format error
-	if (ret = check_img_format(img)) {
+	if ((r = check_img_format(img)) < 0) {
 		tf->rax = -ENOEXEC;
 		addr = EXEC_IMG;
 		while (addr < addr_end) {
 			pte_t *pte;
-			ret = walk_pgtbl(k_pgtbl, addr, &pte, 0);
-			assert(pte != NULL && ret == 0);
+			r = walk_pgtbl(k_pgtbl, addr, &pte, 0);
+			assert(pte != NULL && r == 0);
 			free_page(PA2PGINFO(*pte));
 			*pte = 0;
 			addr += PGSIZE;
@@ -232,14 +229,14 @@ sys_exec(struct proc_context *tf)
 	// code below is copied from create_proc()
 	// may delete create_proc() in the future
 	struct proc *proc = curproc;
-	if (ret = load_img(img, proc)) {
-		kill_proc(proc, ret);
+	if ((r = load_img(img, proc)) < 0) {
+		kill_proc(proc, r);
 		goto free_img;
 	}
 	// stack
 	pte_t *pte;
-	if (ret = walk_pgtbl(proc->pgtbl, USTACK - PGSIZE, &pte, 1)) {
-		kill_proc(proc, ret);
+	if ((r = walk_pgtbl(proc->pgtbl, USTACK - PGSIZE, &pte, 1)) < 0) {
+		kill_proc(proc, r);
 		goto free_img;
 	}
 	assert(*pte == 0);
@@ -250,8 +247,8 @@ sys_exec(struct proc_context *tf)
 	for (int i = 0; i < NARGS; ++i) {
 		uargv[i] = (char *)((u64)UARGS + 256 * i);
 	}
-	if (ret = walk_pgtbl(proc->pgtbl, UARGS, &pte, 1)) {
-		kill_proc(proc, ret);
+	if ((r = walk_pgtbl(proc->pgtbl, UARGS, &pte, 1)) < 0) {
+		kill_proc(proc, r);
 		goto free_img;
 	}
 	assert(*pte == 0);
@@ -286,8 +283,8 @@ free_img:
 	addr = EXEC_IMG;
 	while (addr < addr_end) {
 		pte_t *pte;
-		ret = walk_pgtbl(k_pgtbl, addr, &pte, 0);
-		assert(pte != NULL && ret == 0);
+		r = walk_pgtbl(k_pgtbl, addr, &pte, 0);
+		assert(pte != NULL && r == 0);
 		free_page(PA2PGINFO(*pte));
 		*pte = 0;
 		addr += PGSIZE;
