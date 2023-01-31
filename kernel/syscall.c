@@ -158,6 +158,7 @@ void
 sys_exec(struct proc_context *tf)
 {
 	static char argv_buf[16][256];
+	struct page_info *page;
 	// save argv
 	char **ori_argv = (char **)tf->rbx;
 	int argc = (int)tf->rcx;
@@ -197,7 +198,9 @@ sys_exec(struct proc_context *tf)
 			addr_end = addr;
 			goto free_img;
 		}
-		*pte |= PTE_U | PTE_W;
+		assert(*pte == 0);
+		page = alloc_page(FLAG_ZERO);
+		*pte = page->paddr | PTE_P;
 		addr += PGSIZE;
 	}
 	lcr3(rcr3());
@@ -209,7 +212,8 @@ sys_exec(struct proc_context *tf)
 	// from now on, old process image is destroyed
 	free_pgtbl(curproc->pgtbl, FREE_PGTBL_DECREF);
 	free_pgtbl(curproc->p_pgtbl, 0);
-	struct page_info *page = alloc_page(FLAG_ZERO);
+
+	page = alloc_page(FLAG_ZERO);
 	curproc->pgtbl = (pgtbl_t)page->paddr;
 	page = alloc_page(FLAG_ZERO);
 	curproc->p_pgtbl = (pgtbl_t)page->paddr;
@@ -226,7 +230,9 @@ sys_exec(struct proc_context *tf)
 		kill_proc(proc);
 		goto free_img;
 	}
-	*pte |= PTE_U | PTE_W;
+	assert(*pte == 0);
+	page = alloc_page(FLAG_ZERO);
+	*pte = page->paddr | PTE_P | PTE_U | PTE_W;
 	// uargs
 	char **uargv = (char **)(PAGEKADDR(*pte) + PGSIZE - NARGS*sizeof(u64));
 	for (int i = 0; i < NARGS; ++i) {
@@ -236,7 +242,9 @@ sys_exec(struct proc_context *tf)
 		kill_proc(proc);
 		goto free_img;
 	}
-	*pte |= PTE_U | PTE_W;
+	assert(*pte == 0);
+	page = alloc_page(FLAG_ZERO);
+	*pte = page->paddr | PTE_P | PTE_U | PTE_W;
 	char *uarg_pg = (char *)PAGEKADDR(*pte);
 	for (int i = 0; i < NARGS; ++i) {
 		memcpy(uarg_pg + i * ARGLEN, argv_buf[i], ARGLEN);

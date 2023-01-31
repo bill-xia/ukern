@@ -300,24 +300,27 @@ free_page(struct page_info *page)
 	}
 }
 
-// Take a walk at pgtbl according to vaddr. If `create`
-// is non-zero, create new page in need. No permission is
-// given on the pte of the new created page. Otherwise,
-// returns NULL on failure. The kernel should make sure
-// that `pgtbl` should be an available physical address,
-// thus it is not checked.
+// Take a walk at pgtbl according to vaddr. If `create` is non-zero, create new
+// page in need, but never create final physical page. This is because we
+// may want pte to map to other type of memory, e.g. MMIO. Call alloc_page() and
+// assign pginfo->addr to pte if this is what you need. Higher-level page tables
+// are allocated with all permission (P|U|W), thus the final permission is up to
+// the caller to fill in.
+//
+// `pgtbl` will be converted to kernel page-aligned address.
 //
 // Pass out a pointer to the page table entry at *pte, pass
-// NULL if vaddr is not mapped.
+// NULL if we cannot reach final level of page table and create is 0.
+//
 // Returns:
-//	0 on success
-//	-EFAULT if vaddr is not mapped
-//	-ENOMEM if memory not enough
+// 	0 on success
+// 	-EFAULT if vaddr is not mapped in higher level pgtbl and create is 0
+// 	-ENOMEM if memory not enough
 int
 walk_pgtbl(pgtbl_t pgtbl, u64 vaddr, pte_t **pte, int create)
 {
 	pgtbl = (pgtbl_t)PAGEKADDR((u64)pgtbl);
-	struct page_info *alloced[4] = {NULL,NULL,NULL,NULL};
+	struct page_info *alloced[3] = {NULL,NULL,NULL};
 	vaddr = PAGEADDR(vaddr);
 
 	int pml4i = PML4_INDEX(vaddr);
@@ -358,15 +361,6 @@ walk_pgtbl(pgtbl_t pgtbl, u64 vaddr, pte_t **pte, int create)
 
 	pt_t pt = (pt_t)PAGEKADDR(pd[pdi]);
 	int pti = PT_INDEX(vaddr);
-	if (!(pt[pti] & PTE_P)) {
-		if (!create) goto unmapped;
-		alloced[3] = alloc_page(FLAG_ZERO);
-		if (alloced[3] == NULL) {
-			goto no_mem;
-		}
-		// no permission given: let the caller do if needed
-		pt[pti] = alloced[3]->paddr | PTE_P;
-	}
 	if (pte != NULL)
 		*pte = (pte_t *)P2K(pt + pti);
 	return 0;
@@ -375,7 +369,7 @@ unmapped:
 		*pte = NULL;
 	return -EFAULT;
 no_mem:
-	for (int i = 0; i < 4 && alloced[i] != NULL; ++i) {
+	for (int i = 0; i < 3 && alloced[i] != NULL; ++i) {
 		free_page(alloced[i]);
 	}
 	return -ENOMEM;
@@ -389,8 +383,7 @@ map_mmio(pgtbl_t pgtbl, u64 vaddr, u64 mmioaddr, pte_t **_pte)
 	if (r = walk_pgtbl(pgtbl, vaddr, &pte, 1)) {
 		return r;
 	}
-	free_page(PA2PGINFO(PAGEADDR(*pte)));
-	*pte = mmioaddr | PTE_P | PTE_PWT | PTE_PCD | PTE_W;
+	*pte = mmioaddr | PTE_P | PTE_W | PTE_PWT | PTE_PCD;
 	if (_pte != NULL) {
 		*_pte = pte;
 	}

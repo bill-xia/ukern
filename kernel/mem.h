@@ -52,9 +52,11 @@
 #define ROUNDUP(x, blk_size)	((((x)+(blk_size)-1) / (blk_size)) * (blk_size))
 
 struct page_info {
-	u64			paddr;
-	i64 			ref;
-	struct page_info	*next;
+	u64				paddr;
+	union {
+		i64 			ref;
+		struct page_info	*next;
+	};
 };
 
 #define EFI_RESERVED_MEMORY_TYPE	0

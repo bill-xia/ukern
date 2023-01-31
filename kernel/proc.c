@@ -66,7 +66,9 @@ create_proc(char *img)
 		free_pgtbl(proc->pgtbl, FREE_PGTBL_DECREF);
 		return ret;
 	}
-	*pte |= PTE_U | PTE_W;
+	assert(*pte == 0);
+	struct page_info *page = alloc_page(FLAG_ZERO);
+	*pte = page->paddr | PTE_P | PTE_U | PTE_W;
 	// uargs
 	char **uargv = (char **)(PAGEKADDR(*pte) + PGSIZE - NARGS * sizeof(u64));
 	for (int i = 0; i < NARGS; ++i) {
@@ -76,7 +78,9 @@ create_proc(char *img)
 		free_pgtbl(proc->pgtbl, FREE_PGTBL_DECREF);
 		return ret;
 	}
-	*pte |= PTE_U | PTE_W;
+	assert(*pte == 0);
+	page = alloc_page(FLAG_ZERO);
+	*pte = page->paddr | PTE_P | PTE_U | PTE_W;
 	// mapping kernel space
 	for (int i = 256; i < 512; ++i) {
 		proc->pgtbl[i] = k_pgtbl[i];
@@ -254,7 +258,8 @@ load_img(char *img, struct proc *proc)
 					free_pgtbl(proc->pgtbl, FREE_PGTBL_DECREF);
 					return -ENOMEM;
 				}
-				*pte |= PTE_U | PTE_W;
+				struct page_info *page = alloc_page(FLAG_ZERO);
+				*pte = page->paddr | PTE_P | PTE_U | PTE_W;
 			}
 			if (src <= src_fileend) {
 				*(char *)(PAGEKADDR(*pte) + (vaddr & (PGSIZE - 1))) = *src;
