@@ -179,7 +179,6 @@ sys_exec(struct proc_context *tf)
 	int ret = 0;
 	int r = open_file((void *)(tf->rdx), &fdesc);
 	if (r) { // open file failed
-		printk("exec: open file failed.\n");
 		tf->rax = r;
 		return;
 	}

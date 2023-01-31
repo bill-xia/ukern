@@ -47,4 +47,5 @@ strncpy(char *dst, char *src, int n)
 		src++;
 		dst++;
 	}
+	*dst = '\0';
 }

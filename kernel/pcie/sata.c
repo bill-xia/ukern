@@ -218,8 +218,8 @@ sata_read_block(int did, u64 block)
 		pte_t *pte;
 		walk_pgtbl(k_pgtbl, vaddr, &pte, 1);
 		if (*pte == 0) {
-			struct page_info *page = alloc_page(FLAG_ZERO);
-			*pte = page->paddr | PTE_P;
+			pg = alloc_page(FLAG_ZERO);
+			*pte = pg->paddr | PTE_P;
 		}
 		u64 paddr = PAGEADDR(*pte);
 		// printk("read disk vaddr %lx, paddr: %lx\n", vaddr, paddr);

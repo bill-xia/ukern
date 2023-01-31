@@ -53,9 +53,8 @@ main()
 				// parent
 				sys_wait(NULL);
 			} else {
-				printf("exec(\"%s\", %d, %p)\n", argv[0], argc, argv);
 				int r = sys_exec(argv[0], argc, argv);
-				printf("exec() failed: %d\n", r);
+				printf("sh: '%s' failed running: %e\n", argv[0], r);
 				sys_exit();
 			}
 		clear_buf:

@@ -20,6 +20,12 @@ glyph_at(char ch, int i, int j)
 	return (font[ch * bytes_per_glyph + ind] >> (7 - off)) & 1;
 }
 
+int
+ischar(char ch)
+{
+	return 0x20 <= ch && ch < 0x7F;
+}
+
 void
 print_font_at(char ch, int pos)
 {
@@ -27,6 +33,8 @@ print_font_at(char ch, int pos)
 	int r = (pos / cols) * vpixel, c = (pos % cols) * hpixel;
 	for (int i = 0; i < vpixel; ++i) {
 		for (int j = 0; j < hpixel; ++j) {
+			if (!ischar(ch))
+				ch = '?';
 			if (glyph_at(ch, i, j))
 				pixelbuf[(r + i) * width + c + j] = 0x00FFFFFF;
 			else

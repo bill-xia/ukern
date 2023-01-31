@@ -74,7 +74,7 @@ exfat_walk_dir(struct FS_exFAT *fs, const char *name, int name_len, struct exfat
 		// Thus, first read, then update clus_id
 		if (i % entry_perclus == 0) {
 			if (cur_dir->clus_id == 0xFFFFFFFF)
-				break;
+				goto dir_end;
 			disk_read(fs->did, EXFAT_CLUS2LBA(fs, cur_dir->clus_id), 1u << fs->hdr->sec_per_clus_shift);
 			dir = (struct dir_entry *)lba2kaddr(fs->did, EXFAT_CLUS2LBA(fs, cur_dir->clus_id));
 			// printk("dir_clus_id: %x\n", dir_clus_id);
@@ -87,6 +87,8 @@ exfat_walk_dir(struct FS_exFAT *fs, const char *name, int name_len, struct exfat
 			
 		}
 		switch (dir[i % entry_perclus].entry_type) {
+		case 0x00: ;// empty dir
+			goto dir_end;
 		case 0x85: ;// file_dir
 			struct file_dir_entry *fd_dir = (struct file_dir_entry *)&dir[i % entry_perclus];
 			secondary_count = fd_dir->secondary_count;
@@ -123,6 +125,7 @@ exfat_walk_dir(struct FS_exFAT *fs, const char *name, int name_len, struct exfat
 		if (matched)
 			break;
 	}
+dir_end:
 	return matched ? 0 : -1;
 }
 
@@ -159,6 +162,9 @@ exfat_open_file(struct FS_exFAT *fs, const char *filename, struct file_desc *fde
 		}
 		// check if filename comes to end
 		if (filename[i] == '\0') {
+			if (cur_dir.is_dir) {
+				return -EISDIR;
+			}
 			fdesc->meta_exfat.head_cluster = cur_dir.clus_id;
 			fdesc->meta_exfat.use_fat = cur_dir.use_fat;
 			fdesc->file_len = cur_dir.file_len;
@@ -188,6 +194,7 @@ exfat_read_file(struct FS_exFAT *fs, char *dst, size_t sz, struct file_desc *fde
 			clus_id++;
 	}
 	sz = min(sz, fdesc->file_len - fdesc->read_ptr);
+	r = sz;
 	while (sz) {
 		disk_read(fs->did, EXFAT_CLUS2LBA(fs, clus_id), 1 << fs->hdr->sec_per_clus_shift);
 		u64 src = lba2kaddr(fs->did, EXFAT_CLUS2LBA(fs, clus_id)) + ptr;

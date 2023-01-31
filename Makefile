@@ -73,6 +73,11 @@ efi: pre-build $(OBJ_DIR)/kernel/kernel gnu-efi/x86_64/apps/ukernbl.efi diskimg
 	sudo rm -rf mainfs/*
 	echo "hel" | sudo tee -a mainfs/hel
 	echo "helloworld" | sudo tee -a mainfs/helloworld
+	sudo mkdir -p mainfs/a/b
+	sudo mkdir -p mainfs/b
+	echo "foo" | sudo tee -a mainfs/a/foo
+	echo "foo" | sudo tee -a mainfs/a/b/foo
+	echo "bar" | sudo tee -a mainfs/b/bar
 	for bin in $(KERNEL_BINS) ; do \
 		sudo cp $$bin mainfs/ ; \
 	done

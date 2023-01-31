@@ -55,6 +55,7 @@ KERNEL_BINS := $(OBJ_DIR)/user/divzero \
 	$(OBJ_DIR)/user/mal_read \
 	$(OBJ_DIR)/user/exec \
 	$(OBJ_DIR)/user/forkexec \
+	$(OBJ_DIR)/user/cat \
 
 KERNEL_INC := -Iinclude -Ilib -Ikernel
 
