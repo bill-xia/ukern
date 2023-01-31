@@ -275,7 +275,7 @@ static inline u64
 rdmsr(u64 addr)
 {
 	u64 result;
-	asm volatile("mov %0, %%rcx; rdmsr;"
+	asm volatile("mov %1, %%rcx; rdmsr;"
 			: "=a" (result)
 			: "r" (addr));
 	return result;
