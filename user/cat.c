@@ -23,6 +23,5 @@ int main(int argc, char *argv[])
 	if (r < 0) {
 		printf("cat: in reading %s: %e.\n", argv[1], r);
 	}
-	printf("\n");
 	sys_exit(0);
 }

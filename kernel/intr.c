@@ -247,7 +247,7 @@ void trap_handler(struct proc_context *trapframe, u64 vecnum, u64 errno)
 			kbd_buffer[(kbd_buf_beg + kbd_buf_siz) % 4096] = c;
 			kbd_buf_siz++;
 			if (kbd_proc != NULL) {
-				kbd_proc->context.rax = kbd_buffer[kbd_buf_beg++];
+				kbd_proc->context.rax = (u8)kbd_buffer[kbd_buf_beg++];
 				if (kbd_buf_beg == 4096)
 					kbd_buf_beg = 0;
 				kbd_buf_siz--;

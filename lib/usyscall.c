@@ -59,7 +59,7 @@ sys_exec(const char *fn, int argc, char *argv[])
 	return syscall(7, (u64)fn, (u64)argc, (u64)argv, 0,0,0);
 }
 
-char
+int
 sys_getch(void)
 {
 	return syscall(8, 0,0,0,0,0,0);

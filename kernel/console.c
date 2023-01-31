@@ -20,7 +20,7 @@ glyph_at(char ch, int i, int j)
 }
 
 int
-ischar(char ch)
+ischar(int ch)
 {
 	return 0x20 <= ch && ch < 0x7F;
 }

@@ -297,7 +297,7 @@ void
 sys_getch(struct proc_context *tf)
 {
 	if (kbd_buf_siz > 0) {
-		tf->rax = kbd_buffer[kbd_buf_beg++];
+		tf->rax = (u8)kbd_buffer[kbd_buf_beg++];
 		if (kbd_buf_beg == 4096)
 			kbd_buf_beg = 0;
 		kbd_buf_siz--;
