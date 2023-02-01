@@ -3,6 +3,7 @@
 #include "mem.h"
 #include "printk.h"
 #include "errno.h"
+#include "string.h"
 
 void
 init_fs_exfat(struct FS_exFAT *fs)
@@ -129,40 +130,86 @@ dir_end:
 	return matched ? 0 : -1;
 }
 
-// open file identified by `filename`
+// open file identified by `path`
 // return status: 0 if success, < 0 if error
 int
-exfat_open_file(struct FS_exFAT *fs, const char *filename, struct file_desc *fdesc)
+exfat_open(
+	struct FS_exFAT *fs,
+	const char *path,
+	struct file_desc *pwd,
+	struct file_desc *fdesc,
+	int opendir)
 {
-	struct exfat_dir_file cur_dir = {
-		.clus_id = fs->hdr->rtdir_cluster,
-		.file_len = 0,
-		.is_dir = 1,
-		.use_fat = 1
-	};
+	struct exfat_dir_file cur_dir;
+	if (path[0] == '/' || path[0] == '\0') {
+		cur_dir.clus_id = fs->hdr->rtdir_cluster,
+		cur_dir.file_len = 0,
+		cur_dir.is_dir = 1,
+		cur_dir.use_fat = 1;
+		fdesc->path[0] = '\0';
+		fdesc->path_len = 0;
+	} else {
+		cur_dir.clus_id = pwd->meta_exfat.head_cluster,
+		cur_dir.file_len = 0,
+		cur_dir.is_dir = 1,
+		cur_dir.use_fat = pwd->meta_exfat.use_fat;
+		strcpy(fdesc->path, pwd->path);
+		fdesc->path_len = pwd->path_len;
+	}
 	static char name[256];
 	int  r;
 	for (int i = 0, ind = 0; i < 256; ++i, ++ind) {
-		if (filename[i] != '/' && filename[i] != '\0') {
-			name[ind] = filename[i];
+		if (path[i] != '/' && path[i] != '\0') {
+			name[ind] = path[i];
 			continue;
 		}
 		if (ind == 0) {
 			// name is empty, skip
-			ind = -1;
+			goto after_walk;
+		}
+		name[ind] = '\0';
+		if (strcmp(name, ".", 256) == 0) {
+			// same as empty
+			goto after_walk;
+		}
+		if (strcmp(name, "..", 256) == 0) {
+			// parent directory, walk from root again by path
+			fdesc->path_len -= path_pop(fdesc->path, fdesc->path_len);
+			struct file_desc parent;
+			exfat_open(fs, fdesc->path, NULL, &parent, 1);
+			cur_dir.clus_id = parent.meta_exfat.head_cluster,
+			cur_dir.file_len = 0,
+			cur_dir.is_dir = 1,
+			cur_dir.use_fat = parent.meta_exfat.use_fat;
 			goto after_walk;
 		}
 		// `name` is complete.
 		if (!cur_dir.is_dir) {
-			// travel into a file, like `filename is` "/a/b" and "/a" is a file
+			// travel into a file, like `path is` "/a/b" and "/a" is a file
 			return -ENOTDIR;
 		}
 		if ((r = exfat_walk_dir(fs, name, ind, &cur_dir)) < 0) {
 			return -ENOENT;
 		}
+		fdesc->path_len += path_push(fdesc->path, name);
 	after_walk:
-		// check if filename comes to end
-		if (filename[i] == '\0') {
+		// check if path comes to end
+		if (path[i] != '\0') {
+			ind = -1;
+			continue;
+		}
+		if (opendir) {
+			if (!cur_dir.is_dir) {
+				return -ENOTDIR;
+			}
+			fdesc->meta_exfat.head_cluster = cur_dir.clus_id;
+			fdesc->meta_exfat.use_fat = cur_dir.use_fat;
+			fdesc->file_len = cur_dir.file_len;
+			fdesc->read_ptr = 0;
+			fdesc->file_type = FT_DIR;
+			fdesc->path[fdesc->path_len] = '\0';
+			return 0;
+		} else {
 			if (cur_dir.is_dir) {
 				return -EISDIR;
 			}
@@ -171,9 +218,9 @@ exfat_open_file(struct FS_exFAT *fs, const char *filename, struct file_desc *fde
 			fdesc->file_len = cur_dir.file_len;
 			fdesc->read_ptr = 0;
 			fdesc->file_type = FT_REG;
+			fdesc->path[fdesc->path_len] = '\0';
 			return 0;
 		}
-		ind = -1;
 	}
 	return -ENAMETOOLONG;
 }
@@ -216,53 +263,6 @@ exfat_read_file(struct FS_exFAT *fs, char *dst, size_t sz, struct file_desc *fde
 		}
 	}
 	return r;
-}
-
-int
-exfat_open_dir(struct FS_exFAT *fs, const char *dirname, struct file_desc *fdesc)
-{
-	struct exfat_dir_file cur_dir = {
-		.clus_id = fs->hdr->rtdir_cluster,
-		.file_len = 0,
-		.is_dir = 1,
-		.use_fat = 1
-	};
-	static char name[256];
-	int  r;
-	for (int i = 0, ind = 0; i < 256; ++i, ++ind) {
-		if (dirname[i] != '/' && dirname[i] != '\0') {
-			name[ind] = dirname[i];
-			continue;
-		}
-		if (ind == 0) {
-			// name is empty, skip
-			ind = -1;
-			goto after_walk;
-		}
-		// `name` is complete.
-		if (!cur_dir.is_dir) {
-			// travel into a file, like `dirname is` "/a/b" and "/a" is a file
-			return -ENOTDIR;
-		}
-		if ((r = exfat_walk_dir(fs, name, ind, &cur_dir)) < 0) {
-			return -ENOENT;
-		}
-	after_walk:
-		// check if dirname comes to end
-		if (dirname[i] == '\0') {
-			if (!cur_dir.is_dir) {
-				return -ENOTDIR;
-			}
-			fdesc->meta_exfat.head_cluster = cur_dir.clus_id;
-			fdesc->meta_exfat.use_fat = cur_dir.use_fat;
-			fdesc->file_len = cur_dir.file_len;
-			fdesc->read_ptr = 0;
-			fdesc->file_type = FT_DIR;
-			return 0;
-		}
-		ind = -1;
-	}
-	return -ENAMETOOLONG;
 }
 
 int

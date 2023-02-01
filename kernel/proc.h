@@ -53,6 +53,7 @@ struct proc {
 	u64			exec_time;
 	struct proc_context	context;
 	struct file_desc	fdesc[64];
+	struct file_desc	pwd;
 	i64			*wait_status;
 	// About these pointers:
 	// Relation between processes can be modeled as a tree,

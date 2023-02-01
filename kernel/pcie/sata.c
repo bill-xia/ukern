@@ -353,6 +353,5 @@ sata_write_block(int did, u64 block)
 	while (ports[port].ci != 0) {
 		printk("[R]");
 	}
-	// printk("sata_read(): port: %d, slot: %d, prdbc: %d\n", port, slot, cmd_hdr[slot].dw1);
 	return 0;
 }

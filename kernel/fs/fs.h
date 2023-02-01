@@ -31,6 +31,8 @@ struct file_desc {
 		struct file_meta_exfat	meta_exfat;
 		struct file_meta_ext2	meta_ext2;
 	};
+	char	path[256];
+	u64	path_len;
 	u8	inuse,
 		file_type;
 };
@@ -44,9 +46,12 @@ enum fs_type {
 int detect_fs(int did, int pid);
 
 int read_file(char *dst, size_t sz, struct file_desc *fdesc);
-int open_file(const char *filename, struct file_desc *fdesc);
-int open_dir(const char *dirname, struct file_desc *fdesc);
+int open_file(const char *filename, struct file_desc *pwd, struct file_desc *fdesc);
+int open_dir(const char *dirname, struct file_desc *pwd, struct file_desc *fdesc);
 int read_dir(struct dirent *dst, struct file_desc *fdesc);
+
+int path_push(char *dst, const char *src);
+int path_pop(char *src, int len);
 
 #define DSKSHIFT	41
 

@@ -17,5 +17,5 @@ int sys_getch(void);
 int sys_wait(int *wstatus);
 int sys_opendir(const char *fn);
 int sys_readdir(int fd, struct dirent *buf);
-
+int sys_chdir(const char *fn);
 #endif
