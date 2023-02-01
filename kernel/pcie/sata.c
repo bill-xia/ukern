@@ -35,6 +35,20 @@ check_port(int port)
 	return sig != 0xeb140101 && sig != 0xc33c0101 && sig != 0x96690101;
 }
 
+// void
+// hexdump(void *s, int n)
+// {
+// 	u8 *str = s;
+// 	for (int i = 0; i < n; ++i) {
+// 		u8 lo = str[i] & 0x0F, hi = str[i] >> 4; 
+// 		printk("%d%d ", hi, lo);
+// 		if (i % 60 == 59) {
+// 			printk("\n");
+// 		}
+// 	}
+// 	printk("\n");
+// }
+
 void
 pcie_sata_ahci_init(volatile struct pci_config_device *cfg)
 {
@@ -254,9 +268,91 @@ sata_read_block(int did, u64 block)
 }
 
 int
-sata_write_block()
+sata_write_block(int did, u64 block)
 {
 	// AHCI Spec 1.3.1 Section 5.5
-	// TODO
+	int port = disk[did].disk_ind;
+	int slot = 0;
+	ports[port].is = 0xFFFF;
+	// printk("port is: %x\n", ports[port].is);
+	for (slot = 0; slot < 32; ++slot) {
+		if ((ports[port].ci & (1u << slot)) || (ports[port].sact & (1u << slot)))
+			continue;
+		break;
+	}
+	if (slot == 32) {
+		panic("no slot.\n");
+		return -EBUSY;
+	}
+	struct sata_cmd_hdr *cmd_hdr = &cmd_list[port][slot];
+	int prdtl = 1, cfl = sizeof(struct reg_h2d_fis) / 4, isatapi = 0;
+	// build ATA command
+	struct page_info *pg;
+	static struct sata_cmd_tbl *cmd_tbl = NULL;
+	// this function always use _the_ page for cmd_tbl
+	if (cmd_tbl == NULL) {
+		pg = alloc_page(FLAG_ZERO);
+		cmd_tbl = (struct sata_cmd_tbl *)P2K(pg->paddr);
+	}
+	cmd_hdr->dw2 = (u32)(u64)cmd_tbl;
+	cmd_hdr->dw3 = K2P(cmd_tbl) >> 32;
+
+	// pte_t *ppte;
+	// walk_pgtbl(k_pgtbl, cmd_tbl, &ppte, 0);
+	// printk("cmd_tbl: %p, pte %lx\n", cmd_tbl, *ppte);
+	// cmd_tbl->cfis
+	struct reg_h2d_fis *cfis = &cmd_tbl->cfis.reg_h2d;
+	cfis->fis_type = FIS_TYPE_REG_H2D;
+	cfis->c = 1;
+	cfis->command = ATA_COMMAND_WRITE_DMA_EXT;
+
+	u64 lba = block * 8;
+	cfis->lba0 = (u8)lba;
+	cfis->lba1 = (u8)(lba >> 8);
+	cfis->lba2 = (u8)(lba >> 16);
+	cfis->device = 1<<6;
+
+	cfis->lba3 = (u8)(lba >> 24);
+	cfis->lba4 = (u8)(lba >> 32);
+	cfis->lba5 = (u8)(lba >> 40);
+
+	cfis->countl = 8; // 8 sector, 1 4K-block
+	cfis->counth = 0;
+	// cmd_tbl->acmd
+	// cmd_tbl->prdt
+	for (int i = 0; i < prdtl; ++i) {
+		u64 vaddr = blk2kaddr(did, block);
+		pte_t *pte;
+		walk_pgtbl(k_pgtbl, vaddr, &pte, 1);
+		assert(*pte & PTE_P);
+		u64 paddr = PAGEADDR(*pte);
+		// printk("read disk vaddr %lx, paddr: %lx\n", vaddr, paddr);
+		cmd_tbl->prdt[i].dba = (u32)paddr;
+		cmd_tbl->prdt[i].dbau = paddr >> 32;
+		cmd_tbl->prdt[i].dw3 = (PGSIZE - 1);
+	}
+
+	// set cmd_hdr
+	u32 dw0 = (prdtl << CMDHDR_PRDTL_SHIFT) | cfl;
+	if (isatapi)
+		dw0 |= CMDHDR_A;
+	cmd_hdr[slot].dw0 = dw0;
+	cmd_hdr[slot].dw1 = 0;
+
+	// run!
+	ports[port].ci |= (1u << slot);
+	while (1)
+	{
+		// if (ports[port].tfd & TFD_BSY)
+		//     printk("busy");
+		if ((ports[port].ci & (1 << slot)) == 0)
+			break;
+		if (ports[port].is & (1 << 30))
+			panic("read disk error.\n");
+	}
+	while (ports[port].ci != 0) {
+		printk("[R]");
+	}
+	// printk("sata_read(): port: %d, slot: %d, prdbc: %d\n", port, slot, cmd_hdr[slot].dw1);
 	return 0;
 }

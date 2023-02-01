@@ -3,6 +3,7 @@
 
 #include "mem.h"
 #include "disk.h"
+#include "dirent.h"
 
 struct file_meta_exfat {
 	u32	head_cluster, // 0/1 means empty file desc, otherwise in use
@@ -13,14 +14,25 @@ struct file_meta_ext2 {
 	u32	rsv;
 };
 
+enum {
+	FT_KBD = 1,
+	FT_SCREEN,
+	FT_DIR,
+	FT_PIPE,
+	FT_REG,
+	FT_SOCK,
+	FT_UNKNOWN
+};
+
 struct file_desc {
 	u64	file_len,
-		read_ptr;
+		read_ptr; // used as dir entry index if file_type is FT_DIR
 	union {
 		struct file_meta_exfat	meta_exfat;
 		struct file_meta_ext2	meta_ext2;
 	};
-	u8	inuse;
+	u8	inuse,
+		file_type;
 };
 
 enum fs_type {
@@ -33,6 +45,8 @@ int detect_fs(int did, int pid);
 
 int read_file(char *dst, size_t sz, struct file_desc *fdesc);
 int open_file(const char *filename, struct file_desc *fdesc);
+int open_dir(const char *dirname, struct file_desc *fdesc);
+int read_dir(struct dirent *dst, struct file_desc *fdesc);
 
 #define DSKSHIFT	41
 

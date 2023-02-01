@@ -1,4 +1,4 @@
-#include "types.h"
+#include "usyscall.h"
 
 int
 syscall(int num, u64 a1, u64 a2, u64 a3, u64 a4, u64 a5, u64 a6)
@@ -69,4 +69,16 @@ int
 sys_wait(int *wstatus)
 {
 	return syscall(9, (u64)wstatus,0,0,0,0,0);
+}
+
+int
+sys_opendir(const char *fn)
+{
+	return syscall(10, (u64)fn,0,0,0,0,0);
+}
+
+int
+sys_readdir(int fd, struct dirent *buf)
+{
+	return syscall(11, (u64)fd, (u64)buf,0,0,0,0);
 }

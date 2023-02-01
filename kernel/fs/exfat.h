@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "fs/disk.h"
+#include "dirent.h"
 
 #define NO_FAT_CHAIN 0x02
 
@@ -85,5 +86,7 @@ struct file_name_entry {
 void init_fs_exfat(struct FS_exFAT *fs);
 int exfat_open_file(struct FS_exFAT *fs, const char *filename, struct file_desc *fdesc);
 int exfat_read_file(struct FS_exFAT *fs, char *dst, size_t sz, struct file_desc *fdesc);
+int exfat_open_dir(struct FS_exFAT *fs, const char *dirname, struct file_desc *fdesc);
+int exfat_read_dir(struct FS_exFAT *fs, struct dirent *dst, struct file_desc *fdesc);
 
 #endif

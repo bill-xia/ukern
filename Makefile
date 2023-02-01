@@ -45,6 +45,7 @@ gnu-efi/x86_64/apps/ukernbl.efi: gnu-efi/apps/ukernbl.c
 diskimg:
 	dd if=/dev/zero of=diskimg bs=1024 count=200000
 	(echo g; echo n; echo; echo; echo +100M; echo t; echo EFI System; echo n; echo; echo; echo; echo w) | fdisk diskimg
+	sync
 	sudo kpartx -l diskimg | cut -d " " -f 1 | head -n 1 > .disk_dev_efi
 	sudo kpartx -l diskimg | cut -d " " -f 1 | tail -n 1 > .disk_dev_main
 	sudo kpartx -a diskimg

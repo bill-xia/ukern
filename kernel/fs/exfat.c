@@ -170,6 +170,7 @@ exfat_open_file(struct FS_exFAT *fs, const char *filename, struct file_desc *fde
 			fdesc->meta_exfat.use_fat = cur_dir.use_fat;
 			fdesc->file_len = cur_dir.file_len;
 			fdesc->read_ptr = 0;
+			fdesc->file_type = FT_REG;
 			return 0;
 		}
 		ind = -1;
@@ -215,4 +216,133 @@ exfat_read_file(struct FS_exFAT *fs, char *dst, size_t sz, struct file_desc *fde
 		}
 	}
 	return r;
+}
+
+int
+exfat_open_dir(struct FS_exFAT *fs, const char *dirname, struct file_desc *fdesc)
+{
+	struct exfat_dir_file cur_dir = {
+		.clus_id = fs->hdr->rtdir_cluster,
+		.file_len = 0,
+		.is_dir = 1,
+		.use_fat = 1
+	};
+	static char name[256];
+	int  r;
+	for (int i = 0, ind = 0; i < 256; ++i, ++ind) {
+		if (dirname[i] != '/' && dirname[i] != '\0') {
+			name[ind] = dirname[i];
+			continue;
+		}
+		if (ind == 0) {
+			// name is empty, skip
+			ind = -1;
+			goto after_walk;
+		}
+		// `name` is complete.
+		if (!cur_dir.is_dir) {
+			// travel into a file, like `dirname is` "/a/b" and "/a" is a file
+			return -ENOTDIR;
+		}
+		if ((r = exfat_walk_dir(fs, name, ind, &cur_dir)) < 0) {
+			return -ENOENT;
+		}
+	after_walk:
+		// check if dirname comes to end
+		if (dirname[i] == '\0') {
+			if (!cur_dir.is_dir) {
+				return -ENOTDIR;
+			}
+			fdesc->meta_exfat.head_cluster = cur_dir.clus_id;
+			fdesc->meta_exfat.use_fat = cur_dir.use_fat;
+			fdesc->file_len = cur_dir.file_len;
+			fdesc->read_ptr = 0;
+			fdesc->file_type = FT_DIR;
+			return 0;
+		}
+		ind = -1;
+	}
+	return -ENAMETOOLONG;
+}
+
+int
+exfat_read_dir(struct FS_exFAT *fs, struct dirent *dst, struct file_desc *fdesc)
+{
+	struct dir_entry *dir = NULL;
+	// TODO: what if cluster size > 4K?
+	struct exfat_dir_file cur_dir = {
+		.clus_id = fdesc->meta_exfat.head_cluster,
+		.file_len = 0,
+		.is_dir = 1,
+		.use_fat = fdesc->meta_exfat.use_fat
+	};
+	int	i,
+		name_ptr = 0,
+		// secondary_count,
+		clus_size = (1ul << (fs->hdr->byte_per_sec_shift + fs->hdr->sec_per_clus_shift)),
+		entry_perclus = clus_size / sizeof(struct dir_entry),
+		fn_len = 0,
+		filled = 0;
+	for (i = 0;; ++i) {
+		// cur->clus_id stores the clus *to be read*, rather than already read
+		// Thus, first read, then update clus_id
+		if (i % entry_perclus == 0) {
+			if (cur_dir.clus_id == 0xFFFFFFFF)
+				goto no_dirent;
+			disk_read(fs->did, EXFAT_CLUS2LBA(fs, cur_dir.clus_id), 1u << fs->hdr->sec_per_clus_shift);
+			dir = (struct dir_entry *)lba2kaddr(fs->did, EXFAT_CLUS2LBA(fs, cur_dir.clus_id));
+			// printk("dir_clus_id: %x\n", dir_clus_id);
+			if (cur_dir.use_fat) {
+				// printk("open(): ");
+				cur_dir.clus_id = get_fat_at(fs, cur_dir.clus_id);
+			} else {
+				cur_dir.clus_id++;
+			}
+		}
+		if (i < fdesc->read_ptr) // skip already read entries
+			continue;
+		switch (dir[i % entry_perclus].entry_type) {
+		case 0x00: ;// empty dir
+			goto no_dirent;
+		case 0x85: ;// file_dir
+			struct file_dir_entry *fd_dir = (struct file_dir_entry *)&dir[i % entry_perclus];
+			// secondary_count = fd_dir->secondary_count;
+			name_ptr = 0;
+			if ((fd_dir->file_attr & 0x10) >> 4)
+				dst->d_type = DT_DIR; // Directory
+			else
+				dst->d_type = DT_REG; // Regular file
+			break;
+		case 0xC0: ;// stream_ext
+			struct stream_ext_entry *str_ext_dir = (struct stream_ext_entry *)&dir[i % entry_perclus];
+			dst->file_len = str_ext_dir->valid_data_len;
+			dst->d_ino = str_ext_dir->first_clus;
+			fn_len = str_ext_dir->name_len;
+			break;
+		case 0xC1: ;// file_name
+			struct file_name_entry *fn_dir = (struct file_name_entry *)&dir[i % entry_perclus];
+			for (int k = 0; k < 15 && name_ptr < fn_len; k++) {
+				dst->d_name[name_ptr++] = fn_dir->file_name[k];
+			}
+			dst->d_name[name_ptr] = '\0';
+			if (name_ptr == fn_len) {
+				filled = 1;
+			}
+			break;
+		default:
+			break;
+		}
+		if (filled) {
+			++i;
+			break;
+		}
+	}
+	fdesc->read_ptr = i;
+no_dirent:
+	if (!filled) {
+		dst->d_ino = 0;
+		dst->file_len = 0;
+		dst->d_name[0] = '\0';
+	}
+	return 0;
 }

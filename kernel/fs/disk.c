@@ -205,6 +205,11 @@ disk_read(int did, u64 lba, int n_sec)
 	switch (disk[did].driver_type) {
 	case DISK_SATA:
 		for (int i = 0; i < (n_sec - 1) / 8 + 1; ++i) {
+			pte_t *pte;
+			r = walk_pgtbl(k_pgtbl, lba2kaddr(did, lba), &pte, 0);
+			if (r == 0 && (*pte & PTE_P)) {
+				continue;
+			}
 			if ((r = sata_read_block(did, lba / 8)) < 0)
 				return r;
 			lba += 8;

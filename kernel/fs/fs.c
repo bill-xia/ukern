@@ -28,8 +28,22 @@ open_file(const char *filename, struct file_desc *fdesc)
 }
 
 int
+open_dir(const char *dirname, struct file_desc *fdesc)
+{
+	// assume _the_ exFAT temporarily
+	return exfat_open_dir(&rtfs, dirname, fdesc);
+}
+
+int
 read_file(char *dst, size_t sz, struct file_desc *fdesc)
 {
 	// assume _the_ exFAT temporarily
 	return exfat_read_file(&rtfs, dst, sz, fdesc);
+}
+
+int
+read_dir(struct dirent *dst, struct file_desc *fdesc)
+{
+	// assume _the_ exFAT temporarily
+	return exfat_read_dir(&rtfs, dst, fdesc);
 }

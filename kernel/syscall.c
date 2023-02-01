@@ -10,6 +10,7 @@
 #include "kbd.h"
 #include "string.h"
 #include "errno.h"
+#include "dirent.h"
 
 // check inside current pagetable:
 // whether `flags` are set for PTEs in memory range [addr,addr+siz]
@@ -126,6 +127,19 @@ sys_open(struct proc_context *tf)
 	return;
 }
 
+static inline int
+readable_ft(int file_type)
+{
+	switch (file_type) {
+	case FT_KBD:
+	case FT_REG:
+	// case FT_PIPE:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
 void
 sys_read(struct proc_context *tf)
 {
@@ -139,7 +153,7 @@ sys_read(struct proc_context *tf)
 		return;
 	}
 	struct file_desc *fdesc = &curproc->fdesc[fd];
-	if (fdesc->inuse == 0) {
+	if (fdesc->inuse == 0 || !readable_ft(fdesc->file_type)) {
 		tf->rax = -EBADF;
 		return;
 	}
@@ -364,6 +378,54 @@ sys_wait(struct proc_context *tf)
 }
 
 void
+sys_opendir(struct proc_context *tf)
+{
+	if (!check_str(tf->rdx, 256, PTE_U)) { // TODO: max filename length
+		tf->rax = -EFAULT;
+		return;
+	}
+	for (int fd = 0; fd < 256; ++fd) {
+		if (curproc->fdesc[fd].inuse) continue;
+		int r = open_dir((void *)tf->rdx, curproc->fdesc + fd);
+		if (r == 0) {
+			tf->rax = fd;
+			curproc->fdesc[fd].inuse = 1;
+		} else {
+			tf->rax = r;
+		}
+		return;
+	}
+	// no available file descriptor
+	tf->rax = -EMFILE;
+	return;
+}
+
+void
+sys_readdir(struct proc_context *tf)
+{
+	int fd = tf->rdx;
+	if (fd < 0 || fd >= 64) {
+		tf->rax = -EBADF;
+		return;
+	}
+	if (!check_mem(tf->rcx, sizeof(struct dirent), PTE_U | PTE_W)) {
+		tf->rax = -EFAULT;
+		return;
+	}
+	struct file_desc *fdesc = &curproc->fdesc[fd];
+	if (fdesc->inuse == 0 || fdesc->file_type != FT_DIR) {
+		tf->rax = -EBADF;
+		return;
+	}
+	int r = read_dir(
+		(void *)tf->rcx,
+		fdesc
+	);
+	tf->rax = r;
+	return;
+}
+
+void
 syscall(struct proc_context *tf)
 {
 	int num = tf->rax;
@@ -395,6 +457,12 @@ syscall(struct proc_context *tf)
 		break;
 	case 9:
 		sys_wait(tf);
+		break;
+	case 10:
+		sys_opendir(tf);
+		break;
+	case 11:
+		sys_readdir(tf);
 		break;
 	default:
 		printk("unknown syscall\n");
