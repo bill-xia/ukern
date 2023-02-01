@@ -18,79 +18,73 @@ syscall(int num, u64 a1, u64 a2, u64 a3, u64 a4, u64 a5, u64 a6)
 }
 
 void
-sys_hello(void)
-{
-	syscall(2, 0, 0, 0, 0, 0, 0);
-}
-
-void
 sys_exit(int exit_val)
 {
-	syscall(1,exit_val,0,0,0,0,0);
+	syscall(SYS_exit, exit_val, 0, 0, 0, 0, 0);
 }
 
 int
 sys_fork(void)
 {
-	return syscall(4,0,0,0,0,0,0);
-}
-
-int
-sys_open(const char *fn)
-{
-	return syscall(5, (u64)fn, 0,0,0,0,0);
-}
-
-int
-sys_read(int fd, char *buf, u32 sz)
-{
-	return syscall(6, (u64)fd, (u64)buf, sz, 0,0,0);
+	return syscall(SYS_fork, 0, 0, 0, 0, 0, 0);
 }
 
 int
 sys_exec(const char *fn, int argc, char *argv[])
 {
-	return syscall(7, (u64)fn, (u64)argc, (u64)argv, 0,0,0);
+	return syscall(SYS_exec, (u64)fn, (u64)argc, (u64)argv, 0, 0, 0);
 }
 
 int
 sys_wait(int *wstatus)
 {
-	return syscall(9, (u64)wstatus,0,0,0,0,0);
+	return syscall(SYS_wait, (u64)wstatus, 0, 0, 0, 0, 0);
 }
 
 int
-sys_opendir(const char *fn)
+sys_open(const char *fn)
 {
-	return syscall(10, (u64)fn,0,0,0,0,0);
+	return syscall(SYS_open, (u64)fn, 0, 0, 0, 0, 0);
 }
 
 int
-sys_readdir(int fd, struct dirent *buf)
+sys_read(int fd, char *buf, u32 sz)
 {
-	return syscall(11, (u64)fd, (u64)buf,0,0,0,0);
-}
-
-int
-sys_chdir(const char *fn)
-{
-	return syscall(12, (u64)fn, 0,0,0,0,0);
+	return syscall(SYS_read, (u64)fd, (u64)buf, sz, 0, 0, 0);
 }
 
 int
 sys_write(int fd, const char *buf, u32 sz)
 {
-	return syscall(13, (u64)fd, (u64)buf, sz, 0,0,0);
-}
-
-int
-sys_pipe(int fd[2])
-{
-	return syscall(14, (u64)fd, 0,0,0,0,0);
+	return syscall(SYS_write, (u64)fd, (u64)buf, sz, 0, 0, 0);
 }
 
 int
 sys_close(int fd)
 {
-	return syscall(15, (u64)fd, 0,0,0,0,0);
+	return syscall(SYS_close, (u64)fd, 0, 0, 0, 0, 0);
+}
+
+int
+sys_opendir(const char *fn)
+{
+	return syscall(SYS_opendir, (u64)fn, 0, 0, 0, 0, 0);
+}
+
+int
+sys_readdir(int fd, struct dirent *buf)
+{
+	return syscall(SYS_readdir, (u64)fd, (u64)buf, 0, 0, 0, 0);
+}
+
+int
+sys_chdir(const char *fn)
+{
+	return syscall(SYS_chdir, (u64)fn, 0, 0, 0, 0, 0);
+}
+
+int
+sys_pipe(int fd[2])
+{
+	return syscall(SYS_pipe, (u64)fd, 0, 0, 0, 0, 0);
 }

@@ -95,7 +95,7 @@ main()
 				path[1] = '\0';
 				strcat(path, argv[0]);
 				int r = sys_exec(path, argc, argv);
-				printf("sh: '%s' failed running: %e\n", path, r);
+				printf("sh: failed running '%s': %e\n", path, r);
 				sys_exit(0xdeadbeef);
 			}
 		next_buf:

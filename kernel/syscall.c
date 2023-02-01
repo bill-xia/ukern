@@ -11,6 +11,7 @@
 #include "string.h"
 #include "errno.h"
 #include "dirent.h"
+#include "ukern.h"
 
 // check inside pgtbl:
 // whether `flags` are set for PTEs in memory range [addr,addr+siz]
@@ -622,45 +623,41 @@ syscall(struct proc_context *tf)
 {
 	int num = tf->rax;
 	switch (num) {
-	case 1:
+	case SYS_exit:
 		sys_exit(tf->rdx);
 		break;
-	case 2:
-		sys_hello();
-		tf->rax = 0;
-		break;
-	case 4:
+	case SYS_fork:
 		sys_fork(tf);
 		break;
-	case 5:
-		sys_open(tf);
-		break;
-	case 6:
-		sys_read(tf);
-		break;
-	case 7:
+	case SYS_exec:
 		sys_exec(tf);
 		break;
-	case 9:
+	case SYS_wait:
 		sys_wait(tf);
 		break;
-	case 10:
-		sys_opendir(tf);
+	case SYS_open:
+		sys_open(tf);
 		break;
-	case 11:
-		sys_readdir(tf);
+	case SYS_read:
+		sys_read(tf);
 		break;
-	case 12:
-		sys_chdir(tf);
-		break;
-	case 13:
+	case SYS_write:
 		sys_write(tf);
 		break;
-	case 14:
-		sys_pipe(tf);
-		break;
-	case 15:
+	case SYS_close:
 		sys_close(tf);
+		break;
+	case SYS_opendir:
+		sys_opendir(tf);
+		break;
+	case SYS_readdir:
+		sys_readdir(tf);
+		break;
+	case SYS_chdir:
+		sys_chdir(tf);
+		break;
+	case SYS_pipe:
+		sys_pipe(tf);
 		break;
 	default:
 		printk("unknown syscall %d\n", num);
