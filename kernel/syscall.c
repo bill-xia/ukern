@@ -12,18 +12,17 @@
 #include "errno.h"
 #include "dirent.h"
 
-// check inside current pagetable:
+// check inside pgtbl:
 // whether `flags` are set for PTEs in memory range [addr,addr+siz]
 // PTE_P is neccessary, add other flags on need. (PTE_U and PTE_W are common)
 // Returns 1 on success, 0 on failure.
 int
-check_mem(u64 addr, u64 siz, u64 flags)
+check_mem(pgtbl_t pgtbl, u64 addr, u64 siz, u64 flags)
 {
 	flags |= PTE_P;
 	addr = PAGEADDR(addr);
 	u64 end = PAGEADDR(addr + siz) + PGSIZE;
 	u64 *pte;
-	pgtbl_t pgtbl = (pgtbl_t)P2K(rcr3());
 	while (addr != end) {
 		walk_pgtbl(pgtbl, addr, &pte, 0);
 		if (pte == NULL || (*pte & flags) != flags) {
@@ -34,13 +33,13 @@ check_mem(u64 addr, u64 siz, u64 flags)
 	return 1;
 }
 
-// check inside current pagetable:
+// check inside pgtbl:
 // whether `flags` are set for PTEs in string beginning at `addr`. Check `siz`
 // bytes at most.
 // PTE_P is neccessary, add other flags on need. (PTE_U and PTE_W are common)
 // Returns 1 on success, 0 on failure.
 int
-check_str(u64 addr, u64 siz, u64 flags)
+check_str(pgtbl_t pgtbl, u64 addr, u64 siz, u64 flags)
 {
 	// printk("check_str addr: %lx, siz %d, flags %lx\n", addr, siz, flags);
 	u64 str_offset = addr & PGMASK;
@@ -49,7 +48,6 @@ check_str(u64 addr, u64 siz, u64 flags)
 	addr = PAGEADDR(addr);
 	u64 end = PAGEADDR(addr + siz) + PGSIZE;
 	u64 *pte;
-	pgtbl_t pgtbl = (pgtbl_t)P2K(rcr3());
 	while (addr != end) {
 		walk_pgtbl(pgtbl, addr, &pte, 0);
 		if (pte == NULL || (*pte & flags) != flags) {
@@ -94,6 +92,10 @@ sys_fork(struct proc_context *tf)
 	// clear write flag at "write-on-copy" pages
 	pgtbl_clearflags(nproc->pgtbl, PTE_W);
 	pgtbl_clearflags(curproc->pgtbl, PTE_W);
+	// copy fdesc
+	for (int i = 0; i < 64; ++i) {
+		nproc->fdesc[i] = curproc->fdesc[i];
+	}
 	// copy context
 	nproc->context = *tf;
 	// set return value
@@ -107,7 +109,7 @@ sys_fork(struct proc_context *tf)
 void
 sys_open(struct proc_context *tf)
 {
-	if (!check_str(tf->rdx, 256, PTE_U)) { // TODO: max filename length
+	if (!check_str(curproc->p_pgtbl, tf->rdx, 256, PTE_U)) { // TODO: max filename length
 		tf->rax = -EFAULT;
 		return;
 	}
@@ -148,7 +150,7 @@ sys_read(struct proc_context *tf)
 		tf->rax = -EBADF;
 		return;
 	}
-	if (!check_mem(tf->rcx, tf->rbx, PTE_U | PTE_W)) {
+	if (!check_mem(curproc->p_pgtbl, tf->rcx, tf->rbx, PTE_U | PTE_W)) {
 		tf->rax = -EFAULT;
 		return;
 	}
@@ -180,7 +182,7 @@ sys_exec(struct proc_context *tf)
 		return;
 	}
 	for (int i = 0; i < argc; ++i) {
-		if (!check_str((u64)ori_argv[i], ARGLEN, PTE_U)) {
+		if (!check_str(curproc->p_pgtbl, (u64)ori_argv[i], ARGLEN, PTE_U)) {
 			tf->rax = -EINVAL;
 			return;
 		}
@@ -338,7 +340,7 @@ sys_exit(i64 exit_val)
 void
 sys_wait(struct proc_context *tf)
 {
-	if (tf->rdx != 0 && !check_mem(tf->rdx, sizeof(int), PTE_U | PTE_W)) {
+	if (tf->rdx != 0 && !check_mem(curproc->p_pgtbl, tf->rdx, sizeof(int), PTE_U | PTE_W)) {
 		tf->rax = -EFAULT;
 		return;
 	}
@@ -380,7 +382,7 @@ sys_wait(struct proc_context *tf)
 void
 sys_opendir(struct proc_context *tf)
 {
-	if (!check_str(tf->rdx, 256, PTE_U)) { // TODO: max filename length
+	if (!check_str(curproc->p_pgtbl, tf->rdx, 256, PTE_U)) { // TODO: max filename length
 		tf->rax = -EFAULT;
 		return;
 	}
@@ -408,7 +410,7 @@ sys_readdir(struct proc_context *tf)
 		tf->rax = -EBADF;
 		return;
 	}
-	if (!check_mem(tf->rcx, sizeof(struct dirent), PTE_U | PTE_W)) {
+	if (!check_mem(curproc->p_pgtbl, tf->rcx, sizeof(struct dirent), PTE_U | PTE_W)) {
 		tf->rax = -EFAULT;
 		return;
 	}
