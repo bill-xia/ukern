@@ -65,7 +65,7 @@ efi: pre-build $(OBJ_DIR)/kernel/kernel gnu-efi/x86_64/apps/ukernbl.efi diskimg
 	sudo mkdir -p efifs/EFI/ukern
 	sudo cp gnu-efi/x86_64/apps/ukernbl.efi efifs/EFI/boot/bootx64.EFI
 	sudo cp obj/kernel/kernel efifs/EFI/ukern/kernel
-	sudo cp Tamsyn.psf efifs/EFI/ukern/tamsyn.psf
+	sudo cp tamsyn.psf efifs/EFI/ukern/tamsyn.psf
 	sync
 	sudo umount efifs
 	rm -rd efifs
