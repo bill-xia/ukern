@@ -9,6 +9,7 @@ char history[100][4096]; // save 100 history
 char cmdbuf[4096];
 int histptr[100];
 int total;
+char path[4096];
 
 int
 main()
@@ -57,6 +58,13 @@ main()
 			if (argc == 0) {
 				goto new_prompt;
 			}
+			if (argc == 2 && strcmp(argv[0], "cd", 256) == 0) {
+				int r = sys_chdir(argv[1]);
+				if (r < 0) {
+					printf("cd %s failed: %e\n", argv[1], r);
+				}
+				goto next_buf;
+			}
 			int child;
 			if ((child = sys_fork())) {
 				// parent
@@ -67,8 +75,11 @@ main()
 						argv[0], wstatus);
 				}
 			} else {
-				int r = sys_exec(argv[0], argc, argv);
-				printf("sh: '%s' failed running: %e\n", argv[0], r);
+				path[0] = '/';
+				path[1] = '\0';
+				strcat(path, argv[0]);
+				int r = sys_exec(path, argc, argv);
+				printf("sh: '%s' failed running: %e\n", path, r);
 				sys_exit(0xdeadbeef);
 			}
 		next_buf:

@@ -96,6 +96,7 @@ sys_fork(struct proc_context *tf)
 	for (int i = 0; i < 64; ++i) {
 		nproc->fdesc[i] = curproc->fdesc[i];
 	}
+	nproc->pwd = curproc->pwd;
 	// copy context
 	nproc->context = *tf;
 	// set return value
@@ -115,7 +116,8 @@ sys_open(struct proc_context *tf)
 	}
 	for (int fd = 0; fd < 256; ++fd) {
 		if (curproc->fdesc[fd].inuse) continue;
-		int r = open_file((void *)tf->rdx, curproc->fdesc + fd);
+		char *fn = (char *)tf->rdx;
+		int r = open_file(fn, &curproc->pwd, curproc->fdesc + fd);
 		if (r == 0) {
 			tf->rax = fd;
 			curproc->fdesc[fd].inuse = 1;
@@ -191,7 +193,7 @@ sys_exec(struct proc_context *tf)
 
 	// open file
 	struct file_desc fdesc;
-	if ((r = open_file((void *)(tf->rdx), &fdesc)) < 0) { // open file failed
+	if ((r = open_file((void *)(tf->rdx), &curproc->pwd, &fdesc)) < 0) { // open file failed
 		tf->rax = r;
 		return;
 	}
@@ -388,7 +390,7 @@ sys_opendir(struct proc_context *tf)
 	}
 	for (int fd = 0; fd < 256; ++fd) {
 		if (curproc->fdesc[fd].inuse) continue;
-		int r = open_dir((void *)tf->rdx, curproc->fdesc + fd);
+		int r = open_dir((void *)tf->rdx, &curproc->pwd, curproc->fdesc + fd);
 		if (r == 0) {
 			tf->rax = fd;
 			curproc->fdesc[fd].inuse = 1;
@@ -424,6 +426,24 @@ sys_readdir(struct proc_context *tf)
 		fdesc
 	);
 	tf->rax = r;
+	return;
+}
+
+void
+sys_chdir(struct proc_context *tf)
+{
+	if (!check_str(curproc->p_pgtbl, tf->rdx, 256, PTE_U)) { // TODO: max filename length
+		tf->rax = -EFAULT;
+		return;
+	}
+	struct file_desc newpwd;
+	int r = open_dir((void *)tf->rdx, &curproc->pwd, &newpwd);
+	if (r < 0) {
+		tf->rax = r;
+	} else {
+		curproc->pwd = newpwd;
+		tf->rax = 0;
+	}
 	return;
 }
 
@@ -465,6 +485,9 @@ syscall(struct proc_context *tf)
 		break;
 	case 11:
 		sys_readdir(tf);
+		break;
+	case 12:
+		sys_chdir(tf);
 		break;
 	default:
 		printk("unknown syscall\n");

@@ -1,6 +1,7 @@
 #include "fs/fs.h"
 #include "pcie/sata.h"
 #include "fs/exfat.h"
+#include "string.h"
 
 struct FS_exFAT rtfs;
 
@@ -21,17 +22,17 @@ detect_fs(int did, int pid)
 }
 
 int
-open_file(const char *filename, struct file_desc *fdesc)
+open_file(const char *filename, struct file_desc *pwd, struct file_desc *fdesc)
 {
 	// assume _the_ exFAT temporarily
-	return exfat_open_file(&rtfs, filename, fdesc);
+	return exfat_open(&rtfs, filename, pwd, fdesc, 0);
 }
 
 int
-open_dir(const char *dirname, struct file_desc *fdesc)
+open_dir(const char *dirname, struct file_desc *pwd, struct file_desc *fdesc)
 {
 	// assume _the_ exFAT temporarily
-	return exfat_open_dir(&rtfs, dirname, fdesc);
+	return exfat_open(&rtfs, dirname, pwd, fdesc, 1);
 }
 
 int
@@ -46,4 +47,29 @@ read_dir(struct dirent *dst, struct file_desc *fdesc)
 {
 	// assume _the_ exFAT temporarily
 	return exfat_read_dir(&rtfs, dst, fdesc);
+}
+
+int
+path_push(char *dst, const char *src)
+{
+	int r = 1 + strlen(src);
+	strcat(strcat(dst, "/"), src);
+	return r;
+}
+
+int
+path_pop(char *src, int len)
+{
+	// pop at root, ignore
+	if (len == 0)
+		return 0;
+	assert(src[0] == '/');
+	for (int i = len - 1; i >= 0; --i) {
+		if (src[i] == '/') {
+			src[i] = '\0';
+			return len - i;
+		}
+	}
+	panic("path_pop to root.\n");
+	return -1;
 }

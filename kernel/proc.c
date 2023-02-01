@@ -79,6 +79,8 @@ create_proc(char *img)
 		proc->pgtbl[i] = k_pgtbl[i];
 	}
 	copy_pgtbl(proc->p_pgtbl, proc->pgtbl, 0);
+	// set up pwd
+	open_dir("/", NULL, &proc->pwd);
 	// set up runtime enviroment
 	struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
 	proc->context.rip = ehdr->e_entry;

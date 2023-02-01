@@ -82,3 +82,9 @@ sys_readdir(int fd, struct dirent *buf)
 {
 	return syscall(11, (u64)fd, (u64)buf,0,0,0,0);
 }
+
+int
+sys_chdir(const char *fn)
+{
+	return syscall(12, (u64)fn, 0,0,0,0,0);
+}
