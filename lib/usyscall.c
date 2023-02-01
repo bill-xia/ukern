@@ -24,12 +24,6 @@ sys_hello(void)
 }
 
 void
-sys_putch(char c)
-{
-	syscall(3, c, 0,0,0,0,0);
-}
-
-void
 sys_exit(int exit_val)
 {
 	syscall(1,exit_val,0,0,0,0,0);
@@ -48,21 +42,15 @@ sys_open(const char *fn)
 }
 
 int
-sys_read(int fd, char *fn, u32 sz)
+sys_read(int fd, char *buf, u32 sz)
 {
-	return syscall(6, (u64)fd, (u64)fn, sz, 0,0,0);
+	return syscall(6, (u64)fd, (u64)buf, sz, 0,0,0);
 }
 
 int
 sys_exec(const char *fn, int argc, char *argv[])
 {
 	return syscall(7, (u64)fn, (u64)argc, (u64)argv, 0,0,0);
-}
-
-int
-sys_getch(void)
-{
-	return syscall(8, 0,0,0,0,0,0);
 }
 
 int
@@ -87,4 +75,10 @@ int
 sys_chdir(const char *fn)
 {
 	return syscall(12, (u64)fn, 0,0,0,0,0);
+}
+
+int
+sys_write(int fd, char *buf, u32 sz)
+{
+	return syscall(13, (u64)fd, (u64)buf, sz, 0,0,0);
 }

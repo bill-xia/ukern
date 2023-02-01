@@ -157,17 +157,50 @@ sys_read(struct proc_context *tf)
 		return;
 	}
 	struct file_desc *fdesc = &curproc->fdesc[fd];
-	if (fdesc->inuse == 0 || !readable_ft(fdesc->file_type)) {
+	if (fdesc->inuse == 0) {
 		tf->rax = -EBADF;
 		return;
 	}
-	int r = read_file(
-		(void *)tf->rcx,
-		tf->rbx,
-		fdesc
-	);
-	tf->rax = r;
-	curproc->fdesc[fd].read_ptr += r;
+	int r;
+	switch (fdesc->file_type) {
+	case FT_KBD:
+		if (kbd_buf_siz > 0) {
+			// copy from kbd_buffer into user space
+			u8 *dst = (char *)tf->rcx;
+			r = min(kbd_buf_siz, tf->rbx);
+			for (int i = 0; i < r; ++i) {
+				dst[i] = (u8)kbd_buffer[kbd_buf_beg++];
+				if (kbd_buf_beg == 4096)
+					kbd_buf_beg = 0;
+				kbd_buf_siz--;
+			}
+			tf->rax = r;
+			return;
+		}
+		if (kbd_proc == NULL) {
+			kbd_proc = curproc;
+		} else {
+			tf->rax = -EBUSY; // keyboard in use
+			return;
+		}
+		curproc->context = *tf;
+		curproc->state = PENDING;
+		sched();
+		break;
+	case FT_REG:
+		r = read_file(
+			(void *)tf->rcx,
+			tf->rbx,
+			fdesc
+		);
+		tf->rax = r;
+		curproc->fdesc[fd].read_ptr += r;
+		break;
+	// case FT_PIPE:
+	default:
+		//
+		break;
+	}
 }
 
 void
@@ -312,27 +345,6 @@ free_img:
 }
 
 void
-sys_getch(struct proc_context *tf)
-{
-	if (kbd_buf_siz > 0) {
-		tf->rax = (u8)kbd_buffer[kbd_buf_beg++];
-		if (kbd_buf_beg == 4096)
-			kbd_buf_beg = 0;
-		kbd_buf_siz--;
-		return;
-	}
-	if (kbd_proc == NULL) {
-		kbd_proc = curproc;
-	} else {
-		tf->rax = -EBUSY; // keyboard in use
-		return;
-	}
-	curproc->context = *tf;
-	curproc->state = PENDING;
-	sched();
-}
-
-void
 sys_exit(i64 exit_val)
 {
 	kill_proc(curproc, exit_val);
@@ -448,6 +460,41 @@ sys_chdir(struct proc_context *tf)
 }
 
 void
+sys_write(struct proc_context *tf)
+{
+	int fd = tf->rdx;
+	if (fd < 0 || fd >= 64) {
+		tf->rax = -EBADF;
+		return;
+	}
+	if (!check_mem(curproc->p_pgtbl, tf->rcx, tf->rbx, PTE_U)) {
+		tf->rax = -EFAULT;
+		return;
+	}
+	struct file_desc *fdesc = &curproc->fdesc[fd];
+	if (fdesc->inuse == 0) {
+		tf->rax = -EBADF;
+		return;
+	}
+	int r;
+	switch (fdesc->file_type) {
+	case FT_SCREEN:
+		char *buf = (char *)tf->rcx;
+		size_t n = tf->rbx;
+		for (size_t i = 0; i < n; ++i) {
+			console_putch(buf[i]);
+		}
+		tf->rax = n;
+		break;
+	// case FT_REG:
+	// case FT_PIPE:
+	default:
+		printk("unknown filetype\n");
+		break;
+	}
+}
+
+void
 syscall(struct proc_context *tf)
 {
 	int num = tf->rax;
@@ -458,9 +505,6 @@ syscall(struct proc_context *tf)
 	case 2:
 		sys_hello();
 		tf->rax = 0;
-		break;
-	case 3:
-		console_putch(tf->rdx);
 		break;
 	case 4:
 		sys_fork(tf);
@@ -474,9 +518,6 @@ syscall(struct proc_context *tf)
 	case 7:
 		sys_exec(tf);
 		break;
-	case 8:
-		sys_getch(tf);
-		break;
 	case 9:
 		sys_wait(tf);
 		break;
@@ -489,8 +530,12 @@ syscall(struct proc_context *tf)
 	case 12:
 		sys_chdir(tf);
 		break;
+	case 13:
+		sys_write(tf);
+		break;
 	default:
-		printk("unknown syscall\n");
-		while (1);
+		printk("unknown syscall %d\n", num);
+		kill_proc(curproc, -0xFF);
+		break;
 	}
 }

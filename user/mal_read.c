@@ -14,9 +14,7 @@ int main()
 	printf("sys_read(%d, buf, 512): %d\n", fd, r);
 	if (r >= 0) {
 		buf[r] = 0;
-		for (int i = 0; i < r; ++i) {
-			sys_putch(buf[i]);
-		}
+		printf("%s", buf);
 	} else {
 		printf("sys_read() failed.\n");
 	}

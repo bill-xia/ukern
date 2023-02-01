@@ -10,11 +10,14 @@ char cmdbuf[4096];
 int histptr[100];
 int total;
 char path[4096];
+char kbd_buf[4096];
 
 int
 main()
 {
-	int	c,
+	int	kbd_head = 0,
+		kbd_len = 0,
+		c,
 		ptr = 0,
 		latest = 0, // most up-to-date history index
 		hist = 0; // current working history
@@ -22,21 +25,34 @@ main()
 		argv[i] = argv_buf[i];
 	}
 	printf("sh # ");
-	while ((c = sys_getch())) {
-		if (c < 0) {
-			printf("sh sys_getch() failed: %e\n", c);
-			sys_exit(c);
+	while (1) {
+		if (kbd_len == 0) {
+			kbd_len = sys_read(0, kbd_buf, 4096);
+			if (kbd_len < 0) {
+				printf("sh: sys_read() failed: %e\n", kbd_len);
+				sys_exit(kbd_len);
+			}
+			if (kbd_len == 0) {
+				break;
+			}
+			kbd_head = 0;
 		}
+		// consume char
+		c = (u8)kbd_buf[kbd_head++];
+		if (kbd_head == 4096)
+			kbd_head = 0;
+		kbd_len--;
+
 		switch (c) {
 		case '\b':
 			if (ptr > 0) {
 				ptr--;
-				sys_putch('\b');
+				printf("\b");
 			}
 			break;
 		case '\n':
 			// run the command
-			sys_putch(c);
+			printf("%c", c);
 			int argc = 0;
 			for (int i = 0, j = 0; i <= ptr; ++i) {
 				if (i < ptr && cmdbuf[i] != ' ' && cmdbuf[i] != '\t') {
@@ -130,12 +146,12 @@ main()
 			if (ptr < 4095) {
 				cmdbuf[ptr++] = c;
 				cmdbuf[ptr] = '\0';
-				sys_putch(c);
+				printf("%c", c);
 			} else {
 				// line too long, ignore
 			}
 			break;
 		}
 	}
-	return 0;
+	sys_exit(0);
 }

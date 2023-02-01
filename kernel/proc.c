@@ -81,6 +81,12 @@ create_proc(char *img)
 	copy_pgtbl(proc->p_pgtbl, proc->pgtbl, 0);
 	// set up pwd
 	open_dir("/", NULL, &proc->pwd);
+	proc->fdesc[0].file_type = FT_KBD;
+	proc->fdesc[0].inuse = 1;
+	proc->fdesc[1].file_type = FT_SCREEN;
+	proc->fdesc[1].inuse = 1;
+	proc->fdesc[2].file_type = FT_SCREEN;
+	proc->fdesc[2].inuse = 1;
 	// set up runtime enviroment
 	struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)img;
 	proc->context.rip = ehdr->e_entry;
