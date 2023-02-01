@@ -4,6 +4,7 @@
 #include "mem.h"
 #include "disk.h"
 #include "dirent.h"
+#include "pipe.h"
 
 struct file_meta_exfat {
 	u32	head_cluster, // 0/1 means empty file desc, otherwise in use
@@ -14,11 +15,16 @@ struct file_meta_ext2 {
 	u32	rsv;
 };
 
+struct file_meta_pipe {
+	struct pipe *pipe;
+};
+
 enum {
 	FT_KBD = 1,
 	FT_SCREEN,
 	FT_DIR,
-	FT_PIPE,
+	FT_RPIPE,
+	FT_WPIPE,
 	FT_REG,
 	FT_SOCK,
 	FT_UNKNOWN
@@ -30,6 +36,7 @@ struct file_desc {
 	union {
 		struct file_meta_exfat	meta_exfat;
 		struct file_meta_ext2	meta_ext2;
+		struct file_meta_pipe	meta_pipe;
 	};
 	char	path[256];
 	u64	path_len;

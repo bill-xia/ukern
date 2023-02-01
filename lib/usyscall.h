@@ -16,6 +16,8 @@ int sys_wait(int *wstatus);
 int sys_opendir(const char *fn);
 int sys_readdir(int fd, struct dirent *buf);
 int sys_chdir(const char *fn);
-int sys_write(int fd, char *buf, u32 sz);
+int sys_write(int fd, const char *buf, u32 sz);
+int sys_pipe(int fd[2]);
+int sys_close(int fd);
 
 #endif

@@ -90,6 +90,7 @@ void clear_proc(struct proc *proc);
 struct proc *alloc_proc(void);
 int load_img(char *img, struct proc *proc);
 int check_img_format(char *img);
+u64 U2K(struct proc *proc, u64 vaddr, int write);
 
 #define IMAGE_SYMBOL(x) _binary_obj_user_ ## x ## _start
 #define CREATE_PROC(x) do { \

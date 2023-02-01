@@ -9,6 +9,10 @@ static int len;
 void
 putch(char c)
 {
+	if (len == 4096) {
+		sys_write(1, buf, len);
+		len = 0;
+	}
 	buf[len++] = c;
 	buf[len] = '\0';
 }
@@ -20,6 +24,8 @@ printf(const char *fmt, ...)
 	va_start(ap, fmt);
 	vprintfmt(putch, fmt, ap);
 	va_end(ap);
-	sys_write(1, buf, len);
-	len = 0;
+	if (len > 0) {
+		sys_write(1, buf, len);
+		len = 0;
+	}
 }

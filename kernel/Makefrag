@@ -16,6 +16,7 @@ KERNEL_OBJS := $(OBJ_DIR)/kernel/main.o \
 	$(OBJ_DIR)/kernel/fs/disk.o \
 	$(OBJ_DIR)/kernel/fs/fs.o \
 	$(OBJ_DIR)/kernel/fs/exfat.o \
+	$(OBJ_DIR)/kernel/fs/pipe.o \
 	$(OBJ_DIR)/kernel/pcie/pcie.o \
 	$(OBJ_DIR)/kernel/pcie/nvme.o \
 	$(OBJ_DIR)/kernel/pcie/sata.o \
@@ -42,6 +43,7 @@ KERNEL_HDRS := kernel/init.h \
 	kernel/pcie/nvme.h \
 	kernel/fs/disk.h \
 	kernel/fs/fs.h \
+	kernel/fs/pipe.h \
 	kernel/fs/exfat.h \
 	kernel/acpi.h \
 
@@ -58,6 +60,7 @@ KERNEL_BINS := $(OBJ_DIR)/user/divzero \
 	$(OBJ_DIR)/user/cat \
 	$(OBJ_DIR)/user/ls \
 	$(OBJ_DIR)/user/forkls \
+	$(OBJ_DIR)/user/pipe \
 
 KERNEL_INC := -Iinclude -Ilib -Ikernel
 

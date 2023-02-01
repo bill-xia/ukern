@@ -13,7 +13,7 @@ main(int argc, char *argv[])
 	}
 	char *dirname;
 	if (argc == 1)
-		dirname = "/";
+		dirname = "./";
 	else
 		dirname = argv[1];
 	int fd = sys_opendir(dirname);

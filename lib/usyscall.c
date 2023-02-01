@@ -78,7 +78,19 @@ sys_chdir(const char *fn)
 }
 
 int
-sys_write(int fd, char *buf, u32 sz)
+sys_write(int fd, const char *buf, u32 sz)
 {
 	return syscall(13, (u64)fd, (u64)buf, sz, 0,0,0);
+}
+
+int
+sys_pipe(int fd[2])
+{
+	return syscall(14, (u64)fd, 0,0,0,0,0);
+}
+
+int
+sys_close(int fd)
+{
+	return syscall(15, (u64)fd, 0,0,0,0,0);
 }

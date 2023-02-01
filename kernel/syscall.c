@@ -95,6 +95,14 @@ sys_fork(struct proc_context *tf)
 	// copy fdesc
 	for (int i = 0; i < 64; ++i) {
 		nproc->fdesc[i] = curproc->fdesc[i];
+		if (!curproc->fdesc[i].inuse)
+			continue;
+		if (curproc->fdesc[i].file_type == FT_RPIPE) {
+			curproc->fdesc[i].meta_pipe.pipe->rref++;
+		}
+		if (curproc->fdesc[i].file_type == FT_WPIPE) {
+			curproc->fdesc[i].meta_pipe.pipe->wref++;
+		}
 	}
 	nproc->pwd = curproc->pwd;
 	// copy context
@@ -131,25 +139,16 @@ sys_open(struct proc_context *tf)
 	return;
 }
 
-static inline int
-readable_ft(int file_type)
-{
-	switch (file_type) {
-	case FT_KBD:
-	case FT_REG:
-	// case FT_PIPE:
-		return 1;
-	default:
-		return 0;
-	}
-}
-
 void
 sys_read(struct proc_context *tf)
 {
 	int fd = tf->rdx;
 	if (fd < 0 || fd >= 64) {
 		tf->rax = -EBADF;
+		return;
+	}
+	if (tf->rbx == 0) { // try to read 0 byte
+		tf->rax = -EINVAL;
 		return;
 	}
 	if (!check_mem(curproc->p_pgtbl, tf->rcx, tf->rbx, PTE_U | PTE_W)) {
@@ -166,7 +165,7 @@ sys_read(struct proc_context *tf)
 	case FT_KBD:
 		if (kbd_buf_siz > 0) {
 			// copy from kbd_buffer into user space
-			u8 *dst = (char *)tf->rcx;
+			u8 *dst = (u8 *)tf->rcx;
 			r = min(kbd_buf_siz, tf->rbx);
 			for (int i = 0; i < r; ++i) {
 				dst[i] = (u8)kbd_buffer[kbd_buf_beg++];
@@ -196,9 +195,35 @@ sys_read(struct proc_context *tf)
 		tf->rax = r;
 		curproc->fdesc[fd].read_ptr += r;
 		break;
-	// case FT_PIPE:
+	case FT_RPIPE:
+		struct pipe *pipe = fdesc->meta_pipe.pipe;
+		if (pipe->reader != NULL) {
+			tf->rax = -EBUSY;
+			return;
+		}
+		// mark we're listening
+		pipe->reader = curproc;
+		pipe->rsiz = tf->rbx;
+		// just save the user space pointer, convert when we really need
+		// it, or copy-on-write can update the pgtbl and the ptr can
+		// point into another process
+		pipe->rbuf = (void *)tf->rcx;
+		if (pipe->len > 0) {
+			// tf->rbx > 0 is guaranteed, do the read
+			tf->rax = pipe_read(pipe, 0);
+			return;
+		}
+		if (pipe->wref == 0) {
+			// no writer, return 0
+			tf->rax = 0;
+			return;
+		}
+		curproc->context = *tf;
+		curproc->state = PENDING;
+		sched();
+		break;
 	default:
-		//
+		tf->rax = -EBADF;
 		break;
 	}
 }
@@ -354,7 +379,7 @@ sys_exit(i64 exit_val)
 void
 sys_wait(struct proc_context *tf)
 {
-	if (tf->rdx != 0 && !check_mem(curproc->p_pgtbl, tf->rdx, sizeof(int), PTE_U | PTE_W)) {
+	if (tf->rdx != 0 && !check_mem(curproc->p_pgtbl, tf->rdx, sizeof(i64), PTE_U | PTE_W)) {
 		tf->rax = -EFAULT;
 		return;
 	}
@@ -379,14 +404,10 @@ sys_wait(struct proc_context *tf)
 	}
 	// sleep, wait for living child
 	curproc->waiting = 1;
-	// set the pointer inside kernel space
-	if (tf->rdx != 0) {
-		pte_t *pte;
-		walk_pgtbl(curproc->pgtbl, tf->rdx, &pte, 0);
-		curproc->wait_status = (i64 *)(PAGEKADDR(*pte) | (tf->rdx & PGMASK));
-	} else {
-		curproc->wait_status = NULL;
-	}
+	// just save the user space pointer, convert when we really need it,
+	// or copy-on-write can update the pgtbl and the ptr can point into
+	// another process
+	curproc->wait_status = (i64 *)tf->rdx;
 
 	curproc->context = *tf;
 	curproc->state = PENDING;
@@ -467,6 +488,10 @@ sys_write(struct proc_context *tf)
 		tf->rax = -EBADF;
 		return;
 	}
+	if (tf->rbx == 0) {
+		tf->rbx = -EINVAL;
+		return;
+	}
 	if (!check_mem(curproc->p_pgtbl, tf->rcx, tf->rbx, PTE_U)) {
 		tf->rax = -EFAULT;
 		return;
@@ -476,22 +501,120 @@ sys_write(struct proc_context *tf)
 		tf->rax = -EBADF;
 		return;
 	}
-	int r;
+	size_t n;
 	switch (fdesc->file_type) {
 	case FT_SCREEN:
 		char *buf = (char *)tf->rcx;
-		size_t n = tf->rbx;
+		n = tf->rbx;
 		for (size_t i = 0; i < n; ++i) {
 			console_putch(buf[i]);
 		}
 		tf->rax = n;
 		break;
 	// case FT_REG:
-	// case FT_PIPE:
+	case FT_WPIPE: ;
+		struct pipe *pipe = fdesc->meta_pipe.pipe;
+		if (pipe->writer != NULL) {
+			tf->rax = -EBUSY;
+			return;
+		}
+		// mark we're writing
+		pipe->writer = curproc;
+		pipe->wsiz = tf->rbx;
+		pipe->wptr = 0;
+		// just save the user space pointer, convert when we really need
+		// it,  or copy-on-write can update the pgtbl and the ptr can
+		// point into another process
+		pipe->wbuf = (void *)tf->rcx;
+		// do the write
+		n = pipe_write(pipe, 0);
+		assert(n <= tf->rbx);
+		if (n == tf->rbx) { // success immediately
+			tf->rax = n;
+			return;
+		}
+		// stuck, wait for somebody to read out the pipe
+		curproc->context = *tf;
+		curproc->state = PENDING;
+		sched();
+		break;
 	default:
-		printk("unknown filetype\n");
+		tf->rax = -EBADF;
 		break;
 	}
+}
+
+void
+sys_pipe(struct proc_context *tf)
+{
+	if (!check_str(curproc->p_pgtbl, tf->rdx, sizeof(int[2]), PTE_U)) {
+		tf->rax = -EFAULT;
+		return;
+	}
+	// alloc the pipe
+	struct page_info *pg = alloc_page(FLAG_ZERO);
+	struct pipe *pipe = (struct pipe *)P2K(pg->paddr);
+	pipe->rref = 1;
+	pipe->wref = 1;
+
+	int *fds = (int *)tf->rdx;
+	int nfd = 0;
+	for (int fd = 0; fd < 256; ++fd) {
+		if (curproc->fdesc[fd].inuse) continue;
+		fds[nfd] = fd;
+		curproc->fdesc[fd].inuse = 1;
+		curproc->fdesc[fd].file_type = (nfd == 0 ? FT_RPIPE : FT_WPIPE);
+		curproc->fdesc[fd].meta_pipe.pipe = pipe;
+		nfd++;
+		if(nfd == 2) {
+			tf->rax = 0;
+			return;
+		}
+	}
+	// release the pipe
+	free_page(pg);
+	// and the fdesc(s)
+	for (int fd = 0; fd < nfd; ++fd) {
+		curproc->fdesc[fd].inuse = 0;
+	}
+	return;
+}
+
+void
+sys_close(struct proc_context *tf)
+{
+	int fd = tf->rdx;
+	if (fd < 0 || fd >= 64 || !curproc->fdesc[fd].inuse) {
+		tf->rax = -EBADF;
+		return;
+	}
+	struct file_desc *fdesc = &curproc->fdesc[fd];
+	struct pipe *pipe;
+	switch (fdesc->file_type) {
+	case FT_RPIPE:
+		pipe = fdesc->meta_pipe.pipe;
+		pipe->rref--;
+		if (pipe->rref == 0 && pipe->wref == 0) {
+			free_page(KA2PGINFO(pipe));
+		}
+		break;
+	case FT_WPIPE:
+		pipe = fdesc->meta_pipe.pipe;
+		pipe->wref--;
+		if (pipe->wref == 0 && pipe->reader != NULL) {
+			// wake up reader, nothing will be written any more
+			pipe->reader->context.rax = 0;
+			pipe->reader->state = READY;
+		}
+		if (pipe->rref == 0 && pipe->wref == 0) {
+			free_page(KA2PGINFO(pipe));
+		}
+		break;
+	default:
+		break;
+	}
+	fdesc[fd].inuse = 0;
+	return;
 }
 
 void
@@ -532,6 +655,12 @@ syscall(struct proc_context *tf)
 		break;
 	case 13:
 		sys_write(tf);
+		break;
+	case 14:
+		sys_pipe(tf);
+		break;
+	case 15:
+		sys_close(tf);
 		break;
 	default:
 		printk("unknown syscall %d\n", num);

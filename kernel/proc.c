@@ -178,7 +178,8 @@ exit_as_child(struct proc *proc, i64 exit_val)
 	// wait()ed by parent
 	parent->waiting = 0;
 	if (parent->wait_status != NULL) {
-		*parent->wait_status = exit_val; // TODO: copy on write?
+		i64 *wstatus = (i64 *)U2K(parent, (u64)parent->wait_status, 1);
+		*wstatus = exit_val;
 	}
 	// invoke parent
 	parent->context.rax = proc->pid;
@@ -219,6 +220,35 @@ clear_proc(struct proc *proc)
 	if (proc == kbd_proc)
 		kbd_proc = NULL;
 
+	for (int fd = 0; fd < 64; ++fd) {
+		struct file_desc *fdesc = &proc->fdesc[fd];
+		if (!fdesc->inuse)
+			continue;
+		struct pipe *pipe;
+		switch (fdesc->file_type) {
+		case FT_RPIPE: ;
+			pipe = fdesc->meta_pipe.pipe;
+			pipe->rref--;
+			if (pipe->rref == 0 && pipe->wref == 0) {
+				free_page(KA2PGINFO(pipe));
+			}
+			break;
+		case FT_WPIPE:
+			pipe = fdesc->meta_pipe.pipe;
+			pipe->wref--;
+			if (pipe->wref == 0 && pipe->reader != NULL) {
+				// wake up reader, nothing will be written any more
+				pipe->reader->context.rax = 0;
+				pipe->reader->state = READY;
+			}
+			if (pipe->rref == 0 && pipe->wref == 0) {
+				free_page(KA2PGINFO(pipe));
+			}
+			break;
+		default:
+			break;
+		}
+	}
 	proc->exit_val = 0;
 	// fish back to the sea
 	memset(proc, 0, sizeof(struct proc));
@@ -283,4 +313,29 @@ load_img(char *img, struct proc *proc)
 		}
 	}
 	return 0;
+}
+
+u64
+U2K(struct proc *proc, u64 vaddr, int write)
+{
+	pte_t *pte1, *pte2;
+	walk_pgtbl(proc->pgtbl, vaddr, &pte1, 0);
+	walk_pgtbl(proc->p_pgtbl, vaddr, &pte2, 0);
+	assert((*pte1 & (PTE_P | PTE_U)) == (PTE_P | PTE_U));
+	assert(PAGEADDR(*pte1) == PAGEADDR(*pte2));
+	if (!write || (*pte1 & PTE_FLAGS) == (*pte2 & PTE_FLAGS)) {
+		return PAGEKADDR(*pte1) | (vaddr & PGMASK);
+	}
+	// if there's any difference, it should be the write flag
+	// dirty flag: haha
+	assert(!(*pte1 & PTE_W) && (*pte2 & PTE_W));
+	PA2PGINFO(*pte2)->ref--;
+	struct page_info *page = alloc_page(0);
+	char	*src = (char *)PAGEKADDR(*pte2),
+		*dst = (char *)PAGEKADDR(page->paddr);
+	for (int i = 0; i < PGSIZE; ++i)
+		dst[i] = src[i];
+	*pte1 = page->paddr | PTE_P | PTE_U | PTE_W;
+	*pte2 = page->paddr | PTE_P | PTE_U | PTE_W;
+	return PAGEKADDR(*pte1) | (vaddr & PGMASK);
 }
