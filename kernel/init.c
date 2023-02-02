@@ -11,6 +11,7 @@
 #include "pic.h"
 #include "printk.h"
 #include "mtrr.h"
+#include "sse.h"
 #include "fs/disk.h"
 
 void init(struct boot_args *args)
@@ -25,6 +26,7 @@ void init(struct boot_args *args)
 	init_pcb(); // then Process Control Blocks
 	init_intr();
 	init_freepages(); // initialize the free page list
+	init_sse();
 	// *(int*)0x7FFFFFFF0000 = 0;
 	// from now on, anyone needing a new page have to call kalloc()
 	init_pic();

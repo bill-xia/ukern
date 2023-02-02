@@ -5,7 +5,9 @@
 #include "printk.h"
 #include "sched.h"
 #include "errno.h"
+#include "sse.h"
 
+struct fx_context *fx_ctxs;
 struct proc *procs, *curproc, *kbd_proc;
 static u64 g_pid;
 
@@ -21,6 +23,12 @@ init_pcb(void)
 	procs = (struct proc *)ROUNDUP((u64)end_kmem, sizeof(struct proc));
 	memset(procs, 0, NPROCS * sizeof(struct proc));
 	end_kmem = (char *)(procs + NPROCS);
+	fx_ctxs = (struct fx_context *)ROUNDUP((u64)end_kmem, PGSIZE);
+	memset(fx_ctxs, 0, NPROCS * sizeof(struct fx_context));
+	for (int i = 0; i < NPROCS; ++i) {
+		fx_ctxs[i].MXCSR = MXCSR_MASKALL;
+	}
+	end_kmem = (char *)(fx_ctxs + NPROCS);
 }
 
 struct proc *
@@ -109,9 +117,11 @@ run_proc(struct proc *proc)
 	//     printk("run_proc: %d\n", proc - procs);
 	curproc = proc;
 	struct proc_context *context = &proc->context;
+	struct fx_context *fx_ctx = fx_ctxs + (proc - procs);
 	lcr3((u64)proc->pgtbl);
 	asm volatile (
-		"mov %0, %%rsp\n"
+		"fxrstorq (%0)\n"
+		"mov %1, %%rsp\n"
 		"popq %%rax\n"
 		"popq %%rcx\n"
 		"popq %%rdx\n"
@@ -130,7 +140,7 @@ run_proc(struct proc *proc)
 		"popq %%r15\n"
 		"add $16, %%rsp\n"
 		"iretq \n"
-		:: "g"(context) : "memory");
+		:: "r"(fx_ctx), "m"(context) : "memory");
 }
 
 void
@@ -338,4 +348,26 @@ U2K(struct proc *proc, u64 vaddr, int write)
 	*pte1 = page->paddr | PTE_P | PTE_U | PTE_W;
 	*pte2 = page->paddr | PTE_P | PTE_U | PTE_W;
 	return PAGEKADDR(*pte1) | (vaddr & PGMASK);
+}
+
+void
+fx_save(struct proc *proc)
+{
+	struct fx_context *fx_ctx = fx_ctxs + (proc - procs);
+	asm volatile (
+		"fxsave (%0)"
+		: : "r"(fx_ctx)
+	);
+	return;
+}
+
+void
+fx_restore(struct proc *proc)
+{
+	struct fx_context *fx_ctx = fx_ctxs + (proc - procs);
+	asm volatile (
+		"fxrstor (%0)"
+		: : "r"(fx_ctx)
+	);
+	return;
 }

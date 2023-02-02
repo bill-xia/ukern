@@ -291,4 +291,10 @@ stmsr(u64 addr, u64 val)
 	return;
 }
 
+static inline void
+wbinvd(void)
+{
+	asm volatile("wbinvd" : );
+}
+
 #endif /* !JOS_INC_X86_H */

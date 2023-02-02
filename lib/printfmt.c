@@ -71,6 +71,7 @@ void
 vprintfmt(void (*putch)(char), const char *fmt, va_list ap)
 {
 	u64 num;
+	double flt;
 	i64 sgn_num;
 	int i = 0;
 	while (fmt[i] != '\0') {
@@ -81,6 +82,10 @@ vprintfmt(void (*putch)(char), const char *fmt, va_list ap)
 			char padc = ' ';
 		movein:
 			switch (fmt[i++]) {
+			case '0':
+				padc = '0';
+				goto movein;
+				break;
 			case 'l':
 				flags |= FMT_LONG;
 				goto movein;
@@ -141,6 +146,26 @@ vprintfmt(void (*putch)(char), const char *fmt, va_list ap)
 				if (num <= 0 || num >= EMAX)
 					num = 0; // wrong errno
 				printstr(putch, error_msg[num]);
+				break;
+			case 'f':
+				// float is promoted to double, so 'l' flag
+				// doesn't matter
+				flt = va_arg(ap, double);
+				num = flt;
+				if (width == -1)
+					width = get_precision(num, 10, 0);
+				printint(putch, num, 10, width, padc);
+				flt -= num;
+				num = flt * 1000000;
+				if (num == 0)
+					break;
+				while (num % 10 == 0) {
+					num /= 10;
+				}
+				putch('.');
+				if (width == -1)
+					width = get_precision(num, 10, 0);
+				printint(putch, num, 10, width, padc);
 				break;
 			default:
 				putch('%');

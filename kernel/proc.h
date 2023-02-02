@@ -42,7 +42,52 @@ struct proc_context {
 		ss;
 };
 
+struct xmm_reg {
+	u64	lo,
+		hi;
+} __attribute__ ((packed));
+
+struct fx_context {
+	u16	FCW,
+		CSW;
+	u8	FTW,
+		rsv;
+	u16	FOP;
+	u32	FPU_IP1,
+		FPU_IP2,
+		FPU_DP1,
+		FPU_DP2,
+		MXCSR,
+		MXCSR_MASK;
+	struct xmm_reg	mm0,
+			mm1,
+			mm2,
+			mm3,
+			mm4,
+			mm5,
+			mm6,
+			mm7,
+			xmm0,
+			xmm1,
+			xmm2,
+			xmm3,
+			xmm4,
+			xmm5,
+			xmm6,
+			xmm7,
+			xmm8,
+			xmm9,
+			xmm10,
+			xmm11,
+			xmm12,
+			xmm13,
+			xmm14,
+			xmm15;
+} __attribute__ ((aligned(512)));
+extern struct fx_context *fx_ctxs;
+
 struct proc {
+	struct proc_context	context;
 	pgtbl_t 		pgtbl,
 				p_pgtbl;// p_pgtbl's corresponding mapping should be
 					// different with pgtbl only at W flag, and
@@ -51,8 +96,6 @@ struct proc {
 	u64			pid;
 	enum proc_state		state;
 	u64			exec_time;
-	struct proc_context	context;
-	struct file_desc	fdesc[64];
 	struct file_desc	pwd;
 	i64			*wait_status;
 	// About these pointers:
@@ -78,6 +121,7 @@ struct proc {
 				*next_sibling;
 	i64			exit_val;
 	u64			waiting:1;
+	struct file_desc	fdesc[64];
 };
 extern struct proc *procs, *curproc, *kbd_proc;
 
@@ -91,6 +135,8 @@ struct proc *alloc_proc(void);
 int load_img(char *img, struct proc *proc);
 int check_img_format(char *img);
 u64 U2K(struct proc *proc, u64 vaddr, int write);
+void fx_save(struct proc *proc);
+void fx_restore(struct proc *proc);
 
 #define IMAGE_SYMBOL(x) _binary_obj_user_ ## x ## _start
 #define CREATE_PROC(x) do { \

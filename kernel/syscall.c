@@ -174,6 +174,10 @@ sys_read(struct proc_context *tf)
 					kbd_buf_beg = 0;
 				kbd_buf_siz--;
 			}
+			// flush write-combined memory for framebuffer
+			// doesn't seem useful yet, leave here in case
+			// we need the flush
+			// wbinvd(); 
 			tf->rax = r;
 			return;
 		}
@@ -185,6 +189,7 @@ sys_read(struct proc_context *tf)
 		}
 		curproc->context = *tf;
 		curproc->state = PENDING;
+		fx_save(curproc);
 		sched();
 		break;
 	case FT_REG:
@@ -221,6 +226,7 @@ sys_read(struct proc_context *tf)
 		}
 		curproc->context = *tf;
 		curproc->state = PENDING;
+		fx_save(curproc);
 		sched();
 		break;
 	default:
@@ -367,6 +373,7 @@ free_img:
 		addr += PGSIZE;
 	}
 
+	fx_save(curproc);
 	sched();
 }
 
@@ -412,6 +419,7 @@ sys_wait(struct proc_context *tf)
 
 	curproc->context = *tf;
 	curproc->state = PENDING;
+	fx_save(curproc);
 	sched();
 }
 
@@ -537,6 +545,7 @@ sys_write(struct proc_context *tf)
 		// stuck, wait for somebody to read out the pipe
 		curproc->context = *tf;
 		curproc->state = PENDING;
+		fx_save(curproc);
 		sched();
 		break;
 	default:

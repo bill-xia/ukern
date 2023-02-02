@@ -1,6 +1,7 @@
 #include "console.h"
 #include "mem.h"
 #include "printk.h"
+#include "x86.h"
 
 static u32 ind = 0, rows = 0, cols = 0,
 	height, width,
@@ -48,10 +49,12 @@ console_putch(char c)
 	if (ind == rows * cols) {
 		// screen full
 		for (int i = 0; i < (rows - 1) * cols; ++i) {
-			print_font_at(cbuf[i + cols], i);
+			if (cbuf[i] != cbuf[i + cols])
+				print_font_at(cbuf[i + cols], i);
 		}
 		for (int i = (rows - 1) * cols; i < rows * cols; ++i) {
-			print_font_at(' ', i);
+			if (cbuf[i] != ' ')
+				print_font_at(' ', i);
 		}
 		ind -= cols;
 	}

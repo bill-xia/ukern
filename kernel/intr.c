@@ -217,11 +217,19 @@ void print_tf(struct proc_context *tf)
 	printk("cs: %lx, rip: %lx, ss: %lx, rsp: %lx\n", tf->cs, tf->rip, tf->ss, tf->rsp);
 }
 
+void print_fx(struct fx_context *fx_ctx)
+{
+	printk("mxcsr: %lx, mxcsr_mask: %lx\n",
+		fx_ctx->MXCSR,
+		fx_ctx->MXCSR_MASK);
+}
+
 void page_fault_handler(struct proc_context *tf, u64 errno);
 int keyboard_handler(void);
 
 void trap_handler(struct proc_context *trapframe, u64 vecnum, u64 errno)
 {
+	fx_save(curproc);
 	switch(vecnum) {
 	case 0:
 		kill_proc(curproc, -0xFF);
@@ -230,14 +238,15 @@ void trap_handler(struct proc_context *trapframe, u64 vecnum, u64 errno)
 	case 14:
 		page_fault_handler(trapframe, errno);
 		// printk("page fault solved\n");
-		return;
+		break;
 	case 32:
 		syscall(trapframe);
-		return;
+		break;
 	case 33:
 		curproc->context = *trapframe;
 		curproc->state = READY;
 		curproc->exec_time++;
+		fx_save(curproc);
 		lapic_eoi();
 		sched();
 		break;
@@ -264,21 +273,26 @@ void trap_handler(struct proc_context *trapframe, u64 vecnum, u64 errno)
 				// sched
 				curproc->context = *trapframe;
 				curproc->state = READY;
+				fx_save(curproc);
 				lapic_eoi();
 				sched();
 			}
 		}
 		lapic_eoi();
-		return;
+		break;
 	default: // ignore
-		printk("ignoring interrupt %d\n", vecnum);
 		print_tf(trapframe);
-		if (trapframe->cs == USER_CODE_SEL) {
-			kill_proc(curproc, -0xFF);
-		}
+		print_fx(fx_ctxs + (curproc - procs));
 		lapic_eoi();
-		return;
+		if (trapframe->cs != KERN_CODE_SEL) {
+			printk("Ignore unknown interrupt.\n");
+		} else {
+			panic("Interrupt %d inside kernel, halt.\n", vecnum, trapframe->cs);
+		}
+		break;
 	}
+	// return_from_trap
+	fx_restore(curproc);
 }
 
 void page_fault_handler(struct proc_context *tf, u64 errno) {

@@ -13,7 +13,7 @@ $(OBJ_DIR)/user/lib/%.o: lib/%.c
 	$(CC) $(CFLAGS) $(USERINC) $< -c -o $@
 
 $(OBJ_DIR)/user/%.o: user/%.c
-	$(CC) $(CFLAGS) $(USERINC) $< -c -o $@
+	$(CC) $(CFLAGS) $(USERINC) $< -O0 -c -o $@
 
 $(OBJ_DIR)/user/divzero.o: user/divzero.c
 	# -O2 generates ud2(invalid opcode), thus -O0
