@@ -1,6 +1,9 @@
-AS := /usr/bin/nasm
-CC := /usr/bin/gcc
-CFLAGS := -Wall -nostdinc -fno-builtin -g -fno-stack-protector -O2
+NASM := nasm
+GCCPREFIX := $(shell touch .gccprefix && cat .gccprefix)
+CC := $(GCCPREFIX)gcc
+LD := $(GCCPREFIX)ld
+AS := $(GCCPREFIX)as
+CFLAGS := -Wall -nostdinc -ffreestanding -g -mcmodel=large
 # QEMU_FLAGS := -d cpu_reset
 OBJ_DIR := obj
 

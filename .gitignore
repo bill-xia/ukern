@@ -3,6 +3,7 @@ fsimg
 diskimg
 OVMF_VARS.fd
 
+.gccprefix
 .disk_dev_efi
 .disk_dev_main
 

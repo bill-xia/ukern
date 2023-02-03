@@ -36,9 +36,17 @@ sudo apt install gcc binutils build-essential qemu ovmf nasm kpartx fdisk # to b
 cp /usr/share/OVMF/OVMF_VARS.fd ./
 ```
 
-> 暂时不支持在 MacOS 上开发，日后可能会用 brew 做一个交叉编译器的仓库，并添加其他支持。
-
 目前的硬盘镜像中 bootloader 在 EFI 分区的 `/EFI/boot/bootx64.efi`，会被自动加载起来，不需要配置 UEFI 启动项。
+
+#### 交叉编译器（推荐）
+
+如果您在 x86_64 架构的 Linux 机器上编译，可能使用系统自带的编译器也是可以的。然而构建一个交叉编译器总是最推荐的选项。
+
+构建交叉编译器的具体步骤请参考 osdev 上的[这篇文章](https://wiki.osdev.org/GCC_Cross-Compiler)，其中 `$TARGET` 应为 `x86_64-elf`。
+
+构建好交叉编译器后，需要保证 gcc 和 binutils 可执行文件所在的路径在 `PATH` 环境变量中。然后运行 `echo "x86_64-elf-" > .gccprefix`（注意结尾的横杠）。这是可执行文件名的前缀，如果你使用了其他的前缀则更改为对应的命令即可。
+
+> 暂时不支持在 MacOS 上开发，日后可能会用 brew 做一个交叉编译器的仓库，并添加其他支持。
 
 ### 虚拟机运行
 

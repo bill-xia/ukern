@@ -2,4 +2,4 @@ $(OBJ_DIR)/boot/boot: $(OBJ_DIR)/boot/boot.out
 	ld -T boot/boot.ld --oformat=binary $(OBJ_DIR)/boot/boot.out -o $@
 
 $(OBJ_DIR)/boot/boot.out: boot/boot.S
-	$(AS) $< -f elf32 -o $@
+	$(NASM) $< -f elf32 -o $@

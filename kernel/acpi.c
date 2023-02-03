@@ -9,29 +9,29 @@ void init_rsdp(struct RSDPDescriptor *rsdp);
 void acpi_init_mcfg(struct DescHeader *tbl);
 void acpi_init_apic(struct DescHeader *tbl);
 
-struct RSDPDescriptor*
-detect_rsdp()
-{
-	u16 seg_ptr = *(u16 *)0x40E;
-	// int r = 'R', s = 'S', d = 'D', p = 'P', t = 'T', r = 'R', sp = ' ';
-	u64 *EBDA = (u64 *)P2K(seg_ptr << 4);
-	for (int i = 0; i < 1024 / sizeof(u64); ++i) {
-		if (*EBDA == 0x2052545020445352LL) {
-			return (struct RSDPDescriptor*)EBDA;
-		} else {
-			EBDA++;
-		}
-	}
-	EBDA = (u64 *)P2K(0x000E0000);
-	while (EBDA < (u64 *)P2K(0x100000)) {
-		if (*EBDA == 0x2052545020445352LL) {
-			return (struct RSDPDescriptor*)EBDA;
-		} else {
-			EBDA++;
-		}
-	}
-	return NULL;
-}
+// struct RSDPDescriptor*
+// detect_rsdp()
+// {
+// 	u16 seg_ptr = *(u16 *)0x40E;
+// 	// int r = 'R', s = 'S', d = 'D', p = 'P', t = 'T', r = 'R', sp = ' ';
+// 	u64 *EBDA = (u64 *)P2K(seg_ptr << 4);
+// 	for (int i = 0; i < 1024 / sizeof(u64); ++i) {
+// 		if (*EBDA == 0x2052545020445352LL) {
+// 			return (struct RSDPDescriptor*)EBDA;
+// 		} else {
+// 			EBDA++;
+// 		}
+// 	}
+// 	EBDA = (u64 *)P2K(0x000E0000);
+// 	while (EBDA < (u64 *)P2K(0x100000)) {
+// 		if (*EBDA == 0x2052545020445352LL) {
+// 			return (struct RSDPDescriptor*)EBDA;
+// 		} else {
+// 			EBDA++;
+// 		}
+// 	}
+// 	return NULL;
+// }
 
 int
 init_acpi(struct RSDPDescriptor *rsdp)

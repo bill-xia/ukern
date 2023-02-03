@@ -1,4 +1,5 @@
 USERINC := -Iinclude -Ilib
+USER_CFLAGS := -Wno-return-type
 
 USERLIBS := $(OBJ_DIR)/user/lib/printf.o \
 	$(OBJ_DIR)/user/lib/usyscall.o \
@@ -7,14 +8,14 @@ USERLIBS := $(OBJ_DIR)/user/lib/printf.o \
 	$(OBJ_DIR)/user/lib/errno.o \
 
 $(OBJ_DIR)/user/%: $(OBJ_DIR)/user/%.o $(USERLIBS)
-	ld -T user/user.ld $^ -o $@
+	$(LD) -T user/user.ld $^ -o $@
 
 $(OBJ_DIR)/user/lib/%.o: lib/%.c
-	$(CC) $(CFLAGS) $(USERINC) $< -c -o $@
+	$(CC) $(CFLAGS) $(USER_CFLAGS) $(USERINC) $< -c -o $@
 
 $(OBJ_DIR)/user/%.o: user/%.c
-	$(CC) $(CFLAGS) $(USERINC) $< -O0 -c -o $@
+	$(CC) $(CFLAGS) $(USER_CFLAGS) $(USERINC) $< -O0 -c -o $@
 
 $(OBJ_DIR)/user/divzero.o: user/divzero.c
 	# -O2 generates ud2(invalid opcode), thus -O0
-	$(CC) $(CFLAGS) -Wno-div-by-zero -O0 $(USERINC) $< -c -o $@
+	$(CC) $(CFLAGS) $(USER_CFLAGS) -Wno-div-by-zero -O0 $(USERINC) $< -c -o $@

@@ -246,7 +246,6 @@ void trap_handler(struct proc_context *trapframe, u64 vecnum, u64 errno)
 		curproc->context = *trapframe;
 		curproc->state = READY;
 		curproc->exec_time++;
-		fx_save(curproc);
 		lapic_eoi();
 		sched();
 		break;
@@ -273,7 +272,6 @@ void trap_handler(struct proc_context *trapframe, u64 vecnum, u64 errno)
 				// sched
 				curproc->context = *trapframe;
 				curproc->state = READY;
-				fx_save(curproc);
 				lapic_eoi();
 				sched();
 			}

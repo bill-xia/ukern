@@ -262,6 +262,8 @@ clear_proc(struct proc *proc)
 	proc->exit_val = 0;
 	// fish back to the sea
 	memset(proc, 0, sizeof(struct proc));
+	memset(fx_ctxs + (proc - procs), 0, sizeof(struct fx_context));
+	fx_ctxs[proc - procs].MXCSR = MXCSR_MASKALL;
 }
 
 // Kill the process, it may become a zombie! (sounds scary...)
@@ -355,7 +357,7 @@ fx_save(struct proc *proc)
 {
 	struct fx_context *fx_ctx = fx_ctxs + (proc - procs);
 	asm volatile (
-		"fxsave (%0)"
+		"fxsaveq (%0)"
 		: : "r"(fx_ctx)
 	);
 	return;
@@ -366,7 +368,7 @@ fx_restore(struct proc *proc)
 {
 	struct fx_context *fx_ctx = fx_ctxs + (proc - procs);
 	asm volatile (
-		"fxrstor (%0)"
+		"fxrstorq (%0)"
 		: : "r"(fx_ctx)
 	);
 	return;

@@ -12,6 +12,7 @@
 #include "errno.h"
 #include "dirent.h"
 #include "ukern.h"
+#include "sse.h"
 
 // check inside pgtbl:
 // whether `flags` are set for PTEs in memory range [addr,addr+siz]
@@ -108,6 +109,8 @@ sys_fork(struct proc_context *tf)
 	nproc->pwd = curproc->pwd;
 	// copy context
 	nproc->context = *tf;
+	memcpy(fx_ctxs + (nproc - procs), fx_ctxs + (curproc - procs),
+		sizeof(struct fx_context));
 	// set return value
 	tf->rax = nproc->pid;
 	nproc->context.rax = 0;
@@ -189,7 +192,6 @@ sys_read(struct proc_context *tf)
 		}
 		curproc->context = *tf;
 		curproc->state = PENDING;
-		fx_save(curproc);
 		sched();
 		break;
 	case FT_REG:
@@ -226,7 +228,6 @@ sys_read(struct proc_context *tf)
 		}
 		curproc->context = *tf;
 		curproc->state = PENDING;
-		fx_save(curproc);
 		sched();
 		break;
 	default:
@@ -373,7 +374,8 @@ free_img:
 		addr += PGSIZE;
 	}
 
-	fx_save(curproc);
+	memset(fx_ctxs + (proc - procs), 0, sizeof(struct fx_context));
+	fx_ctxs[proc - procs].MXCSR = MXCSR_MASKALL;
 	sched();
 }
 
@@ -419,7 +421,6 @@ sys_wait(struct proc_context *tf)
 
 	curproc->context = *tf;
 	curproc->state = PENDING;
-	fx_save(curproc);
 	sched();
 }
 
@@ -545,7 +546,6 @@ sys_write(struct proc_context *tf)
 		// stuck, wait for somebody to read out the pipe
 		curproc->context = *tf;
 		curproc->state = PENDING;
-		fx_save(curproc);
 		sched();
 		break;
 	default:

@@ -67,22 +67,22 @@ KERNEL_BINS := $(OBJ_DIR)/user/divzero \
 
 KERNEL_INC := -Iinclude -Ilib -Ikernel
 
-KERNEL_CFLAGS := -Wno-main
+KERNEL_CFLAGS := -Wno-main -O2
 
 $(OBJ_DIR)/kernel/kernel: $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry $(OBJ_DIR)/kernel/intr_entry $(KERNEL_BINS) kernel/kernel.ld
-	ld -T kernel/kernel.ld $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry $(OBJ_DIR)/kernel/intr_entry -b binary $(KERNEL_BINS) -o $(OBJ_DIR)/kernel/kernel --no-relax
+	$(LD) -T kernel/kernel.ld $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry $(OBJ_DIR)/kernel/intr_entry -b binary $(KERNEL_BINS) -o $(OBJ_DIR)/kernel/kernel --no-relax
 
 $(OBJ_DIR)/kernel/kernel_bios: $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry_bios $(OBJ_DIR)/kernel/intr_entry $(KERNEL_BINS) kernel/kernel.ld
-	ld -T kernel/kernel.ld $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry_bios $(OBJ_DIR)/kernel/intr_entry -b binary $(KERNEL_BINS) -o $(OBJ_DIR)/kernel/kernel --no-relax
+	$(LD) -T kernel/kernel.ld $(KERNEL_OBJS) $(OBJ_DIR)/kernel/entry_bios $(OBJ_DIR)/kernel/intr_entry -b binary $(KERNEL_BINS) -o $(OBJ_DIR)/kernel/kernel --no-relax
 
 $(OBJ_DIR)/kernel/entry: kernel/entry.S
-	$(AS) $< -f elf64 -o $@
+	$(NASM) $< -f elf64 -o $@
 
 $(OBJ_DIR)/kernel/entry_bios: kernel/entry_bios.S
-	$(AS) $< -f elf64 -o $@
+	$(NASM) $< -f elf64 -o $@
 
 $(OBJ_DIR)/kernel/intr_entry: kernel/intr_entry.S
-	as $< -o $@
+	$(AS) $< -o $@
 
 $(OBJ_DIR)/kernel/%.o: kernel/%.c $(KERNEL_HDRS)
 	$(CC) $(CFLAGS) $(KERNEL_CFLAGS) $(KERNEL_INC) $< -c -o $@
