@@ -94,3 +94,9 @@ sys_sbrk(i64 inc)
 {
 	return syscall(SYS_sbrk, (u64)inc, 0, 0, 0, 0, 0);
 }
+
+int
+sys_getpid()
+{
+	return syscall(SYS_getpid, 0, 0, 0, 0, 0, 0);
+}

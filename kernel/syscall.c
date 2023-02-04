@@ -656,6 +656,12 @@ sys_sbrk(struct proc_context *tf)
 }
 
 void
+sys_getpid(struct proc_context *tf)
+{
+	tf->rax = curproc->pid;
+}
+
+void
 syscall(struct proc_context *tf)
 {
 	int num = tf->rax;
@@ -698,6 +704,9 @@ syscall(struct proc_context *tf)
 		break;
 	case SYS_sbrk:
 		sys_sbrk(tf);
+		break;
+	case SYS_getpid:
+		sys_getpid(tf);
 		break;
 	default:
 		printk("unknown syscall %d\n", num);

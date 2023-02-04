@@ -16,6 +16,7 @@ enum {
 	SYS_chdir,
 	SYS_pipe,
 	SYS_sbrk,
+	SYS_getpid,
 };
 
 #endif
