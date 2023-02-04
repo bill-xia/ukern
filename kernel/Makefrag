@@ -64,6 +64,7 @@ KERNEL_BINS := $(OBJ_DIR)/user/divzero \
 	$(OBJ_DIR)/user/forkls \
 	$(OBJ_DIR)/user/pipe \
 	$(OBJ_DIR)/user/float \
+	$(OBJ_DIR)/user/test_sbrk \
 
 KERNEL_INC := -Iinclude -Ilib -Ikernel
 

@@ -98,6 +98,7 @@ struct proc {
 	u64			exec_time;
 	struct file_desc	pwd;
 	i64			*wait_status;
+	u64			end_umem; // set by load_img, used by sys_sbrk()
 	// About these pointers:
 	// Relation between processes can be modeled as a tree,
 	//	where parent and child refer to the process who

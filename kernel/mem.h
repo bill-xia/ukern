@@ -95,6 +95,7 @@ struct mem_map {
 #define KERNBASE	0xFFFF800000000000
 #define USTACK		0x00007FFFFFFFF000
 #define USTACKTOP	0x00007FFFFFFFE000
+#define UMAX		0x00007FFF00000000
 #define KSTACK		0xFFFFFFFFFFFFF000
 #define KSTACKTOP	0xFFFFFFFFFFFFE000
 #define UARGS		0x3FF000
@@ -216,6 +217,10 @@ struct tss_desc {
 extern pgtbl_t		k_pgtbl;
 extern struct page_info	*k_pageinfo;
 extern char		*end_kmem;
+extern u64		nfreepages;
+
+// always remain 4M free pages
+#define FREEPAGES_LOWWATER	1000
 
 void init_kpageinfo(struct mem_map *mem_map);
 void init_kpgtbl(void);

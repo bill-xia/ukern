@@ -19,5 +19,6 @@ int sys_opendir(const char *fn);
 int sys_readdir(int fd, struct dirent *buf);
 int sys_chdir(const char *fn);
 int sys_pipe(int fd[2]);
+void *sys_sbrk(i64 inc);
 
 #endif

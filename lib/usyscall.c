@@ -88,3 +88,9 @@ sys_pipe(int fd[2])
 {
 	return syscall(SYS_pipe, (u64)fd, 0, 0, 0, 0, 0);
 }
+
+void *
+sys_sbrk(i64 inc)
+{
+	return syscall(SYS_sbrk, (u64)inc, 0, 0, 0, 0, 0);
+}

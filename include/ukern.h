@@ -15,6 +15,7 @@ enum {
 	SYS_readdir,
 	SYS_chdir,
 	SYS_pipe,
+	SYS_sbrk,
 };
 
 #endif

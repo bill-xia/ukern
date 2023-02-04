@@ -107,6 +107,8 @@ sys_fork(struct proc_context *tf)
 		}
 	}
 	nproc->pwd = curproc->pwd;
+	nproc->exec_time = curproc->exec_time;
+	nproc->end_umem = curproc->end_umem;
 	// copy context
 	nproc->context = *tf;
 	memcpy(fx_ctxs + (nproc - procs), fx_ctxs + (curproc - procs),
@@ -628,6 +630,32 @@ sys_close(struct proc_context *tf)
 }
 
 void
+sys_sbrk(struct proc_context *tf)
+{
+	u64	inc = tf->rdx; // increment `inc` bytes
+	u64	o_pgend = ROUNDUP(curproc->end_umem, PGSIZE),
+		n_pgend = ROUNDUP(curproc->end_umem + inc, PGSIZE),
+		new_pages = (n_pgend - o_pgend) / PGSIZE - nfreepages;
+	if (n_pgend >= UMAX
+		|| (i64)new_pages >= (i64)(nfreepages - FREEPAGES_LOWWATER)) {
+		tf->rax = 0;
+		// TODO: set errno to -ENOMEM
+		return;
+	}
+	for (u64 vaddr = o_pgend; vaddr < n_pgend; vaddr += PGSIZE) {
+		struct page_info *pg = alloc_page(FLAG_ZERO);
+		pte_t *pte;
+		walk_pgtbl(curproc->pgtbl, vaddr, &pte, 1);
+		*pte = pg->paddr | PTE_U | PTE_P | PTE_W;
+		walk_pgtbl(curproc->p_pgtbl, vaddr, &pte, 1);
+		*pte = pg->paddr | PTE_U | PTE_P | PTE_W;
+	}
+	tf->rax = curproc->end_umem;
+	curproc->end_umem += inc;
+	return;
+}
+
+void
 syscall(struct proc_context *tf)
 {
 	int num = tf->rax;
@@ -667,6 +695,9 @@ syscall(struct proc_context *tf)
 		break;
 	case SYS_pipe:
 		sys_pipe(tf);
+		break;
+	case SYS_sbrk:
+		sys_sbrk(tf);
 		break;
 	default:
 		printk("unknown syscall %d\n", num);

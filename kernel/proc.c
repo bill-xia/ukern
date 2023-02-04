@@ -306,6 +306,7 @@ load_img(char *img, struct proc *proc)
 			*src_fileend = src + phdr->p_filesz,
 			*src_memend = src + phdr->p_memsz;
 		u64 vaddr = phdr->p_vaddr;
+		proc->end_umem = max(proc->end_umem, vaddr + phdr->p_memsz);
 		pte_t *pte = NULL;
 		while (src < src_memend) {
 			if (pte == NULL || (vaddr & (PGSIZE - 1)) == 0) {

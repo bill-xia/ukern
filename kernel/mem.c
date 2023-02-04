@@ -49,9 +49,9 @@ struct tss	tss = {
 pgtbl_t			k_pgtbl;
 struct page_info	*k_pageinfo; // info for every available 4K-page
 char			*end_kmem; // end of used kernel memory, in absolute address
+u64			nfreepages;
 
 static u64		max_addr;
-static u64		nfreepages;
 static pdpt_t		k_pdpt;
 
 
