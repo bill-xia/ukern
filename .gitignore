@@ -14,3 +14,5 @@ OVMF_VARS.fd
 
 .vscode/
 obj/
+
+.DS_Store

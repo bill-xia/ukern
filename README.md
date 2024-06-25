@@ -27,11 +27,35 @@
 
 ## Usage
 
+### Docker on Mac
+
+在 Mac 宿主机上安装 `socat`:
+
+```bash
+brew install socat
+```
+
+在[XQuartz官网](https://www.xquartz.org/)下载并安装 XQuartz。
+
+```bash
+socat TCP-LISTEN:6000,reuseaddr,fork UNIX-CLIENT:\"$DISPLAY\" &
+docker build . -t ukern-dev
+docker run -e DISPLAY=host.docker.internal:0 -v .:/root/ukern --name testukern -it --privileged ukern-dev bash
+```
+
+这时 docker 应当已经启动。在容器内执行如下代码：
+
+```bash
+# inside docker container
+cd /root/ukern
+make clean && make qemu
+```
+
 ### 环境配置
 
 我在 Ubuntu 系统上开发，下面的命令适用于 Ubuntu。其他 Linux 发行版应该可以轻松找到对应的包名称。
 
-```
+```bash
 sudo apt install gcc binutils build-essential qemu ovmf nasm kpartx fdisk # to be tested and completed
 cp /usr/share/OVMF/OVMF_VARS.fd ./
 ```
@@ -45,8 +69,6 @@ cp /usr/share/OVMF/OVMF_VARS.fd ./
 构建交叉编译器的具体步骤请参考 osdev 上的[这篇文章](https://wiki.osdev.org/GCC_Cross-Compiler)，其中 `$TARGET` 应为 `x86_64-elf`。
 
 构建好交叉编译器后，需要保证 gcc 和 binutils 可执行文件所在的路径在 `PATH` 环境变量中。然后运行 `echo "x86_64-elf-" > .gccprefix`（注意结尾的横杠）。这是可执行文件名的前缀，如果你使用了其他的前缀则更改为对应的命令即可。
-
-> 暂时不支持在 MacOS 上开发，日后可能会用 brew 做一个交叉编译器的仓库，并添加其他支持。
 
 ### 虚拟机运行
 

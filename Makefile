@@ -3,8 +3,8 @@ GCCPREFIX := $(shell touch .gccprefix && cat .gccprefix)
 CC := $(GCCPREFIX)gcc
 LD := $(GCCPREFIX)ld
 AS := $(GCCPREFIX)as
-CFLAGS := -Wall -nostdinc -ffreestanding -g -mcmodel=large
-# QEMU_FLAGS := -d cpu_reset
+CFLAGS := -Wall -nostdinc -ffreestanding -g -mcmodel=large -fno-pic
+QEMU_FLAGS := -d cpu_reset
 OBJ_DIR := obj
 
 all: image
@@ -22,6 +22,7 @@ pre-build:
 	mkdir -p obj/user/lib
 	mkdir -p obj/boot
 	mkdir -p obj/efi
+	bash -c '[ ! -f OVMF_VARS.fd ] && cp /usr/share/OVMF/OVMF_VARS.fd ./ || true'
 
 fsimg: $(KERNEL_BINS)
 	dd if=/dev/zero of=fsimg bs=512 count=4096
@@ -109,3 +110,5 @@ gdb:
 
 clean:
 	rm -rf obj/ image efifs/ mainfs/ fsimg
+	dmsetup remove_all
+	losetup -D
