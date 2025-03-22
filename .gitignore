@@ -2,6 +2,7 @@ image
 fsimg
 diskimg
 OVMF_VARS.fd
+OVMF_CODE.fd
 
 .gccprefix
 .disk_dev_efi
