@@ -61,13 +61,13 @@ pcie_sata_ahci_init(volatile struct pci_config_device *cfg)
 	dev->devid = pcie_readw(cfg, DEVICEID);
 	printk("Found sata controller.\n");
 
-	cfg->hdr.cmd_status |= PCI_CMD_BME | PCI_CMD_MSE |
+	cfg->hdr.cmd |= PCI_CMD_BME | PCI_CMD_MSE |
 		PCI_CMD_IOSE;
 
-	// printk("AHCI Base Address: %x, cmd: %x\n", cfg->BAR5, cfg->hdr.cmd_status);
-	map_mmio(k_pgtbl, KMMIO | cfg->BAR5, cfg->BAR5, NULL);
+	// printk("AHCI Base Address: %x, cmd: %x\n", cfg->BAR[5], (int)cfg->hdr.cmd);
+	map_mmio(k_pgtbl, KMMIO | cfg->BAR[5], cfg->BAR[5], NULL);
 	lcr3(rcr3());
-	sata_regs = (u32 *)(KMMIO | cfg->BAR5);
+	sata_regs = (u32 *)(KMMIO | cfg->BAR[5]);
 
 	// u16 cmd = pcie_readw(cfg, COMMAND);
 	// cmd &= ~PCI_CMD_ID;

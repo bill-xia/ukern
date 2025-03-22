@@ -21,6 +21,8 @@ typedef u64*		pdpt_t;
 typedef u64*		pd_t;
 typedef u64*		pt_t;
 
+/* this assumes we're on a little-endian architecture */
+typedef u32		le32;
 
 #define max(a,b) \
 	({ __typeof__ (a) _a = (a); \

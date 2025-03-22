@@ -55,7 +55,7 @@ gnu-efi/x86_64/apps/ukernbl.efi: gnu-efi/apps/ukernbl.c
 	make -C gnu-efi -f Makefile
 	cp gnu-efi/x86_64/apps/ukernbl.efi obj/efi
 
-diskimg: $(PREBUILD_DIRS) $(EFI_FILES) $(OBJ_DIR)/kernel/kernel gnu-efi/x86_64/apps/ukernbl.efi
+diskimg: $(PREBUILD_DIRS) $(OBJ_DIR)/kernel/kernel gnu-efi/x86_64/apps/ukernbl.efi
 	@echo "[*] Building disk image with EFI files ..."
 	dd if=/dev/zero of=diskimg bs=1M count=200
 	(echo g; echo n; echo; echo; echo +100M; echo t; echo EFI System; echo n; echo; echo; echo; echo w) | fdisk diskimg
@@ -99,10 +99,14 @@ diskimg: $(PREBUILD_DIRS) $(EFI_FILES) $(OBJ_DIR)/kernel/kernel gnu-efi/x86_64/a
 	[ -d mainfs ] && rm -rf mainfs || true
 	kpartx -d diskimg
 
-qemu: diskimg
+efi: $(EFI_FILES)
+	echo "Copying EFI files."
+
+qemu: diskimg $(EFI_FILES)
 	qemu-system-x86_64 \
 		$(QEMU_FLAGS) \
 		-machine q35 \
+		-device virtio-net-pci,netdev=net0 -netdev user,id=net0 \
 		-drive file=diskimg,format=raw \
 		-drive if=pflash,format=raw,unit=0,readonly=on,file=OVMF_CODE.fd \
 		-drive if=pflash,format=raw,unit=1,file=OVMF_VARS.fd

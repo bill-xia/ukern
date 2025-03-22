@@ -26,19 +26,22 @@
 #define PCI_CMD_MSE 0x02
 #define PCI_CMD_IOSE    0x01
 
+#define PCI_STATUS_CAP 0x10
+
 extern u64 pcie_base;
 
 struct pci_config_hdr {
-	u16	vendor_id;           /* 00 */
-	u16	dev_id;
-	u32	cmd_status;          /* 04 */
+	u16	vendor_id;		/* 00 */
+	u16	dev_id;			/* 02 */
+	u16	cmd;			/* 04 */
+	u16	status;			/* 06 */
 
-	u8	rev_id;              /* 08 */
+	u8	rev_id;			/* 08 */
 	u8	prog_if;
 	u8	subclass;
 	u8	class;
 
-	u8	cache_line;          /* 0C */
+	u8	cache_line;		/* 0C */
 	u8	latency;
 	u8	hdr_type : 7;
 	u8	multi_func : 1;
@@ -46,30 +49,26 @@ struct pci_config_hdr {
 } __attribute__((packed));
 
 struct pci_config_bridge {
-	struct pci_config_hdr	hdr;  /* 00 */
-	u32	BAR0;                /* 10 */
-	u32	BAR1;                /* 14 */
-	u8	primary_bus;         /* 18 */
+	struct pci_config_hdr	hdr;	/* 00 */
+	u32	BAR[2];			/* 10 */
+	u8	primary_bus;		/* 18 */
 	u8	secondary_bus;
 	u8	subord_bus;
 	u8	timer;
-	u32	pad[8];              /* 1C..3C */
+	u32	pad[8];			/* 1C..3C */
 } __attribute__((packed));
 
 struct pci_config_device {
-	struct pci_config_hdr	hdr;  /* 00 */
-	u32	BAR0;                /* 10 */
-	u32	BAR1;                /* 14 */
-	u32	BAR2;                /* 18 */
-	u32	BAR3;                /* 1C */
-	u32	BAR4;                /* 20 */
-	u32	BAR5;                /* 24 */
-	u32	cardbus;             /* 28 */
-	u16	subsys_vendor_id;    /* 2C */
-	u16	subsys_id;
-	u32	rom_addr;            /* 30 */
-	u32	pad[2];              /* 34 */
-	u8	irq;                 /* 3C */
+	struct pci_config_hdr	hdr;	/* 00 */
+	u32	BAR[6];			/* 10 */
+	u32	cardbus;		/* 28 */
+	u16	subsys_vendor_id;	/* 2C */
+	u16	subsys_id;		/* 2E */
+	u32	rom_addr;		/* 30 */
+	u16	cap_ptr;		/* 34 */
+	u8	pad2[2];		/* 36 */
+	u8	pad[4];			/* 38 */
+	u8	irq;			/* 3C */
 	u8	irq_pin;
 	u8	grant;
 	u8	latency;

@@ -21,6 +21,8 @@ KERNEL_OBJS := $(OBJ_DIR)/kernel/main.o \
 	$(OBJ_DIR)/kernel/pcie/pcie.o \
 	$(OBJ_DIR)/kernel/pcie/nvme.o \
 	$(OBJ_DIR)/kernel/pcie/sata.o \
+	$(OBJ_DIR)/kernel/pcie/ether.o \
+	$(OBJ_DIR)/kernel/pcie/virtio_net.o \
 	$(OBJ_DIR)/kernel/lib/printfmt.o \
 	$(OBJ_DIR)/kernel/lib/string.o \
 	$(OBJ_DIR)/kernel/lib/errno.o \
@@ -43,6 +45,10 @@ KERNEL_HDRS := kernel/init.h \
 	kernel/kbd.h \
 	kernel/pcie/pcie.h \
 	kernel/pcie/nvme.h \
+	kernel/pcie/sata.h \
+	kernel/pcie/xhci.h \
+	kernel/pcie/virtio_net.h \
+	kernel/pcie/ether.h \
 	kernel/fs/disk.h \
 	kernel/fs/fs.h \
 	kernel/fs/pipe.h \

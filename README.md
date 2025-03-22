@@ -27,7 +27,35 @@
 
 ## Usage
 
-### Docker on Mac
+### 构建内核
+
+现在支持两种方式: (1) 在 Docker 容器中构建（推荐），(2) 直接用宿主机环境构建。
+
+### Docker
+
+#### Host 已经安装 qemu
+
+```bash
+docker build . -t ukern-dev
+docker run -v .:/root/ukern --name testukern -it --privileged ukern-dev bash
+```
+
+这时 docker 应当已经启动。在容器内执行如下代码：
+
+```bash
+# inside docker container
+cd /root/ukern
+make clean && make diskimg
+make efi
+```
+
+现在 qemu 所需的文件（`diskimg`, `OVMF_CODE.fd`, `OVMF_VARS.fd`）都已构建完成，回到 host 启动 qemu：
+
+```bash
+make qemu
+```
+
+#### 用 Docker 内的 qemu
 
 在 Mac 宿主机上安装 `socat`:
 
@@ -51,7 +79,7 @@ cd /root/ukern
 make clean && make qemu
 ```
 
-### 环境配置
+#### 直接在宿主机构建 (Ubuntu)
 
 我在 Ubuntu 系统上开发，下面的命令适用于 Ubuntu。其他 Linux 发行版应该可以轻松找到对应的包名称。
 
@@ -62,7 +90,7 @@ cp /usr/share/OVMF/OVMF_VARS.fd ./
 
 目前的硬盘镜像中 bootloader 在 EFI 分区的 `/EFI/boot/bootx64.efi`，会被自动加载起来，不需要配置 UEFI 启动项。
 
-#### 交叉编译器（推荐）
+##### 交叉编译器（推荐）
 
 如果您在 x86_64 架构的 Linux 机器上编译，可能使用系统自带的编译器也是可以的。然而构建一个交叉编译器总是最推荐的选项。
 

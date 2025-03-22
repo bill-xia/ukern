@@ -1,6 +1,7 @@
 #include "pcie/pcie.h"
 #include "pcie/nvme.h"
 #include "pcie/sata.h"
+#include "pcie/ether.h"
 #include "printk.h"
 
 u64 pcie_base;
@@ -48,17 +49,17 @@ scan_devfn(int bus, int devfn)
 void
 pcie_init_device(int bus, int devfn)
 {
-	struct pci_config_hdr *hdr = (struct pci_config_hdr *)(pcie_base | (bus << 20) | (devfn << 12));
-	struct pci_config_device *dev = (struct pci_config_device *)hdr;
-	// printk("dev [%d:%d]: vendor %x, dev_id %x, class %x, subclass %x, progif %x.\n",
-	//     bus,
-	//     devfn,
-	//     (int)pcie_readw(dev, VENDORID),
-	//     (int)pcie_readw(dev, DEVICEID),
-	//     (int)pcie_readb(dev, CLASS),
-	//     (int)pcie_readb(dev, SUBCLASS),
-	//     (int)pcie_readb(dev, PROGIF)
-	// );
+	volatile struct pci_config_hdr *hdr = (struct pci_config_hdr *)(pcie_base | (bus << 20) | (devfn << 12));
+	volatile struct pci_config_device *dev = (struct pci_config_device *)hdr;
+	printk("dev [%d:%d]: vendor %x, dev_id %x, class %x, subclass %x, progif %x.\n",
+		bus,
+		devfn,
+		(int)pcie_readw(dev, VENDORID),
+		(int)pcie_readw(dev, DEVICEID),
+		(int)pcie_readb(dev, CLASS),
+		(int)pcie_readb(dev, SUBCLASS),
+		(int)pcie_readb(dev, PROGIF)
+	);
 	// u8	devid = pcie_readw(dev, DEVICEID),
 	// 	vendor = pcie_readw(dev, VENDORID);
 	u16	class = pcie_readb(dev, CLASS),
@@ -81,6 +82,7 @@ init_pcie(void)
 	// register known devices
 	pcie_nvme_register();
 	pcie_sata_register();
+	pcie_ethernet_register();
 	// scan available devices
 	scan_bus(0);
 }
